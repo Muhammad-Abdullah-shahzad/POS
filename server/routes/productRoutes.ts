@@ -9,6 +9,10 @@ router.route('/')
   .post(protect, authorize('admin', 'manager'), createProduct);
 
 router.get('/barcode/:barcode', protect, getProductByBarcode);
+
 router.patch('/:id/stock', protect, authorize('admin', 'manager'), updateStock);
 
 export default router;
+
+
+

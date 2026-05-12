@@ -150,10 +150,10 @@ const POS = () => {
                   {cart.map((item) => (
                     <Table.Tr key={item.product}>
                       <Table.Td>{item.name}</Table.Td>
-                      <Table.Td>${item.price.toFixed(2)}</Table.Td>
+                      <Table.Td>Rs {item.price.toFixed(2)}</Table.Td>
                       <Table.Td>{item.quantity}</Table.Td>
-                      <Table.Td>${item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
-                      <Table.Td>${item.totalPrice.toFixed(2)}</Table.Td>
+                      <Table.Td>Rs {item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
+                      <Table.Td>Rs {item.totalPrice.toFixed(2)}</Table.Td>
                       <Table.Td>
                         <ActionIcon color="red" variant="subtle" onClick={() => removeFromCart(item.product)}>
                           <IconTrash size={16} />
@@ -173,22 +173,22 @@ const POS = () => {
 
             <Group justify="space-between" mb="xs">
               <Text>Subtotal</Text>
-              <Text>${subtotal.toFixed(2)}</Text>
+              <Text>Rs {subtotal.toFixed(2)}</Text>
             </Group>
             <Group justify="space-between" mb="xs">
               <Text>Total VAT</Text>
-              <Text>${totalVAT.toFixed(2)}</Text>
+              <Text>Rs {totalVAT.toFixed(2)}</Text>
             </Group>
             <Group justify="space-between" mb="md">
               <Text>Discount</Text>
-              <Text>$0.00</Text>
+              <Text>Rs 0.00</Text>
             </Group>
 
             <Divider my="sm" />
 
             <Group justify="space-between" mb="xl">
               <Title order={4}>Grand Total</Title>
-              <Title order={4} c="blue">${total.toFixed(2)}</Title>
+              <Title order={4} c="blue">Rs {total.toFixed(2)}</Title>
             </Group>
 
             <Button 
@@ -201,7 +201,7 @@ const POS = () => {
                   centered: true,
                   children: (
                     <Text size="sm">
-                      Are you sure you want to process this payment of <strong>${total.toFixed(2)}</strong>?
+                      Are you sure you want to process this payment of <strong>Rs {total.toFixed(2)}</strong>?
                     </Text>
                   ),
                   labels: { confirm: 'Confirm Payment', cancel: 'No, Wait' },
@@ -211,7 +211,7 @@ const POS = () => {
               }} 
               disabled={cart.length === 0}
             >
-              Pay ${total.toFixed(2)}
+              Pay Rs {total.toFixed(2)}
             </Button>
             <Button 
               fullWidth 
@@ -262,8 +262,8 @@ const POS = () => {
                 <tr key={`print-${item.product}`} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '10px 5px' }}>{item.name}</td>
                   <td style={{ textAlign: 'center', padding: '10px 5px' }}>{item.quantity}</td>
-                  <td style={{ textAlign: 'right', padding: '10px 5px' }}>${item.price.toFixed(2)}</td>
-                  <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 'bold' }}>${item.totalPrice.toFixed(2)}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 5px' }}>Rs {item.price.toFixed(2)}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 'bold' }}>Rs {item.totalPrice.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -272,15 +272,15 @@ const POS = () => {
           <div style={{ width: '250px', marginLeft: 'auto', fontSize: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
               <span>Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>Rs {subtotal.toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
               <span>Tax:</span>
-              <span>${totalVAT.toFixed(2)}</span>
+              <span>Rs {totalVAT.toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '18px' }}>
               <span>TOTAL:</span>
-              <span>${total.toFixed(2)}</span>
+              <span>Rs {total.toFixed(2)}</span>
             </div>
           </div>
           

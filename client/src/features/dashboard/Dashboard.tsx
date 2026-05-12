@@ -10,6 +10,12 @@ interface Stats {
   totalExpenses: number;
   netProfit: number;
   orderCount: number;
+  lowStock: Array<{
+    name: string;
+    sku: string;
+    stock: number;
+    category: string;
+  }>;
 }
 
 const Dashboard = () => {
@@ -31,9 +37,9 @@ const Dashboard = () => {
   if (!stats) return <Text>Loading...</Text>;
 
   const statCards = [
-    { title: 'Total Revenue', value: `$${stats.totalRevenue.toFixed(2)}`, icon: IconCoin, color: 'blue' },
-    { title: 'Net Profit', value: `$${stats.netProfit.toFixed(2)}`, icon: IconChartBar, color: 'green' },
-    { title: 'Expenses', value: `$${stats.totalExpenses.toFixed(2)}`, icon: IconCash, color: 'red' },
+    { title: 'Total Revenue', value: `Rs ${stats.totalRevenue.toFixed(2)}`, icon: IconCoin, color: 'blue' },
+    { title: 'Net Profit', value: `Rs ${stats.netProfit.toFixed(2)}`, icon: IconChartBar, color: 'green' },
+    { title: 'Expenses', value: `Rs ${stats.totalExpenses.toFixed(2)}`, icon: IconCash, color: 'red' },
   ];
 
   return (
@@ -64,6 +70,49 @@ const Dashboard = () => {
           </Paper>
         ))}
       </SimpleGrid>
+
+      <Paper withBorder p="md" radius="md" mt="lg" shadow="sm">
+        <Group mb="md">
+          <IconReceipt2 color="red" size={24} />
+          <Title order={4}>Low Stock Alerts</Title>
+        </Group>
+        <Table verticalSpacing="sm">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Product</Table.Th>
+              <Table.Th>Category</Table.Th>
+              <Table.Th>Stock Status</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {stats.lowStock.length > 0 ? stats.lowStock.map((product) => (
+              <Table.Tr key={product.sku}>
+                <Table.Td>
+                  <Text size="sm" fw={500}>{product.name}</Text>
+                  <Text size="xs" c="dimmed">{product.sku}</Text>
+                </Table.Td>
+                <Table.Td>
+                  <Badge variant="outline" size="sm">{product.category}</Badge>
+                </Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    <Text fw={700} c={product.stock <= 5 ? 'red' : 'orange'}>
+                      {product.stock} units left
+                    </Text>
+                    {product.stock <= 5 && <Badge color="red" variant="filled">Critical</Badge>}
+                  </Group>
+                </Table.Td>
+              </Table.Tr>
+            )) : (
+              <Table.Tr>
+                <Table.Td colSpan={3}>
+                  <Text size="sm" c="dimmed" ta="center" py="md">Inventory levels are healthy</Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
+          </Table.Tbody>
+        </Table>
+      </Paper>
     </div>
   );
 };

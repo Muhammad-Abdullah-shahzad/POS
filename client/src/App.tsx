@@ -6,6 +6,7 @@ import POS from './features/pos/POS';
 import Products from './features/products/Products';
 import Expenses from './features/expenses/Expenses';
 import Invoices from './features/invoices/Invoices';
+import Analysis from './features/analytics/Analysis';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -24,6 +25,7 @@ function App() {
         <Route path="invoices" element={<Invoices />} />
         <Route path="products" element={<Products />} />
         <Route path="expenses" element={<Expenses />} />
+        <Route path="analysis" element={<Analysis />} />
       </Route>
     </Routes>
   );

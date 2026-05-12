@@ -1,7 +1,7 @@
 import { AppShell, Burger, Group, NavLink, Title, Button } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout } from '@tabler/icons-react';
+import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 
 const MainLayout = () => {
@@ -21,6 +21,7 @@ const MainLayout = () => {
     { label: 'Invoices', icon: IconReceipt2, path: '/invoices' },
     { label: 'Products', icon: IconPackage, path: '/products' },
     { label: 'Expenses', icon: IconCash, path: '/expenses' },
+    { label: 'Analysis', icon: IconChartBar, path: '/analysis' },
   ];
 
   if (!user) return null;

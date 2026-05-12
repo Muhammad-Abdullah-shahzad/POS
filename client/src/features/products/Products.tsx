@@ -197,7 +197,7 @@ const Products = () => {
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td>{p.sku} / {p.barcode}</Table.Td>
                 <Table.Td>{p.category}</Table.Td>
-                <Table.Td>${p.price.toFixed(2)}</Table.Td>
+                <Table.Td>Rs {p.price.toFixed(2)}</Table.Td>
                 <Table.Td>{p.vatRate}% ({p.vatType})</Table.Td>
                 <Table.Td fw={700} c={p.stock < 10 ? 'red' : 'inherit'}>{p.stock}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>

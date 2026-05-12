@@ -49,7 +49,7 @@ const Invoices = () => {
               <Table.Tr key={inv._id}>
                 <Table.Td fw={500}>{inv.invoiceId || 'N/A'}</Table.Td>
                 <Table.Td>{new Date(inv.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td fw={700}>${inv.total.toFixed(2)}</Table.Td>
+                <Table.Td fw={700}>Rs {inv.total.toFixed(2)}</Table.Td>
                 <Table.Td><Badge color="green" variant="light">PAID</Badge></Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Button 
@@ -105,16 +105,16 @@ const Invoices = () => {
                     <Table.Tr key={idx}>
                       <Table.Td>{item.name}</Table.Td>
                       <Table.Td style={{ textAlign: 'center' }}>{item.quantity}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }}>${item.totalPrice.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>Rs {item.totalPrice.toFixed(2)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
 
               <Stack gap={4} align="flex-end">
-                <Text size="sm">Subtotal: ${selectedInvoice.subtotal.toFixed(2)}</Text>
-                <Text size="sm">Tax: ${selectedInvoice.totalVAT.toFixed(2)}</Text>
-                <Text size="md" fw={700}>TOTAL: ${selectedInvoice.total.toFixed(2)}</Text>
+                <Text size="sm">Subtotal: Rs {selectedInvoice.subtotal.toFixed(2)}</Text>
+                <Text size="sm">Tax: Rs {selectedInvoice.totalVAT.toFixed(2)}</Text>
+                <Text size="md" fw={700}>TOTAL: Rs {selectedInvoice.total.toFixed(2)}</Text>
               </Stack>
               
               <Text ta="center" mt="xl" size="xs">THANK YOU FOR YOUR BUSINESS!</Text>

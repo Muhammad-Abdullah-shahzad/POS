@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Order from '../models/Order';
 import Expense from '../models/Expense';
+import Product from '../models/Product';
 import { successResponse, errorResponse } from '../utils/response';
 
 export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
@@ -25,12 +26,18 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const netProfit = totalRevenue - totalExpenses;
 
+    const lowStock = await Product.find({ stock: { $lte: 10 } })
+      .select('name sku stock category')
+      .sort({ stock: 1 })
+      .limit(5);
+
     res.json(successResponse({
       totalRevenue,
       totalVATCollected,
       totalExpenses,
       netProfit,
-      orderCount: orders.length
+      orderCount: orders.length,
+      lowStock
     }));
   } catch (error: any) {
     res.status(500).json(errorResponse('Server Error', error.message));
