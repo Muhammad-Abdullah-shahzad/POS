@@ -110,12 +110,12 @@ code {
   background: var(--code-bg);
 }
 
-#printable-invoice, .print-only {
+#printable-receipt, .print-only {
   display: none !important;
 }
 
 @media print {
-  #printable-invoice, .print-only {
+  #printable-receipt, .print-only {
     display: block !important;
   }
 }

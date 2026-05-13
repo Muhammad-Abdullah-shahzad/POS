@@ -27,7 +27,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       });
     }
 
-    const invoiceId = `INV-${Date.now()}`;
+    const invoiceId = `REC-${Date.now()}`;
     const order = await Order.create({
       invoiceId,
       items,
@@ -46,7 +46,18 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
 
 export const getOrders = async (req: Request, res: Response): Promise<void> => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }).limit(50);
+    const { month, year } = req.query;
+    let query: any = {};
+    if (month && year) {
+      const startDate = new Date(Number(year), Number(month) - 1, 1);
+      const endDate = new Date(Number(year), Number(month), 1);
+      query.createdAt = {
+        $gte: startDate,
+        $lt: endDate
+      };
+    }
+
+    const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100);
     res.json(successResponse(orders));
   } catch (error: any) {
     res.status(500).json(errorResponse('Server Error', error.message));

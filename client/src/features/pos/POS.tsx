@@ -227,10 +227,10 @@ const POS = () => {
         </Grid.Col>
       </Grid>
 
-      {/* Printable Invoice */}
+      {/* Printable Receipt */}
       <div className="print-only" style={{ display: 'none' }}>
         <div ref={componentRef}>
-          <div id="printable-invoice" style={{ padding: '30px', fontFamily: 'Courier, monospace', color: '#000', backgroundColor: '#fff' }}>
+          <div id="printable-receipt" style={{ padding: '30px', fontFamily: 'Courier, monospace', color: '#000', backgroundColor: '#fff' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
             <h1 style={{ margin: '0', fontSize: '28px', textTransform: 'uppercase' }}>STORE POS</h1>
             <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold' }}>123 Business Road, Commerce City</p>

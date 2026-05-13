@@ -25,6 +25,9 @@ import orderRoutes from './routes/orderRoutes';
 import expenseRoutes from './routes/expenseRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import supplierRoutes from './routes/supplierRoutes';
+import employeeRoutes from './routes/employeeRoutes';
+import bankRoutes from './routes/bankRoutes';
 
 // Import Routes
 app.use('/api/auth', authRoutes);
@@ -33,6 +36,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/banks', bankRoutes);
 
 
 const PORT = process.env.PORT || 5000;
