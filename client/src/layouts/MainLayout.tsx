@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center } from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconTruck, IconUsers, IconBuildingBank } from '@tabler/icons-react';
@@ -41,7 +41,6 @@ const MainLayout = () => {
         breakpoint: 'sm', 
         collapsed: { mobile: !opened } 
       }}
-      padding="md"
       transitionDuration={400}
       transitionTimingFunction="ease"
     >
@@ -99,8 +98,19 @@ const MainLayout = () => {
         })}
       </AppShell.Navbar>
 
-      <AppShell.Main bg="gray.0">
-        <Outlet />
+      <AppShell.Main bg="gray.0" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div style={{ flex: 1, padding: 'var(--mantine-spacing-md)' }}>
+          <Outlet />
+        </div>
+        
+        <Center className="no-print" py="xs">
+          <Text size="xs" c="dimmed">
+            Developed and maintained by{' '}
+            <Anchor href="https://deviction.tech" target="_blank" size="xs" fw={500}>
+              Deviction Technologies
+            </Anchor>
+          </Text>
+        </Center>
       </AppShell.Main>
     </AppShell>
   );

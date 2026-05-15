@@ -1,8 +1,7 @@
-import { SimpleGrid, Paper, Title, Text, Group, TextInput, Tabs, Table, Button, Modal, Badge, Stack, Divider } from '@mantine/core';
-import { useEffect, useState, useRef } from 'react';
+import { SimpleGrid, Paper, Title, Text, Group, TextInput, Table, Badge } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { IconCoin, IconReceipt2, IconCash, IconChartBar, IconEye, IconPrinter } from '@tabler/icons-react';
-import { useReactToPrint } from 'react-to-print';
+import { IconCoin, IconReceipt2, IconCash, IconChartBar } from '@tabler/icons-react';
 
 interface Stats {
   totalRevenue: number;

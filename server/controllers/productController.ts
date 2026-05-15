@@ -60,3 +60,16 @@ export const updateStock = async (req: Request, res: Response): Promise<void> =>
     res.status(400).json(errorResponse('Bad Request', error.message));
   }
 };
+
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) {
+      res.status(404).json(errorResponse('Product not found'));
+      return;
+    }
+    res.json(successResponse(null, 'Product deleted successfully'));
+  } catch (error: any) {
+    res.status(500).json(errorResponse('Server Error', error.message));
+  }
+};

@@ -1,7 +1,7 @@
 import { Paper, Title, Text, Table, Button, Modal, Badge, Stack, Group, Divider, Select } from '@mantine/core';
 import { useEffect, useState, useRef } from 'react';
 import api from '../../services/api';
-import { IconReceipt2, IconEye, IconPrinter } from '@tabler/icons-react';
+import { IconEye, IconPrinter } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 
 const Receipts = () => {

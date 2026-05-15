@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon } from '@mantine/core';
-import { IconTrash, IconBarcode } from '@tabler/icons-react';
+import { IconTrash, IconBarcode, IconPlus, IconMinus } from '@tabler/icons-react';
 import { usePosStore } from '../../store/posStore';
 import api from '../../services/api';
 import { useReactToPrint } from 'react-to-print';
@@ -14,8 +14,9 @@ const POS = () => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const componentRef = useRef<HTMLDivElement>(null);
+  const lastScanRef = useRef<{ barcode: string, time: number }>({ barcode: '', time: 0 });
 
-  const { cart, subtotal, totalVAT, total, addToCart, removeFromCart, clearCart } = usePosStore();
+  const { cart, subtotal, totalVAT, total, addToCart, removeFromCart, clearCart, updateQuantity } = usePosStore();
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -27,11 +28,21 @@ const POS = () => {
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!barcode.trim()) return;
+    const trimmedBarcode = barcode.trim();
+    if (!trimmedBarcode) return;
+
+    // Counter measure for rapid duplicate scans (barcode scanner issue)
+    const now = Date.now();
+    if (trimmedBarcode === lastScanRef.current.barcode && (now - lastScanRef.current.time) < 500) {
+      console.log('Duplicate scan detected and ignored');
+      setBarcode('');
+      return;
+    }
+    lastScanRef.current = { barcode: trimmedBarcode, time: now };
 
     try {
       setLoading(true);
-      const { data } = await api.get(`/products/barcode/${barcode.trim()}`);
+      const { data } = await api.get(`/products/barcode/${trimmedBarcode}`);
       const product = data.data;
 
       if (product.stock <= 0) {
@@ -60,10 +71,23 @@ const POS = () => {
         totalPrice = product.price + vatAmount; // The final price adds VAT
       }
 
+      const existingItem = cart.find(item => item.product === product._id);
+      if (existingItem && existingItem.quantity >= product.stock) {
+        notifications.show({
+          title: 'Stock Limit Reached',
+          message: `Only ${product.stock} units of ${product.name} are available.`,
+          color: 'yellow',
+          icon: <IconAlertCircle size={16} />,
+        });
+        setBarcode('');
+        return;
+      }
+
       addToCart({
         product: product._id,
         name: product.name,
         quantity: 1,
+        stock: product.stock,
         price: basePrice,
         vatRate: product.vatRate,
         vatAmount: vatAmount,
@@ -151,7 +175,38 @@ const POS = () => {
                     <Table.Tr key={item.product}>
                       <Table.Td>{item.name}</Table.Td>
                       <Table.Td>Rs {item.price.toFixed(2)}</Table.Td>
-                      <Table.Td>{item.quantity}</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <ActionIcon 
+                            size="sm" 
+                            variant="light" 
+                            onClick={() => updateQuantity(item.product, -1)}
+                            disabled={loading}
+                          >
+                            <IconMinus size={12} />
+                          </ActionIcon>
+                          <Text size="sm" fw={500} w={20} ta="center">{item.quantity}</Text>
+                          <ActionIcon 
+                            size="sm" 
+                            variant="light" 
+                            onClick={() => {
+                              if (item.quantity >= item.stock) {
+                                notifications.show({
+                                  title: 'Stock Limit Reached',
+                                  message: `Maximum available stock is ${item.stock}`,
+                                  color: 'yellow',
+                                  icon: <IconAlertCircle size={16} />,
+                                });
+                                return;
+                              }
+                              updateQuantity(item.product, 1);
+                            }}
+                            disabled={loading || item.quantity >= item.stock}
+                          >
+                            <IconPlus size={12} />
+                          </ActionIcon>
+                        </Group>
+                      </Table.Td>
                       <Table.Td>Rs {item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
                       <Table.Td>Rs {item.totalPrice.toFixed(2)}</Table.Td>
                       <Table.Td>

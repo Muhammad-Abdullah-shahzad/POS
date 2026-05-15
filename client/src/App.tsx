@@ -12,7 +12,7 @@ import Employees from './features/employees/Employees';
 import BankManagement from './features/bank/BankManagement';
 import { useAuthStore } from './store/authStore';
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuthStore();
   if (!user) return <Navigate to="/login" replace />;
   return children;

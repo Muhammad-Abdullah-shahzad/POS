@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Paper, Autocomplete, ActionIcon, Stack, Text } from '@mantine/core';
+import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Paper, Autocomplete, Stack, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconPlus, IconTags, IconBarcode } from '@tabler/icons-react';
+import { modals } from '@mantine/modals';
+import { IconCheck, IconX, IconPlus, IconTags, IconBarcode, IconTrash } from '@tabler/icons-react';
 
 interface Product {
   _id: string;
@@ -148,6 +149,43 @@ const Products = () => {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      setLoading(true);
+      await api.delete(`/products/${id}`);
+      notifications.show({
+        title: 'Success',
+        message: 'Product deleted successfully',
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
+      fetchProducts();
+    } catch (error: any) {
+      notifications.show({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to delete product',
+        color: 'red',
+        icon: <IconX size={16} />,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDeleteModal = (product: Product) =>
+    modals.openConfirmModal({
+      title: 'Delete product',
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete <strong>{product.name}</strong>? This action is irreversible and may affect sales records.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => handleDelete(product._id),
+    });
+
   const uniqueCategories = Array.from(new Set([...customCategories, ...products.map(p => p.category)])).filter(Boolean);
 
   return (
@@ -201,16 +239,26 @@ const Products = () => {
                 <Table.Td>{p.vatRate}% ({p.vatType})</Table.Td>
                 <Table.Td fw={700} c={p.stock < 10 ? 'red' : 'inherit'}>{p.stock}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
-                  <Button 
-                    size="compact-xs" 
-                    variant="light" 
-                    onClick={() => {
-                      setSelectedProduct(p);
-                      setStockModalOpened(true);
-                    }}
-                  >
-                    Add Stock
-                  </Button>
+                  <Group gap="xs" justify="flex-end">
+                    <Button 
+                      size="compact-xs" 
+                      variant="light" 
+                      onClick={() => {
+                        setSelectedProduct(p);
+                        setStockModalOpened(true);
+                      }}
+                    >
+                      Add Stock
+                    </Button>
+                    <Button 
+                      size="compact-xs" 
+                      variant="light" 
+                      color="red"
+                      onClick={() => openDeleteModal(p)}
+                    >
+                      <IconTrash size={14} />
+                    </Button>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}

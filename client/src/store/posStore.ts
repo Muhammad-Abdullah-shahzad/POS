@@ -4,6 +4,7 @@ export interface CartItem {
   product: string;
   name: string;
   quantity: number;
+  stock: number; // Available stock
   price: number; // Unit price
   vatRate: number;
   vatAmount: number; // Total VAT for this quantity
@@ -16,6 +17,7 @@ interface POSState {
   totalVAT: number;
   total: number;
   addToCart: (item: CartItem) => void;
+  updateQuantity: (productId: string, delta: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
   calculateTotals: () => void;
@@ -36,11 +38,19 @@ export const usePosStore = create<POSState>((set, get) => ({
       updatedCart = cart.map((item) => {
         if (item.product === newItem.product) {
           const newQuantity = item.quantity + 1;
+          
+          // Stock check
+          if (newQuantity > item.stock) {
+            return item;
+          }
+
+          const unitVAT = item.vatAmount / item.quantity;
+          const unitTotal = item.totalPrice / item.quantity;
           return {
             ...item,
             quantity: newQuantity,
-            vatAmount: (item.vatAmount / item.quantity) * newQuantity,
-            totalPrice: (item.totalPrice / item.quantity) * newQuantity,
+            vatAmount: unitVAT * newQuantity,
+            totalPrice: unitTotal * newQuantity,
           };
         }
         return item;
@@ -48,6 +58,36 @@ export const usePosStore = create<POSState>((set, get) => ({
     } else {
       updatedCart = [...cart, newItem];
     }
+
+    set({ cart: updatedCart });
+    get().calculateTotals();
+  },
+
+  updateQuantity: (productId, delta) => {
+    const { cart } = get();
+    const updatedCart = cart.map((item) => {
+      if (item.product === productId) {
+        const newQuantity = Math.max(0, item.quantity + delta);
+        
+        // Prevent exceeding stock
+        if (delta > 0 && newQuantity > item.stock) {
+          return item;
+        }
+
+        if (newQuantity === 0) return null;
+        
+        const unitVAT = item.vatAmount / item.quantity;
+        const unitTotal = item.totalPrice / item.quantity;
+        
+        return {
+          ...item,
+          quantity: newQuantity,
+          vatAmount: unitVAT * newQuantity,
+          totalPrice: unitTotal * newQuantity,
+        };
+      }
+      return item;
+    }).filter(Boolean) as CartItem[];
 
     set({ cart: updatedCart });
     get().calculateTotals();
