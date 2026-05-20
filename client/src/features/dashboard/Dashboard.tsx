@@ -1,6 +1,6 @@
 import { 
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button, 
-  Box, Checkbox 
+  Box, Checkbox, Modal 
 } from '@mantine/core';
 import { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
@@ -42,6 +42,15 @@ const Dashboard = () => {
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
 
   const [stagingItem, setStagingItem] = useState<{ id?: string; name: string; barcode: string; qty: number | string; price: number | string }>({ name: '', barcode: '', qty: '', price: '' });
+
+  const [fishModalOpened, setFishModalOpened] = useState(false);
+  const [fishSearch, setFishSearch] = useState('');
+  const fishItems = [
+    "SEA BASS", "SEA BREAM", "PINK BREAM", "SARADINE", "KING FISH", "TUNA BONITO", "TUNA FILLETS",
+    "SALMON", "SHARK FILLETS", "PRAWNS", "RED MULLETS", "SPANISH POMPANO", "GREY MULLETS", "RAHU FISH",
+    "BOAL FISH", "MIRGAL", "HAKE FISH", "HILSHA FISH", "SALT FISH", "RED SNAPER FISH", "SMOKE TURKEY WINGS",
+    "Salted dry Fish", "", "", "", "", "", ""
+  ];
 
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -350,7 +359,7 @@ const Dashboard = () => {
                           {name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234')}, 
                           {name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234')}, 
                           {name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234')}, 
-                          {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn}, 
+                          {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => setFishModalOpened(true)}, 
                           {name: 'LAMB BEEF', color: customColors.orangeBtn}, 
                           {name: 'CHICKEN', color: customColors.orangeBtn}, 
                           {name: 'FRUITS', color: customColors.orangeBtn}, 
@@ -544,6 +553,58 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      <Modal 
+        opened={fishModalOpened} 
+        onClose={() => setFishModalOpened(false)}
+        size="100%"
+        fullScreen
+        withCloseButton={false}
+        padding={0}
+        styles={{ inner: { padding: 0 }, body: { backgroundColor: '#4a6b82', height: '100vh', display: 'flex', flexDirection: 'column' } }}
+      >
+        <Flex align="center" bg="#325a7a" p="xs" style={{ borderBottom: '1px solid white' }}>
+          <Text c="white" size="xl" fw="bold" style={{ textDecoration: 'underline' }}>FISH AND SEAFOOD</Text>
+          <Flex align="center" ml="auto" gap="sm">
+            <Text c="white" size="sm">Search Product</Text>
+            <TextInput size="sm" value={fishSearch} onChange={(e) => setFishSearch(e.target.value)} styles={{ input: { borderRadius: 0 } }} />
+            <Box bg="red" p="4px 8px" style={{ border: '1px solid black' }}>
+              <Text c="white" size="xs">* Only 3 characters are allowed for<br/>search. Tick checkbox to allow more.</Text>
+            </Box>
+            <Checkbox label={<Text c="white" size="sm">Allow more</Text>} color="gray" />
+          </Flex>
+        </Flex>
+        
+        <Box flex={1} p="xs">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid white', borderLeft: '1px solid white' }}>
+            {fishItems.map((fish, index) => (
+              <div key={index} style={{ borderRight: '1px solid white', borderBottom: '1px solid white', height: '18vh', display: 'flex', flexDirection: 'column' }}>
+                <Box flex={1} bg={fish ? "black" : "#2d5d85"} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: fish ? 'pointer' : 'default' }} onClick={() => {
+                  if(fish) handleCategoryItem(fish, 'fsh123');
+                }}>
+                   {fish && <Text c="white" size="xs" style={{ position: 'absolute', top: 5 }}>No Imag</Text>}
+                </Box>
+                {fish ? (
+                  <Box bg="green" h="30px" display="flex" style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Text c="white" size="11px" fw="bold" ta="center" style={{ whiteSpace: 'normal', lineHeight: 1 }}>{fish}</Text>
+                  </Box>
+                ) : (
+                  <Box bg="#2d5d85" h="30px" />
+                )}
+              </div>
+            ))}
+          </div>
+        </Box>
+
+        <Flex p="sm" bg="#4a6b82" align="center" justify="space-between">
+          <Box w="60%" h={100} bg="white" style={{ border: '1px solid black' }} />
+          <Flex gap="sm">
+            <Button h={80} w={100} bg="#333" style={{ border: '2px solid #555' }}><Text size="xl">⬆</Text></Button>
+            <Button h={80} w={100} bg="#333" style={{ border: '2px solid #555' }}><Text size="xl">⬇</Text></Button>
+            <Button h={80} w={120} bg={customColors.orangeBtn} style={{ border: '2px solid white' }} onClick={() => setFishModalOpened(false)}><Text size="lg" fw="bold">DONE</Text></Button>
+          </Flex>
+        </Flex>
+      </Modal>
     </>
   );
 };
