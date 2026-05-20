@@ -9,6 +9,15 @@ import Receipts from './features/receipts/Receipts';
 import Analysis from './features/analytics/Analysis';
 import Suppliers from './features/suppliers/Suppliers';
 import Employees from './features/employees/Employees';
+import { 
+  SalaryManagement, 
+  Damages, 
+  ChangePassword, 
+  EmployeeAccess, 
+  DutyRoaster, 
+  AttendanceReport, 
+  OverTimeDetails 
+} from './features/employees/EmployeeSubFeatures';
 import BankManagement from './features/bank/BankManagement';
 import Customers from './features/customers/Customers';
 import { useAuthStore } from './store/authStore';
@@ -33,6 +42,13 @@ function App() {
         <Route path="analysis" element={<Analysis />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="employees" element={<Employees />} />
+        <Route path="employees/salary" element={<SalaryManagement />} />
+        <Route path="employees/damages" element={<Damages />} />
+        <Route path="employees/change-password" element={<ChangePassword />} />
+        <Route path="employees/access" element={<EmployeeAccess />} />
+        <Route path="employees/duty-roaster" element={<DutyRoaster />} />
+        <Route path="employees/attendance-report" element={<AttendanceReport />} />
+        <Route path="employees/overtime" element={<OverTimeDetails />} />
         <Route path="bank" element={<BankManagement />} />
         <Route path="customers" element={<Customers />} />
       </Route>

@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor } from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconTruck, IconUsers, IconBuildingBank, IconAddressBook } from '@tabler/icons-react';
@@ -17,7 +17,14 @@ const MainLayout = () => {
     navigate('/login');
   };
 
-  const navItems = [
+  interface NavItem {
+    label: string;
+    icon: React.ComponentType<any>;
+    path?: string;
+    children?: { label: string; path: string }[];
+  }
+
+  const navItems: NavItem[] = [
     { label: 'Counter', icon: IconDashboard, path: '/' },
     { label: 'POS Terminal', icon: IconReceipt2, path: '/pos' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
@@ -25,7 +32,20 @@ const MainLayout = () => {
     { label: 'Expenses', icon: IconCash, path: '/expenses' },
     { label: 'Analysis', icon: IconChartBar, path: '/analysis' },
     { label: 'Suppliers', icon: IconTruck, path: '/suppliers' },
-    { label: 'Employees', icon: IconUsers, path: '/employees' },
+    { 
+      label: 'Employees', 
+      icon: IconUsers, 
+      children: [
+        { label: 'Manage Employees', path: '/employees' },
+        { label: 'Salary Management', path: '/employees/salary' },
+        { label: 'Damages', path: '/employees/damages' },
+        { label: 'Change Password', path: '/employees/change-password' },
+        { label: 'Employee Access', path: '/employees/access' },
+        { label: 'Duty Roaster', path: '/employees/duty-roaster' },
+        { label: 'Attendence Report', path: '/employees/attendance-report' },
+        { label: 'OverTime Details', path: '/employees/overtime' },
+      ]
+    },
     { label: 'Bank', icon: IconBuildingBank, path: '/bank' },
     { label: 'Customer Details', icon: IconAddressBook, path: '/customers' },
   ];
@@ -61,42 +81,111 @@ const MainLayout = () => {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p={showLabel ? "md" : "xs"} className="no-print">
-        {navItems.map((item) => {
-          const navLink = (
-            <NavLink
-              key={item.label}
-              label={showLabel ? item.label : undefined}
-              leftSection={
-                <Center w={showLabel ? "auto" : "100%"}>
-                  <item.icon size={24} stroke={1.5} />
-                </Center>
-              }
-              active={location.pathname === item.path}
-              onClick={() => {
-                navigate(item.path);
-                if (isMobile && opened) toggle();
-              }}
-              variant="filled"
-              mb={8}
-              py={showLabel ? "sm" : "md"}
-              style={{
-                borderRadius: '8px',
-                justifyContent: showLabel ? 'flex-start' : 'center',
-              }}
-            />
-          );
+      <AppShell.Navbar className="no-print">
+        <ScrollArea h="100%" p={showLabel ? "md" : "xs"} scrollbarSize={6} type="hover">
+          {navItems.map((item) => {
+            const isChildActive = item.children ? item.children.some(c => location.pathname === c.path) : false;
 
-          if (!showLabel) {
-            return (
-              <Tooltip key={item.label} label={item.label} position="right" transitionProps={{ duration: 0 }}>
-                {navLink}
-              </Tooltip>
+            const navLink = (
+              <NavLink
+                key={item.label}
+                label={showLabel ? item.label : undefined}
+                leftSection={
+                  <Center w={showLabel ? "auto" : "100%"}>
+                    <item.icon size={24} stroke={1.5} />
+                  </Center>
+                }
+                active={item.children ? isChildActive : (item.path ? location.pathname === item.path : false)}
+                defaultOpened={isChildActive}
+                onClick={item.path ? () => {
+                  navigate(item.path as string);
+                  if (isMobile && opened) toggle();
+                } : undefined}
+                variant={item.children && isChildActive ? "light" : "filled"}
+                mb={8}
+                py={showLabel ? "sm" : "md"}
+                style={{
+                  borderRadius: '8px',
+                  justifyContent: showLabel ? 'flex-start' : 'center',
+                }}
+              >
+                {item.children && showLabel && item.children.map((child) => (
+                  <NavLink
+                    key={child.label}
+                    label={child.label}
+                    active={location.pathname === child.path}
+                    onClick={() => {
+                      navigate(child.path);
+                      if (isMobile && opened) toggle();
+                    }}
+                    py="xs"
+                    style={{ 
+                      borderRadius: '6px',
+                      marginRight: '8px',
+                      marginLeft: '8px',
+                      marginTop: '4px',
+                      marginBottom: '4px'
+                    }}
+                    variant="subtle"
+                  />
+                ))}
+              </NavLink>
             );
-          }
 
-          return navLink;
-        })}
+            if (!showLabel) {
+              if (item.children) {
+                return (
+                  <Menu key={item.label} trigger="hover" position="right-start" withinPortal>
+                    <Menu.Target>
+                      <NavLink
+                        label={undefined}
+                        leftSection={
+                          <Center w="100%">
+                            <item.icon size={24} stroke={1.5} />
+                          </Center>
+                        }
+                        active={isChildActive}
+                        mb={8}
+                        py="md"
+                        style={{
+                          borderRadius: '8px',
+                          justifyContent: 'center',
+                        }}
+                      />
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>{item.label}</Menu.Label>
+                      {item.children.map((child) => (
+                        <Menu.Item
+                          key={child.label}
+                          onClick={() => {
+                            navigate(child.path);
+                            if (isMobile && opened) toggle();
+                          }}
+                          style={{
+                            fontWeight: location.pathname === child.path ? 600 : 400,
+                            backgroundColor: location.pathname === child.path ? 'var(--mantine-color-blue-light)' : undefined,
+                            color: location.pathname === child.path ? 'var(--mantine-color-blue-filled)' : undefined,
+                          }}
+                        >
+                          {child.label}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Dropdown>
+                  </Menu>
+                );
+              }
+
+              return (
+                <Tooltip key={item.label} label={item.label} position="right" transitionProps={{ duration: 0 }}>
+                  {navLink}
+                </Tooltip>
+              );
+            }
+
+            return navLink;
+          })}
+        </ScrollArea>
       </AppShell.Navbar>
 
       <AppShell.Main bg="gray.0" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
