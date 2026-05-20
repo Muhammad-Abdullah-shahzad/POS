@@ -1,8 +1,10 @@
 import { 
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button, 
-  Box, Checkbox, Modal, Autocomplete
+  Box, Checkbox, Modal, Autocomplete, SimpleGrid
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
+import { notifications } from '@mantine/notifications';
+import { IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../../services/api';
 
@@ -50,6 +52,7 @@ const Dashboard = () => {
   const [openedCategoryName, setOpenedCategoryName] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
+  const [optionsModalOpened, setOptionsModalOpened] = useState(false);
 
   useEffect(() => {
     const fetchDbCustomers = async () => {
@@ -220,6 +223,36 @@ const Dashboard = () => {
       alert("No previous transaction to reprint.");
     }
   };
+
+  const handleOptionAction = (actionName: string) => {
+    notifications.show({
+      title: 'POS Command',
+      message: `Running command: ${actionName}`,
+      color: 'teal',
+      icon: <IconCheck size={16} />
+    });
+  };
+
+  const optionButtons = [
+    { label: 'Z REPORT', action: () => handleOptionAction('Z REPORT') },
+    { label: 'TILL REPORT', action: () => handleOptionAction('TILL REPORT') },
+    { label: 'Post Amount', action: () => handleOptionAction('Post Amount'), isSpecial: true },
+    { label: 'EXCH / REF', action: () => handleOptionAction('EXCH / REF') },
+    { label: 'VOID TRANS', action: () => handleOptionAction('VOID TRANS') },
+    { label: 'RE PRINT BILL', action: () => { setOptionsModalOpened(false); handleRePrint(); } },
+    { label: 'CATEGORY PRIORITY', action: () => handleOptionAction('CATEGORY PRIORITY') },
+    { label: 'MANAGE CUSTOMER', action: () => handleOptionAction('MANAGE CUSTOMER') },
+    { label: 'CASH / CARD TRANS', action: () => handleOptionAction('CASH / CARD TRANS') },
+    { label: 'ADD EXPENSES', action: () => handleOptionAction('ADD EXPENSES') },
+    { label: 'ADD VOUCHER', action: () => handleOptionAction('ADD VOUCHER') },
+    { label: 'CIGARETTE MACHINE REPORT', action: () => handleOptionAction('CIGARETTE MACHINE REPORT') },
+    { label: 'VIEW EXPIRY REPORT', action: () => handleOptionAction('VIEW EXPIRY REPORT') },
+    { label: 'MANAGE ONLINE ORDERS', action: () => handleOptionAction('MANAGE ONLINE ORDERS') },
+    { label: 'Download Invoice', action: () => handleOptionAction('Download Invoice') },
+    { label: 'DELI REPORT', action: () => handleOptionAction('DELI REPORT') },
+    { label: 'CASH LIFT', action: () => handleOptionAction('CASH LIFT') },
+    { label: 'BACK', action: () => setOptionsModalOpened(false) },
+  ];
 
   const handleAddCustomer = () => {
     const nextNum = carts.length + 1;
@@ -586,7 +619,18 @@ const Dashboard = () => {
 
                      <Flex gap={4} mt="4px">
                         {['PAY DUES', 'SHOW ALL OFFERS', 'OPEN TILL', 'PAYBILL', 'OPTIONS'].map((opt) => (
-                           <Button onClick={opt === 'PAYBILL' ? () => handleCheckout('MIXED') : undefined} key={opt} flex={1} style={{ backgroundColor: customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}>
+                           <Button 
+                             onClick={
+                               opt === 'PAYBILL' 
+                                 ? () => handleCheckout('MIXED') 
+                                 : opt === 'OPTIONS' 
+                                 ? () => setOptionsModalOpened(true) 
+                                 : undefined
+                             } 
+                             key={opt} 
+                             flex={1} 
+                             style={{ backgroundColor: customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}
+                           >
                               <Text size="11px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1}}>{opt}</Text>
                            </Button>
                         ))}
@@ -750,6 +794,64 @@ const Dashboard = () => {
             OK (Next Customer)
           </Button>
         </Flex>
+      </Modal>
+
+      {/* OPTIONS Command Panel Popup Modal */}
+      <Modal
+        opened={optionsModalOpened}
+        onClose={() => setOptionsModalOpened(false)}
+        size="lg"
+        centered
+        withCloseButton={false}
+        padding={0}
+        styles={{ 
+          content: { 
+            backgroundColor: '#405c6b', // Authentic slate blue background from POS screenshot
+            border: '4px solid #ffffff',
+            borderRadius: '4px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+          },
+          body: {
+            padding: '24px'
+          }
+        }}
+      >
+        <SimpleGrid cols={3} spacing="md">
+          {optionButtons.map((btn) => (
+            <Button
+              key={btn.label}
+              onClick={btn.action}
+              style={{
+                height: '65px',
+                backgroundColor: btn.isSpecial ? '#8bc6fc' : customColors.orangeBtn,
+                color: btn.isSpecial ? '#000000' : '#ffffff',
+                border: '2px solid #ffffff',
+                borderRadius: '2px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.2)',
+                padding: '0 8px',
+                transition: 'transform 0.1s ease, filter 0.1s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <Text 
+                size="11px" 
+                fw="bold" 
+                ta="center" 
+                style={{ 
+                  whiteSpace: 'normal', 
+                  lineHeight: 1.2,
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {btn.label}
+              </Text>
+            </Button>
+          ))}
+        </SimpleGrid>
       </Modal>
     </>
   );
