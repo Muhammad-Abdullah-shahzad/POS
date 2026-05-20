@@ -561,47 +561,67 @@ const Dashboard = () => {
         fullScreen
         withCloseButton={false}
         padding={0}
-        styles={{ inner: { padding: 0 }, body: { backgroundColor: '#4a6b82', height: '100vh', display: 'flex', flexDirection: 'column' } }}
+        styles={{ inner: { padding: 0 }, body: { backgroundColor: '#f4f6f8', height: '100vh', display: 'flex', flexDirection: 'column' } }}
       >
-        <Flex align="center" bg="#325a7a" p="xs" style={{ borderBottom: '1px solid white' }}>
-          <Text c="white" size="xl" fw="bold" style={{ textDecoration: 'underline' }}>FISH AND SEAFOOD</Text>
-          <Flex align="center" ml="auto" gap="sm">
-            <Text c="white" size="sm">Search Product</Text>
-            <TextInput size="sm" value={fishSearch} onChange={(e) => setFishSearch(e.target.value)} styles={{ input: { borderRadius: 0 } }} />
-            <Box bg="red" p="4px 8px" style={{ border: '1px solid black' }}>
-              <Text c="white" size="xs">* Only 3 characters are allowed for<br/>search. Tick checkbox to allow more.</Text>
-            </Box>
-            <Checkbox label={<Text c="white" size="sm">Allow more</Text>} color="gray" />
+        {/* HEADER */}
+        <Flex align="center" bg="white" p="md" style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
+          <Text size="24px" fw={800} c="#2c3e50" style={{ letterSpacing: '1px' }}>FISH & SEAFOOD</Text>
+          <Flex align="center" ml="auto" gap="xl">
+            <Flex align="center" gap="sm">
+              <Text size="sm" fw={600} c="dimmed">Search Product</Text>
+              <TextInput 
+                size="md" 
+                placeholder="Type here..."
+                value={fishSearch} 
+                onChange={(e) => setFishSearch(e.target.value)} 
+                styles={{ input: { borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#f8f9fa' } }} 
+              />
+            </Flex>
+            <Flex align="center" gap="sm" bg="#fff5f5" p="8px 12px" style={{ borderRadius: '8px', border: '1px solid #ffc9c9' }}>
+              <Text c="red.7" size="xs" fw={600}>* Max 3 chars. Check to allow more.</Text>
+              <Checkbox size="sm" color="red" />
+            </Flex>
           </Flex>
         </Flex>
         
-        <Box flex={1} p="xs">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid white', borderLeft: '1px solid white' }}>
-            {fishItems.map((fish, index) => (
-              <div key={index} style={{ borderRight: '1px solid white', borderBottom: '1px solid white', height: '18vh', display: 'flex', flexDirection: 'column' }}>
-                <Box flex={1} bg={fish ? "black" : "#2d5d85"} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: fish ? 'pointer' : 'default' }} onClick={() => {
-                  if(fish) handleCategoryItem(fish, 'fsh123');
-                }}>
-                   {fish && <Text c="white" size="xs" style={{ position: 'absolute', top: 5 }}>No Imag</Text>}
+        {/* GRID AREA */}
+        <Box flex={1} p="xl" style={{ overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
+            {fishItems.filter(f => f !== "").map((fish, index) => (
+              <Paper 
+                key={index} 
+                shadow="sm" 
+                radius="lg" 
+                withBorder 
+                style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '180px' }}
+                onClick={() => {
+                  handleCategoryItem(fish, 'fsh123');
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
+              >
+                <Box flex={1} bg="#e9ecef" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                   <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
                 </Box>
-                {fish ? (
-                  <Box bg="green" h="30px" display="flex" style={{ alignItems: 'center', justifyContent: 'center' }}>
-                    <Text c="white" size="11px" fw="bold" ta="center" style={{ whiteSpace: 'normal', lineHeight: 1 }}>{fish}</Text>
-                  </Box>
-                ) : (
-                  <Box bg="#2d5d85" h="30px" />
-                )}
-              </div>
+                <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886' }}>
+                  <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{fish}</Text>
+                </Box>
+              </Paper>
             ))}
           </div>
         </Box>
 
-        <Flex p="sm" bg="#4a6b82" align="center" justify="space-between">
-          <Box w="60%" h={100} bg="white" style={{ border: '1px solid black' }} />
-          <Flex gap="sm">
-            <Button h={80} w={100} bg="#333" style={{ border: '2px solid #555' }}><Text size="xl">⬆</Text></Button>
-            <Button h={80} w={100} bg="#333" style={{ border: '2px solid #555' }}><Text size="xl">⬇</Text></Button>
-            <Button h={80} w={120} bg={customColors.orangeBtn} style={{ border: '2px solid white' }} onClick={() => setFishModalOpened(false)}><Text size="lg" fw="bold">DONE</Text></Button>
+        {/* BOTTOM ACTION BAR */}
+        <Flex p="md" bg="white" align="center" justify="space-between" style={{ boxShadow: '0 -2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
+          <Paper shadow="xs" w="60%" h={80} bg="#f8f9fa" withBorder radius="md" p="sm" style={{ display: 'flex', alignItems: 'center' }}>
+            <Text c="dimmed" size="sm" italic>Selected items will be staged for addition...</Text>
+          </Paper>
+          <Flex gap="md">
+            <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬆</Button>
+            <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬇</Button>
+            <Button h={80} w={160} radius="md" color="orange.6" size="xl" style={{ boxShadow: '0 4px 14px rgba(255, 146, 43, 0.4)' }} onClick={() => setFishModalOpened(false)}>
+              <Text size="xl" fw={800}>DONE</Text>
+            </Button>
           </Flex>
         </Flex>
       </Modal>
