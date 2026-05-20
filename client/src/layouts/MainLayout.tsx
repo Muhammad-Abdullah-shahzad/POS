@@ -1,7 +1,7 @@
 import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconTruck, IconUsers, IconBuildingBank, IconAddressBook } from '@tabler/icons-react';
+import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconUsers, IconBuildingBank, IconAddressBook, IconClipboardText } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 
 const MainLayout = () => {
@@ -28,10 +28,48 @@ const MainLayout = () => {
     { label: 'Counter', icon: IconDashboard, path: '/' },
     { label: 'POS Terminal', icon: IconReceipt2, path: '/pos' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
-    { label: 'Products', icon: IconPackage, path: '/products' },
+    { 
+      label: 'Stock', 
+      icon: IconPackage, 
+      children: [
+        { label: 'View Stock', path: '/products' },
+        { label: 'Manage Suppliers', path: '/suppliers' },
+        { label: 'Supplier Payments', path: '/suppliers/payments' },
+        { label: 'Manage Product Codes', path: '/products/codes' },
+      ]
+    },
     { label: 'Expenses', icon: IconCash, path: '/expenses' },
     { label: 'Analysis', icon: IconChartBar, path: '/analysis' },
-    { label: 'Suppliers', icon: IconTruck, path: '/suppliers' },
+    { 
+      label: 'Reports', 
+      icon: IconClipboardText, 
+      children: [
+        { label: 'Sales Summary Report', path: '/reports/sales-summary' },
+        { label: 'Transaction Sales Report', path: '/reports/transaction-sales' },
+        { label: 'Category Sale Report', path: '/reports/category-sale' },
+        { label: 'Top Sale Products', path: '/reports/top-sale-products' },
+        { label: 'Products Sale Report', path: '/reports/products-sale' },
+        { label: 'Category Ratio Report', path: '/reports/category-ratio' },
+        { label: 'Category Profit Report', path: '/reports/category-profit' },
+        { label: 'Expiry Items Report', path: '/reports/expiry-items' },
+        { label: 'Employee Sales Report', path: '/reports/employee-sales' },
+        { label: 'Product Purchase - Sales History', path: '/reports/purchase-sales-history' },
+        { label: 'Z Report Print Report', path: '/reports/z-report-print' },
+        { label: 'Sales Analysis Report', path: '/reports/sales-analysis' },
+        { label: 'Profit Analysis Report', path: '/reports/profit-analysis' },
+        { label: 'Product Stock Report', path: '/reports/product-stock' },
+        { label: 'Posting Report', path: '/reports/posting' },
+        { label: 'Bag Levy Report', path: '/reports/bag-levy' },
+        { label: 'DRS Report', path: '/reports/drs' },
+        { label: 'Inventory Report', path: '/reports/inventory' },
+        { label: 'Invoice Report', path: '/reports/invoice' },
+        { label: 'Wastage Report', path: '/reports/wastage' },
+        { label: 'Exchange Refund Report', path: '/reports/exchange-refund' },
+        { label: 'Expenses Report', path: '/reports/expenses' },
+        { label: 'Stock Reconciliation Report', path: '/reports/stock-reconciliation' },
+        { label: 'Stock Value', path: '/reports/stock-value' },
+      ]
+    },
     { 
       label: 'Employees', 
       icon: IconUsers, 

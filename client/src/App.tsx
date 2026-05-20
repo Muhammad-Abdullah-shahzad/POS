@@ -18,6 +18,11 @@ import {
   AttendanceReport, 
   OverTimeDetails 
 } from './features/employees/EmployeeSubFeatures';
+import { 
+  SupplierPayments, 
+  ManageProductCodes 
+} from './features/products/StockSubFeatures';
+import { ReportsSubFeatures } from './features/reports/ReportsSubFeatures';
 import BankManagement from './features/bank/BankManagement';
 import Customers from './features/customers/Customers';
 import { useAuthStore } from './store/authStore';
@@ -38,9 +43,12 @@ function App() {
         <Route path="receipts" element={<Receipts />} />
         <Route path="invoices" element={<Navigate to="/receipts" replace />} />
         <Route path="products" element={<Products />} />
+        <Route path="products/codes" element={<ManageProductCodes />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="suppliers" element={<Suppliers />} />
+        <Route path="suppliers/payments" element={<SupplierPayments />} />
+        <Route path="reports/:reportType" element={<ReportsSubFeatures />} />
         <Route path="employees" element={<Employees />} />
         <Route path="employees/salary" element={<SalaryManagement />} />
         <Route path="employees/damages" element={<Damages />} />
