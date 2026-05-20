@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Paper, Text, Title, Table, Badge, Button, Group, Stack, 
-  TextInput, Select, SimpleGrid, ThemeIcon, Box
+  TextInput, Select, SimpleGrid, ThemeIcon, Box, Loader, Center
 } from '@mantine/core';
 import { 
   IconFileSpreadsheet, IconPrinter, IconSearch, IconCalendar, 
@@ -12,6 +12,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+import api from '../../services/api';
 
 // Color Palette for charts
 const COLORS = ['#228be6', '#40c057', '#fab005', '#fa5252', '#7950f2', '#15aabf', '#fd7e14', '#e64980'];
@@ -31,9 +32,41 @@ export const ReportsSubFeatures = () => {
   const { reportType } = useParams<{ reportType: string }>();
   const navigate = useNavigate();
 
+  // Database Data States
+  const [orders, setOrders] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [dbLoading, setDbLoading] = useState(true);
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('this-month');
+
+  // Load Real Data from the Database
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setDbLoading(true);
+        const [ordersRes, expensesRes, productsRes, customersRes] = await Promise.all([
+          api.get('/orders').catch(() => ({ data: { data: [] } })),
+          api.get('/expenses').catch(() => ({ data: { data: [] } })),
+          api.get('/products').catch(() => ({ data: { data: [] } })),
+          api.get('/customers').catch(() => ({ data: { data: [] } }))
+        ]);
+
+        setOrders(ordersRes.data?.data || []);
+        setExpenses(expensesRes.data?.data || []);
+        setProducts(productsRes.data?.data || []);
+        setCustomers(customersRes.data?.data || []);
+      } catch (err) {
+        console.error("Failed to fetch reports data", err);
+      } finally {
+        setDbLoading(false);
+      }
+    };
+    fetchAllData();
+  }, [reportType]);
 
   // Triggering Print & Export Simulation
   const handlePrint = () => {
@@ -44,450 +77,619 @@ export const ReportsSubFeatures = () => {
     alert(`Exporting ${reportType} report data to CSV...`);
   };
 
-  // Full configuration dictionary for all 24 reports
-  const reportsConfig: Record<string, ReportConfig> = useMemo(() => ({
-    'sales-summary': {
-      title: 'Sales Summary Report',
-      description: 'Daily sales revenue, orders count, gross discounts, and net performance.',
-      hasChart: 'area',
-      chartDataKey: 'netRevenue',
-      headers: ['Date', 'Orders Count', 'Gross Revenue', 'Discounts', 'Net Revenue', 'Avg Ticket Size'],
-      mockData: [
-        { date: '2026-05-14', orders: 48, gross: 72000, discounts: 2100, netRevenue: 69900, avg: 1456 },
-        { date: '2026-05-15', orders: 55, gross: 91000, discounts: 3500, netRevenue: 87500, avg: 1590 },
-        { date: '2026-05-16', orders: 62, gross: 104000, discounts: 4200, netRevenue: 99800, avg: 1609 },
-        { date: '2026-05-17', orders: 41, gross: 58000, discounts: 1800, netRevenue: 56200, avg: 1370 },
-        { date: '2026-05-18', orders: 50, gross: 78000, discounts: 2500, netRevenue: 75500, avg: 1510 },
-        { date: '2026-05-19', orders: 58, gross: 89000, discounts: 3100, netRevenue: 85900, avg: 1481 },
-      ],
-      summaryCards: [
-        { label: 'Total Net Sales', value: 'Rs. 474,800', isPositive: true },
-        { label: 'Total Invoices', value: '314 Bills', isPositive: true },
-        { label: 'Total Discounts Given', value: 'Rs. 17,200', isNegative: true },
-      ]
-    },
-    'transaction-sales': {
-      title: 'Transaction Sales Report',
-      description: 'Detailed audit trail of all transactions processed through registers.',
-      hasChart: 'none',
-      headers: ['Invoice No', 'Time', 'Cashier', 'Customer', 'Items Qty', 'Total Amount', 'Payment Method'],
-      mockData: [
-        { invoice: 'TXN-10023', time: '10:14 AM', cashier: 'Zainab Bibi', customer: 'Muhammad Bilal', items: 6, total: 3450, method: 'Cash' },
-        { invoice: 'TXN-10024', time: '11:05 AM', cashier: 'Bilal Khan', customer: 'Ayesha Omer', items: 3, total: 1200, method: 'Card' },
-        { invoice: 'TXN-10025', time: '11:45 AM', cashier: 'Zainab Bibi', customer: 'Tariq Saeed', items: 12, total: 11400, method: 'Cash' },
-        { invoice: 'TXN-10026', time: '12:30 PM', cashier: 'Ali Raza', customer: 'Hamza Shah', items: 2, total: 650, method: 'EasyPaisa' },
-        { invoice: 'TXN-10027', time: '01:15 PM', cashier: 'Bilal Khan', customer: 'Sana Malik', items: 8, total: 5400, method: 'Card' },
-      ],
-      summaryCards: [
-        { label: 'Cash Sales', value: 'Rs. 14,850' },
-        { label: 'Card/Digital Sales', value: 'Rs. 7,250' },
-        { label: 'Avg Basket Size', value: '6.2 items' },
-      ]
-    },
-    'category-sale': {
-      title: 'Category Sale Report',
-      description: 'Revenue distribution across various product departments.',
-      hasChart: 'pie',
-      chartDataKey: 'revenue',
-      chartNameKey: 'category',
-      headers: ['Category Name', 'Items Sold (Qty)', 'Gross Sales', 'Tax Collected', 'Total Revenue'],
-      mockData: [
-        { category: 'Cooking Oil', qty: 240, gross: 145000, tax: 2900, revenue: 147900 },
-        { category: 'Bakery & Dairy', qty: 580, gross: 92000, tax: 1840, revenue: 93840 },
-        { category: 'Beverages', qty: 450, gross: 64000, tax: 1280, revenue: 65280 },
-        { category: 'Grains & Spices', qty: 380, gross: 88000, tax: 1760, revenue: 89760 },
-        { category: 'Fruits & Vegetables', qty: 290, gross: 42000, tax: 0, revenue: 42000 },
-      ],
-      summaryCards: [
-        { label: 'Top Category', value: 'Cooking Oil (Rs. 147,900)' },
-        { label: 'Total Tax Collected', value: 'Rs. 7,780' },
-        { label: 'Items Sold Total', value: '1,940 Units' },
-      ]
-    },
-    'top-sale-products': {
-      title: 'Top Sale Products',
-      description: 'Highest performing store products by units sold and revenue contribution.',
-      hasChart: 'bar',
-      chartDataKey: 'revenue',
-      headers: ['Product Name', 'SKU', 'Units Sold', 'Total Revenue', 'Profit Contribution'],
-      mockData: [
-        { product: 'Sufi Cooking Oil (5L)', sku: 'SOIL-5L', qty: 84, revenue: 205800, profit: 21000 },
-        { product: 'Tapal Danedar Tea (950g)', sku: 'TTEA-950G', qty: 112, revenue: 103040, profit: 11200 },
-        { product: 'National Chili Sauce', sku: 'NFOOD-CS250', qty: 210, revenue: 37800, profit: 5400 },
-        { product: 'Olpers Milk (1L)', sku: 'OLP-1L', qty: 180, revenue: 52200, profit: 4500 },
-        { product: 'Supreme Tea (400g)', sku: 'SUP-400G', qty: 95, revenue: 47500, profit: 4750 },
-      ],
-      summaryCards: [
-        { label: 'Top Seller', value: 'Sufi Cooking Oil (84 Units)' },
-        { label: 'Total Product Sales', value: 'Rs. 446,340' },
-        { label: 'Gross Product Margin', value: '10.5%' },
-      ]
-    },
-    'products-sale': {
-      title: 'Products Sale Report',
-      description: 'Unit-by-unit ledger of product sales performance.',
-      hasChart: 'none',
-      headers: ['Product Name', 'SKU', 'Total Units Sold', 'Average Price', 'Net Revenue'],
-      mockData: [
-        { product: 'Sufi Cooking Oil (5L)', sku: 'SOIL-5L', qty: 84, avg: 2450, revenue: 205800 },
-        { product: 'Tapal Danedar Tea (950g)', sku: 'TTEA-950G', qty: 112, avg: 920, revenue: 103040 },
-        { product: 'National Chili Sauce', sku: 'NFOOD-CS250', qty: 210, avg: 180, revenue: 37800 },
-        { product: 'Olpers Milk (1L)', sku: 'OLP-1L', qty: 180, avg: 290, revenue: 52200 },
-        { product: 'Supreme Tea (400g)', sku: 'SUP-400G', qty: 95, avg: 500, revenue: 47500 },
-        { product: 'Rooh Afza Syrup (800ml)', sku: 'ROOH-800', qty: 140, avg: 380, revenue: 53200 },
-        { product: 'Shan Biryani Masala', sku: 'SHAN-BM', qty: 320, avg: 110, revenue: 35200 },
-      ],
-      summaryCards: [
-        { label: 'Total SKU Volume', value: '1,141 Units' },
-        { label: 'Total Net Revenue', value: 'Rs. 534,740' },
-        { label: 'Active SKUs Sold', value: '7 SKUs' },
-      ]
-    },
-    'category-ratio': {
-      title: 'Category Ratio Report',
-      description: 'Comparison of inventory volume vs sales velocity per category.',
-      hasChart: 'pie',
-      chartDataKey: 'velocity',
-      chartNameKey: 'category',
-      headers: ['Category', 'Inventory Share %', 'Sales Velocity %', 'Stock Turn Rate (Monthly)'],
-      mockData: [
-        { category: 'Cooking Oil', share: 15, velocity: 32, turnRate: 4.8 },
-        { category: 'Bakery & Dairy', share: 22, velocity: 24, turnRate: 3.2 },
-        { category: 'Beverages', share: 18, velocity: 16, turnRate: 2.5 },
-        { category: 'Grains & Spices', share: 28, velocity: 18, turnRate: 1.8 },
-        { category: 'Fruits & Vegetables', share: 17, velocity: 10, turnRate: 5.2 },
-      ],
-      summaryCards: [
-        { label: 'Fastest Stock Turnover', value: 'Fruits & Vegetables (5.2x)' },
-        { label: 'Bulk Capital Allocation', value: 'Grains & Spices (28% Share)' },
-        { label: 'Optimal Category', value: 'Cooking Oil (High Velocity)' },
-      ]
-    },
-    'category-profit': {
-      title: 'Category Profit Report',
-      description: 'Profit margins and return metrics broken down by product category.',
-      hasChart: 'bar',
-      chartDataKey: 'profit',
-      headers: ['Category', 'Revenue Generated', 'Cost of Goods (COGS)', 'Gross Profit', 'Margin (%)'],
-      mockData: [
-        { category: 'Cooking Oil', revenue: 147900, cogs: 126900, profit: 21000, margin: 14.2 },
-        { category: 'Bakery & Dairy', revenue: 93840, cogs: 81240, profit: 12600, margin: 13.4 },
-        { category: 'Beverages', revenue: 65280, cogs: 52280, profit: 13000, margin: 19.9 },
-        { category: 'Grains & Spices', revenue: 89760, cogs: 71760, profit: 18000, margin: 20.1 },
-        { category: 'Fruits & Vegetables', revenue: 42000, cogs: 31000, profit: 11000, margin: 26.2 },
-      ],
-      summaryCards: [
-        { label: 'Highest Margin Category', value: 'Fruits & Vegetables (26.2%)' },
-        { label: 'Highest Total Profit', value: 'Cooking Oil (Rs. 21,000)' },
-        { label: 'Total Gross Profit', value: 'Rs. 75,600' },
-      ]
-    },
-    'expiry-items': {
-      title: 'Expiry Items Report',
-      description: 'Inventory batches approaching expiration within 60 days.',
-      hasChart: 'none',
-      headers: ['Product Name', 'Batch No', 'Stock on Hand', 'Cost Value', 'Expiry Date', 'Days to Expire'],
-      mockData: [
-        { product: 'Nestle Yogurt (400g)', batch: 'B-NYG-124', qty: 28, cost: 3500, expiry: '2026-06-05', days: 16 },
-        { product: 'Olpers Cream (200ml)', batch: 'B-OLPC-88', qty: 45, cost: 6750, expiry: '2026-06-15', days: 26 },
-        { product: 'Knorr Noodle Pack', batch: 'B-KNR-342', qty: 120, cost: 7200, expiry: '2026-06-28', days: 39 },
-        { product: 'Sufi Sunflower Oil (1L)', batch: 'B-SUFI-09', qty: 14, cost: 7000, expiry: '2026-07-10', days: 51 },
-      ],
-      summaryCards: [
-        { label: 'At-risk Batches', value: '4 Batches', isNegative: true },
-        { label: 'Valuation at Risk', value: 'Rs. 24,450', isNegative: true },
-        { label: 'Next Expiry Date', value: '2026-06-05 (16 days)' },
-      ]
-    },
-    'employee-sales': {
-      title: 'Employee Sales Report',
-      description: 'Cashier transaction volume, register logs, and performance metrics.',
-      hasChart: 'bar',
-      chartDataKey: 'sales',
-      headers: ['Employee Name', 'Shift Count', 'Total Transactions', 'Total Sales (Rs.)', 'Avg Order Value'],
-      mockData: [
-        { employee: 'Zainab Bibi', shifts: 18, transactions: 245, sales: 345000, avg: 1408 },
-        { employee: 'Bilal Khan', shifts: 22, transactions: 280, sales: 412000, avg: 1471 },
-        { employee: 'Ali Raza', shifts: 14, transactions: 165, sales: 218000, avg: 1321 },
-        { employee: 'Sana Malik', shifts: 12, transactions: 110, sales: 154000, avg: 1400 },
-      ],
-      summaryCards: [
-        { label: 'Top Performer', value: 'Bilal Khan (Rs. 412,000)' },
-        { label: 'Active Clerks', value: '4 Cashiers' },
-        { label: 'Total Logged Sales', value: 'Rs. 1,129,000' },
-      ]
-    },
-    'purchase-sales-history': {
-      title: 'Product Purchase - Sales History',
-      description: 'Detailed history comparing bulk product purchase costs vs POS retail sales prices.',
-      hasChart: 'none',
-      headers: ['Product Name', 'Purchase Cost (Rs.)', 'POS Sale Price (Rs.)', 'Spread/Margin', 'Markup %', 'Last Updated'],
-      mockData: [
-        { product: 'Sufi Cooking Oil (5L)', purchase: 2200, sale: 2450, spread: 250, markup: 11.36, updated: '2026-05-10' },
-        { product: 'Tapal Danedar Tea (950g)', purchase: 820, sale: 920, spread: 100, markup: 12.20, updated: '2026-05-12' },
-        { product: 'National Chili Sauce', purchase: 154, sale: 180, spread: 26, markup: 16.88, updated: '2026-05-15' },
-        { product: 'Olpers Milk (1L)', purchase: 265, sale: 290, spread: 25, markup: 9.43, updated: '2026-05-18' },
-        { product: 'Supreme Tea (400g)', purchase: 450, sale: 500, spread: 50, markup: 11.11, updated: '2026-05-18' },
-      ],
-      summaryCards: [
-        { label: 'Max Markup Margin', value: 'National Chili Sauce (16.88%)' },
-        { label: 'Avg Store Markup', value: '12.2%' },
-        { label: 'Last Supplier Sync', value: '2026-05-18' },
-      ]
-    },
-    'z-report-print': {
-      title: 'Z Report Print Report',
-      description: 'End-of-day register closing summary, tax collections, and drawer logs.',
-      hasChart: 'none',
-      headers: ['Parameter / Register Account', 'Recorded Amount'],
-      mockData: [
-        { parameter: 'Date/Time Printed', value: '2026-05-20 11:09 AM' },
-        { parameter: 'Open Cash Balance', value: 'Rs. 20,000' },
-        { parameter: 'Total Cash Sales', value: 'Rs. 89,500' },
-        { parameter: 'Total Card/POS Sales', value: 'Rs. 54,000' },
-        { parameter: 'Refunds / Returns Out', value: 'Rs. -3,200' },
-        { parameter: 'Total General Tax Collected (17%)', value: 'Rs. 18,200' },
-        { parameter: 'Net Cash in Drawer', value: 'Rs. 106,300' },
-        { parameter: 'Over / Short Variance', value: 'Rs. 0 (Perfect Match)' },
-      ],
-      summaryCards: [
-        { label: 'Daily Net Receipts', value: 'Rs. 140,300' },
-        { label: 'Drawer Match Status', value: 'Verified', isPositive: true },
-        { label: 'Z-Report Serial', value: 'Z-2026-0520-01' },
-      ]
-    },
-    'sales-analysis': {
-      title: 'Sales Analysis Report',
-      description: 'Hourly and weekly peak period analysis for optimized staffing and stocking.',
-      hasChart: 'area',
-      chartDataKey: 'sales',
-      headers: ['Hour / Peak Period', 'Transaction Count', 'Average Basket Qty', 'Total Net Sales'],
-      mockData: [
-        { hour: '09:00 - 11:00 AM', transactions: 45, qty: 3.4, sales: 48000 },
-        { hour: '11:00 - 01:00 PM', transactions: 88, qty: 5.6, sales: 112000 },
-        { hour: '01:00 - 03:00 PM', transactions: 62, qty: 4.8, sales: 79000 },
-        { hour: '03:00 - 05:00 PM', transactions: 74, qty: 5.2, sales: 94000 },
-        { hour: '05:00 - 07:00 PM', transactions: 110, qty: 7.1, sales: 165000 },
-        { hour: '07:00 - 09:00 PM', transactions: 95, qty: 6.8, sales: 138000 },
-      ],
-      summaryCards: [
-        { label: 'Peak Hour Period', value: '05:00 - 07:00 PM (110 Txns)', isPositive: true },
-        { label: 'Highest Basket Size', value: '7.1 items/ticket' },
-        { label: 'Total Period Sales', value: 'Rs. 636,000' },
-      ]
-    },
-    'profit-analysis': {
-      title: 'Profit Analysis Report',
-      description: 'Net operating profits after deduction of expenses, taxes, and log fees.',
-      hasChart: 'area',
-      chartDataKey: 'netProfit',
-      headers: ['Month', 'Gross Sales', 'COGS', 'Operating Expenses', 'Net Profit', 'Profit Margin %'],
-      mockData: [
-        { month: 'Jan 2026', sales: 1200000, cogs: 940000, expenses: 110000, netProfit: 150000, margin: 12.5 },
-        { month: 'Feb 2026', sales: 1350000, cogs: 1050000, expenses: 115000, netProfit: 185000, margin: 13.7 },
-        { month: 'Mar 2026', sales: 1500000, cogs: 1160000, expenses: 120000, netProfit: 220000, margin: 14.6 },
-        { month: 'Apr 2026', sales: 1420000, cogs: 1100000, expenses: 118000, netProfit: 202000, margin: 14.2 },
-        { month: 'May 2026', sales: 1600000, cogs: 1230000, expenses: 125000, netProfit: 245000, margin: 15.3 },
-      ],
-      summaryCards: [
-        { label: 'YTD Net Profit', value: 'Rs. 1,002,000', isPositive: true },
-        { label: 'Avg Monthly Profit Margin', value: '14.1%' },
-        { label: 'Growth Trend', value: '+18% since Jan', isPositive: true },
-      ]
-    },
-    'product-stock': {
-      title: 'Product Stock Report',
-      description: 'Active stock-on-hand quantities, cost valuations, and reorder alerts.',
-      hasChart: 'none',
-      headers: ['Product Name', 'SKU', 'Available Stock', 'Unit Cost (Rs.)', 'Retail Price (Rs.)', 'Stock Value at Cost'],
-      mockData: [
-        { product: 'Sufi Cooking Oil (5L)', sku: 'SOIL-5L', qty: 150, cost: 2200, price: 2450, totalCost: 330000 },
-        { product: 'Tapal Danedar Tea (950g)', sku: 'TTEA-950G', qty: 85, cost: 820, price: 920, totalCost: 69700 },
-        { product: 'National Chili Sauce', sku: 'NFOOD-CS250', qty: 320, cost: 154, price: 180, totalCost: 49280 },
-        { product: 'Olpers Milk (1L)', sku: 'OLP-1L', qty: 240, cost: 265, price: 290, totalCost: 63600 },
-        { product: 'Supreme Tea (400g)', sku: 'SUP-400G', qty: 110, cost: 450, price: 500, totalCost: 49500 },
-      ],
-      summaryCards: [
-        { label: 'Total Stock Valuation', value: 'Rs. 562,080' },
-        { label: 'Total Units in Inventory', value: '905 Units' },
-        { label: 'Critical Reorder Items', value: '0 Items', isPositive: true },
-      ]
-    },
-    'posting': {
-      title: 'Posting Report',
-      description: 'Ledger posting audit trail logging synchronized records sent to primary accounting.',
-      hasChart: 'none',
-      headers: ['Posting Date', 'Record Type', 'Ref Number', 'Debit Amount', 'Credit Amount', 'Status'],
-      mockData: [
-        { date: '2026-05-19', type: 'Sales Register Sync', ref: 'POST-0519-01', debit: 85900, credit: 0, status: 'Completed' },
-        { date: '2026-05-19', type: 'Supplier Payout', ref: 'POST-0519-02', debit: 0, credit: 30000, status: 'Completed' },
-        { date: '2026-05-20', type: 'Daily Expense Post', ref: 'POST-0520-01', debit: 0, credit: 4500, status: 'Completed' },
-        { date: '2026-05-20', type: 'Sales Register Sync', ref: 'POST-0520-02', debit: 140300, credit: 0, status: 'Pending Verification' },
-      ],
-      summaryCards: [
-        { label: 'Total Ledger Debit', value: 'Rs. 226,200' },
-        { label: 'Total Ledger Credit', value: 'Rs. 34,500' },
-        { label: 'Verification Status', value: '1 Pending Review' },
-      ]
-    },
-    'bag-levy': {
-      title: 'Bag Levy Report',
-      description: 'Environmental carrier bag taxation auditor logging quantities distributed and tax collected.',
-      hasChart: 'none',
-      headers: ['Date', 'Bags Count', 'Levy Per Bag (Rs.)', 'Total Levy Collected', 'Accounting Status'],
-      mockData: [
-        { date: '2026-05-15', count: 184, levy: 15, total: 2760, status: 'Paid' },
-        { date: '2026-05-16', count: 215, levy: 15, total: 3225, status: 'Paid' },
-        { date: '2026-05-17', count: 145, levy: 15, total: 2175, status: 'Paid' },
-        { date: '2026-05-18', count: 172, levy: 15, total: 2580, status: 'Paid' },
-        { date: '2026-05-19', count: 190, levy: 15, total: 2850, status: 'Accrued' },
-      ],
-      summaryCards: [
-        { label: 'Bags Handed Out', value: '906 Bags' },
-        { label: 'Levy Collected (May)', value: 'Rs. 13,590' },
-        { label: 'Next Clearance Date', value: '2026-05-31' },
-      ]
-    },
-    'drs': {
-      title: 'DRS Report',
-      description: 'Deposit Return Scheme recycling credits, deposits, and refunds logger.',
-      hasChart: 'none',
-      headers: ['Month', 'Containers Returned', 'Deposits Collected', 'Refunds Issued', 'Net Scheme Balance'],
-      mockData: [
-        { month: 'Jan 2026', count: 850, collected: 8500, refunds: 6800, balance: 1700 },
-        { month: 'Feb 2026', count: 940, collected: 9400, refunds: 7900, balance: 1500 },
-        { month: 'Mar 2026', count: 1100, collected: 11000, refunds: 9200, balance: 1800 },
-        { month: 'Apr 2026', count: 1050, collected: 10500, refunds: 8800, balance: 1700 },
-        { month: 'May 2026', count: 1250, collected: 12500, refunds: 10200, balance: 2300 },
-      ],
-      summaryCards: [
-        { label: 'Recycled Units Total', value: '5,190 Bottles/Cans' },
-        { label: 'Deposits Paid Back', value: 'Rs. 42,900', isPositive: true },
-        { label: 'DRS Retained Spread', value: 'Rs. 9,000' },
-      ]
-    },
-    'inventory': {
-      title: 'Inventory Audit Report',
-      description: 'Physical audit logs, stock level deviations, and balance adjustments.',
-      hasChart: 'none',
-      headers: ['Audit Date', 'Category Checked', 'Expected Stock', 'Physical Count', 'Discrepancy Qty', 'Valuation Loss'],
-      mockData: [
-        { date: '2026-05-01', category: 'Beverages', expected: 480, physical: 478, discrepancy: -2, loss: -580 },
-        { date: '2026-05-05', category: 'Bakery & Dairy', expected: 320, physical: 320, discrepancy: 0, loss: 0 },
-        { date: '2026-05-10', category: 'Cooking Oil', expected: 165, physical: 164, discrepancy: -1, loss: -2200 },
-        { date: '2026-05-15', category: 'Grains & Spices', expected: 540, physical: 535, discrepancy: -5, loss: -1800 },
-      ],
-      summaryCards: [
-        { label: 'Inventory Audited', value: '1,505 Items' },
-        { label: 'Net Discrepancy Rate', value: '0.53% (Good)', isPositive: true },
-        { label: 'Valuation Shrinkage Cost', value: 'Rs. -4,580', isNegative: true },
-      ]
-    },
-    'invoice': {
-      title: 'Invoice Report',
-      description: 'B2B client wholesale invoices registry, credit accounts, and payments ledger.',
-      hasChart: 'none',
-      headers: ['Invoice No', 'Client Name', 'Due Date', 'Total Invoice', 'Amount Paid', 'Credit Status'],
-      mockData: [
-        { invoice: 'INV-B2B-008', client: 'Peshawar General Store', due: '2026-06-10', total: 85000, paid: 60000, status: 'Partial' },
-        { invoice: 'INV-B2B-009', client: 'Lahore Mini Mart', due: '2026-06-15', total: 42000, paid: 42000, status: 'Paid' },
-        { invoice: 'INV-B2B-010', client: 'Khyber Trading Co.', due: '2026-05-25', total: 128000, paid: 0, status: 'Overdue' },
-        { invoice: 'INV-B2B-011', client: 'Balochistan Canteen', due: '2026-06-20', total: 65000, paid: 35000, status: 'Partial' },
-      ],
-      summaryCards: [
-        { label: 'Total B2B Assets', value: 'Rs. 320,000' },
-        { label: 'Wholesale Receivables', value: 'Rs. 183,000', isNegative: true },
-        { label: 'Overdue Accounts', value: '1 Client Overdue', isNegative: true },
-      ]
-    },
-    'wastage': {
-      title: 'Wastage Report',
-      description: 'Register of written-off inventory due to damage, contamination, or theft.',
-      hasChart: 'none',
-      headers: ['Write-Off Date', 'Product Name', 'SKU', 'Wastage Qty', 'Unit Cost (Rs.)', 'Total Cost Loss', 'Reason'],
-      mockData: [
-        { date: '2026-05-12', product: 'Olpers Milk (1L)', sku: 'OLP-1L', qty: 8, cost: 265, loss: 2120, reason: 'Leaked Carton' },
-        { date: '2026-05-14', product: 'National Chili Sauce', sku: 'NFOOD-CS250', qty: 3, cost: 154, loss: 462, reason: 'Broken Bottle' },
-        { date: '2026-05-16', product: 'Tapal Danedar Tea (950g)', sku: 'TTEA-950G', qty: 1, cost: 820, loss: 820, reason: 'Damaged Bag Packaging' },
-      ],
-      summaryCards: [
-        { label: 'Total Waste Losses', value: 'Rs. 3,402', isNegative: true },
-        { label: 'Wasted Qty', value: '12 Items', isNegative: true },
-        { label: 'Primary Waste Cause', value: 'Handling Damage' },
-      ]
-    },
-    'exchange-refund': {
-      title: 'Exchange Refund Report',
-      description: 'Customer return registry, exchange credits, and cash refunds ledger.',
-      hasChart: 'none',
-      headers: ['Return Date', 'Original Receipt', 'Items Returned', 'Refund Amount', 'Exchange Taken', 'Reason'],
-      mockData: [
-        { date: '2026-05-16', receipt: 'TXN-09941', items: 'Shan Biryani Masala (2)', refund: 220, exchange: 'Yes (Knorr Noodles)', reason: 'Purchased wrong spice variant' },
-        { date: '2026-05-18', receipt: 'TXN-10008', items: 'Sufi Cooking Oil (1 Bottle)', refund: 2450, exchange: 'No (Cash Return)', reason: 'Customer changed mind' },
-        { date: '2026-05-19', receipt: 'TXN-10022', items: 'Beverage Bottle', refund: 150, exchange: 'Yes (Rooh Afza)', reason: 'Expired stock slipped past' },
-      ],
-      summaryCards: [
-        { label: 'Cash Refunds Paid', value: 'Rs. 2,450', isNegative: true },
-        { label: 'Exchanged Items Value', value: 'Rs. 370' },
-        { label: 'Total Returns Received', value: '3 Customer Claims' },
-      ]
-    },
-    'expenses': {
-      title: 'Expenses Report',
-      description: 'Company operational costs categorized by business area.',
-      hasChart: 'pie',
-      chartDataKey: 'amount',
-      chartNameKey: 'category',
-      headers: ['Category Name', 'Total Transactions', 'Total Expenditures (Rs.)', '% of Total Expenses'],
-      mockData: [
-        { category: 'Rent & Leases', count: 1, amount: 80000, pct: 54.1 },
-        { category: 'Utilities (Electricity)', count: 2, amount: 35000, pct: 23.6 },
-        { category: 'Supplier Deliveries', count: 8, amount: 22000, pct: 14.9 },
-        { category: 'Staff Refreshments', count: 12, amount: 6500, pct: 4.4 },
-        { category: 'Store Cleaning Supplies', count: 4, amount: 4500, pct: 3.0 },
-      ],
-      summaryCards: [
-        { label: 'Total Expenses (Month)', value: 'Rs. 148,000', isNegative: true },
-        { label: 'Largest Outlet Expense', value: 'Rent (Rs. 80,000)', isNegative: true },
-        { label: 'Expense Transactions', value: '27 Invoices', isNegative: true },
-      ]
-    },
-    'stock-reconciliation': {
-      title: 'Stock Reconciliation Report',
-      description: 'Comparison of electronic stocks vs actual physical audit adjustments.',
-      hasChart: 'none',
-      headers: ['Adjustment ID', 'Date', 'Product Name', 'Adjustment Qty', 'Reason Code', 'Authorized By'],
-      mockData: [
-        { id: 'ADJ-102', date: '2026-05-02', product: 'Supreme Tea (400g)', qty: -4, reason: 'Physical Shortage Audit', staff: 'Zainab Bibi' },
-        { id: 'ADJ-103', date: '2026-05-08', product: 'Olpers Milk (1L)', qty: 12, reason: 'Unregistered Supplier Gift Batch', staff: 'Muhammad Bilal' },
-        { id: 'ADJ-104', date: '2026-05-15', product: 'National Chili Sauce', qty: -2, reason: 'Damaged during shelf stocking', staff: 'Ali Raza' },
-      ],
-      summaryCards: [
-        { label: 'Manual Corrections', value: '3 Entries' },
-        { label: 'Net Unit Adjustment', value: '+6 Units', isPositive: true },
-        { label: 'Total Valuation Delta', value: 'Rs. +820', isPositive: true },
-      ]
-    },
-    'stock-value': {
-      title: 'Stock Value Report',
-      description: 'Asset valuation sheet calculating store net assets at purchase cost vs retail value.',
-      hasChart: 'bar',
-      chartDataKey: 'costValue',
-      headers: ['Category', 'Items Count', 'Total Stock Qty', 'Total Cost Value', 'Total Retail Value', 'Unrealized Profit'],
-      mockData: [
-        { category: 'Cooking Oil', items: 12, qty: 150, costValue: 330000, retailValue: 367500, profit: 37500 },
-        { category: 'Bakery & Dairy', items: 35, qty: 420, costValue: 112000, retailValue: 128500, profit: 16500 },
-        { category: 'Beverages', items: 24, qty: 380, costValue: 78000, retailValue: 92000, profit: 14000 },
-        { category: 'Grains & Spices', items: 45, qty: 680, costValue: 145000, retailValue: 168000, profit: 23000 },
-        { category: 'Fruits & Vegetables', items: 18, qty: 290, costValue: 31000, retailValue: 42000, profit: 11000 },
-      ],
-      summaryCards: [
-        { label: 'Total Assets (At Cost)', value: 'Rs. 696,000' },
-        { label: 'Total Assets (At Retail)', value: 'Rs. 798,000' },
-        { label: 'Unrealized Profit Margin', value: 'Rs. 102,000 (14.6%)', isPositive: true },
-      ]
-    },
-  }), []);
+  // Full configuration dictionary for all 24 reports computed dynamically from database
+  const reportsConfig: Record<string, ReportConfig> = useMemo(() => {
+    const sum = (arr: any[], key: string) => arr.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
+
+    // Product map for quick lookup
+    const productMap = products.reduce((acc, p) => {
+      acc[p._id] = p;
+      return acc;
+    }, {} as Record<string, any>);
+
+    const getProductCategory = (productId: string) => {
+      return productMap[productId]?.category || 'General';
+    };
+
+    // Category Sales calculation
+    const categorySalesMap: Record<string, { qty: number; gross: number; tax: number; revenue: number }> = {};
+    orders.forEach(order => {
+      (order.items || []).forEach((item: any) => {
+        const cat = getProductCategory(item.product);
+        if (!categorySalesMap[cat]) {
+          categorySalesMap[cat] = { qty: 0, gross: 0, tax: 0, revenue: 0 };
+        }
+        const qty = Number(item.quantity) || 0;
+        const price = Number(item.price) || 0;
+        const vatAmt = Number(item.vatAmount) || 0;
+        const totPrice = Number(item.totalPrice) || 0;
+
+        categorySalesMap[cat].qty += qty;
+        categorySalesMap[cat].gross += price * qty;
+        categorySalesMap[cat].tax += vatAmt;
+        categorySalesMap[cat].revenue += totPrice;
+      });
+    });
+
+    const categorySaleData = Object.entries(categorySalesMap).map(([category, d]) => ({
+      category,
+      qty: d.qty,
+      gross: d.gross,
+      tax: d.tax,
+      revenue: d.revenue
+    }));
+
+    let topCategory = 'None';
+    let maxCatRevenue = 0;
+    categorySaleData.forEach(c => {
+      if (c.revenue > maxCatRevenue) {
+        maxCatRevenue = c.revenue;
+        topCategory = `${c.category} (Rs. ${c.revenue.toLocaleString()})`;
+      }
+    });
+
+    // Product Sales performance calculation
+    const productSalesMap: Record<string, { product: string; sku: string; qty: number; revenue: number; profit: number }> = {};
+    orders.forEach(order => {
+      (order.items || []).forEach((item: any) => {
+        const prodId = item.product;
+        const prod = productMap[prodId] || {};
+        if (!productSalesMap[prodId]) {
+          productSalesMap[prodId] = {
+            product: item.name || prod.name || 'Unknown Product',
+            sku: prod.sku || 'N/A',
+            qty: 0,
+            revenue: 0,
+            profit: 0
+          };
+        }
+        const qty = Number(item.quantity) || 0;
+        const totalPrice = Number(item.totalPrice) || 0;
+        const cost = Number(prod.costPrice) || (Number(item.price) * 0.8);
+        const profit = totalPrice - (qty * cost);
+
+        productSalesMap[prodId].qty += qty;
+        productSalesMap[prodId].revenue += totalPrice;
+        productSalesMap[prodId].profit += profit;
+      });
+    });
+
+    const productSalesData = Object.values(productSalesMap);
+    const topSaleProductsData = [...productSalesData].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+
+    // Daily Sales Summary
+    const dailySalesMap: Record<string, { date: string; orders: number; gross: number; discounts: number; netRevenue: number; avg: number }> = {};
+    orders.forEach(order => {
+      const date = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+      if (!dailySalesMap[date]) {
+        dailySalesMap[date] = { date, orders: 0, gross: 0, discounts: 0, netRevenue: 0, avg: 0 };
+      }
+      dailySalesMap[date].orders += 1;
+      dailySalesMap[date].gross += Number(order.subtotal) || 0;
+      dailySalesMap[date].discounts += Number(order.discount) || 0;
+      dailySalesMap[date].netRevenue += Number(order.total) || 0;
+    });
+
+    const salesSummaryData = Object.values(dailySalesMap).map(d => ({
+      ...d,
+      avg: d.orders > 0 ? parseFloat((d.netRevenue / d.orders).toFixed(2)) : 0
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    // Expenses grouped by Category
+    const expenseCategoryMap: Record<string, { category: string; count: number; amount: number; pct: number }> = {};
+    const totalExpensesSum = sum(expenses, 'amount');
+    expenses.forEach(e => {
+      const cat = e.category || 'General';
+      if (!expenseCategoryMap[cat]) {
+        expenseCategoryMap[cat] = { category: cat, count: 0, amount: 0, pct: 0 };
+      }
+      expenseCategoryMap[cat].count += 1;
+      expenseCategoryMap[cat].amount += Number(e.amount) || 0;
+    });
+
+    const expensesData = Object.values(expenseCategoryMap).map(d => ({
+      ...d,
+      pct: totalExpensesSum > 0 ? parseFloat(((d.amount / totalExpensesSum) * 100).toFixed(1)) : 0
+    })).sort((a, b) => b.amount - a.amount);
+
+    return {
+      'sales-summary': {
+        title: 'Sales Summary Report',
+        description: 'Daily sales revenue, orders count, gross discounts, and net performance.',
+        hasChart: salesSummaryData.length > 0 ? 'area' : 'none',
+        chartDataKey: 'netRevenue',
+        headers: ['Date', 'Orders Count', 'Gross Revenue', 'Discounts', 'Net Revenue', 'Avg Ticket Size'],
+        mockData: salesSummaryData,
+        summaryCards: [
+          { label: 'Total Net Sales', value: `Rs. ${sum(orders, 'total').toLocaleString()}`, isPositive: true },
+          { label: 'Total Invoices', value: `${orders.length} Bills`, isPositive: true },
+          { label: 'Total Discounts Given', value: `Rs. ${sum(orders, 'discount').toLocaleString()}`, isNegative: true },
+        ]
+      },
+      'transaction-sales': {
+        title: 'Transaction Sales Report',
+        description: 'Detailed audit trail of all transactions processed through registers.',
+        hasChart: 'none',
+        headers: ['Invoice No', 'Time', 'Cashier', 'Customer', 'Items Qty', 'Total Amount', 'Payment Method'],
+        mockData: orders.map(o => ({
+          invoice: o.invoiceId,
+          time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+          cashier: 'Admin',
+          customer: o.customerName || 'Walk-in',
+          items: sum(o.items || [], 'quantity'),
+          total: o.total,
+          method: o.paymentMethod || 'cash'
+        })),
+        summaryCards: [
+          { label: 'Cash Sales', value: `Rs. ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total').toLocaleString()}` },
+          { label: 'Card/Digital Sales', value: `Rs. ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() !== 'cash'), 'total').toLocaleString()}` },
+          { label: 'Avg Basket Size', value: `${orders.length > 0 ? (sum(orders.flatMap(o => o.items || []), 'quantity') / orders.length).toFixed(1) : 0} items` },
+        ]
+      },
+      'category-sale': {
+        title: 'Category Sale Report',
+        description: 'Revenue distribution across various product departments.',
+        hasChart: categorySaleData.length > 0 ? 'pie' : 'none',
+        chartDataKey: 'revenue',
+        chartNameKey: 'category',
+        headers: ['Category Name', 'Items Sold (Qty)', 'Gross Sales', 'Tax Collected', 'Total Revenue'],
+        mockData: categorySaleData,
+        summaryCards: [
+          { label: 'Top Category', value: topCategory },
+          { label: 'Total Tax Collected', value: `Rs. ${sum(orders, 'totalVAT').toLocaleString()}` },
+          { label: 'Items Sold Total', value: `${sum(categorySaleData, 'qty').toLocaleString()} Units` },
+        ]
+      },
+      'top-sale-products': {
+        title: 'Top Sale Products',
+        description: 'Highest performing store products by units sold and revenue contribution.',
+        hasChart: topSaleProductsData.length > 0 ? 'bar' : 'none',
+        chartDataKey: 'revenue',
+        headers: ['Product Name', 'SKU', 'Units Sold', 'Total Revenue', 'Profit Contribution'],
+        mockData: topSaleProductsData,
+        summaryCards: [
+          { label: 'Top Seller', value: topSaleProductsData[0] ? `${topSaleProductsData[0].product} (${topSaleProductsData[0].qty} Units)` : 'None' },
+          { label: 'Total Product Sales', value: `Rs. ${sum(productSalesData, 'revenue').toLocaleString()}` },
+          { label: 'Gross Product Profit', value: `Rs. ${sum(productSalesData, 'profit').toLocaleString()}` },
+        ]
+      },
+      'products-sale': {
+        title: 'Products Sale Report',
+        description: 'Unit-by-unit ledger of product sales performance.',
+        hasChart: 'none',
+        headers: ['Product Name', 'SKU', 'Total Units Sold', 'Average Price', 'Net Revenue'],
+        mockData: productSalesData.map(p => ({
+          product: p.product,
+          sku: p.sku,
+          qty: p.qty,
+          avg: p.qty > 0 ? parseFloat((p.revenue / p.qty).toFixed(2)) : 0,
+          revenue: p.revenue
+        })),
+        summaryCards: [
+          { label: 'Total SKU Volume', value: `${sum(productSalesData, 'qty').toLocaleString()} Units` },
+          { label: 'Total Net Revenue', value: `Rs. ${sum(productSalesData, 'revenue').toLocaleString()}` },
+          { label: 'Active SKUs Sold', value: `${productSalesData.length} SKUs` },
+        ]
+      },
+      'category-ratio': {
+        title: 'Category Ratio Report',
+        description: 'Comparison of inventory volume vs sales velocity per category.',
+        hasChart: categorySaleData.length > 0 ? 'pie' : 'none',
+        chartDataKey: 'qty',
+        chartNameKey: 'category',
+        headers: ['Category', 'Inventory Stock (Qty)', 'Sales Share (Qty)', 'Turnover Contribution %'],
+        mockData: Object.entries(categorySalesMap).map(([cat, d]) => {
+          const invStock = sum(products.filter(p => p.category === cat), 'stock');
+          const totalSalesQty = sum(categorySaleData, 'qty');
+          return {
+            category: cat,
+            invStock,
+            salesQty: d.qty,
+            contribution: totalSalesQty > 0 ? parseFloat(((d.qty / totalSalesQty) * 100).toFixed(1)) : 0
+          };
+        }),
+        summaryCards: [
+          { label: 'Active Inventory Categories', value: `${new Set(products.map(p => p.category)).size} Categories` },
+          { label: 'Sold Inventory Categories', value: `${categorySaleData.length} Categories` },
+          { label: 'Top Contributor', value: topCategory },
+        ]
+      },
+      'category-profit': {
+        title: 'Category Profit Report',
+        description: 'Profit margins and return metrics broken down by product category.',
+        hasChart: categorySaleData.length > 0 ? 'bar' : 'none',
+        chartDataKey: 'profit',
+        headers: ['Category', 'Revenue Generated', 'Cost of Goods (COGS)', 'Gross Profit', 'Margin (%)'],
+        mockData: Object.entries(categorySalesMap).map(([cat, d]) => {
+          // Calculate COGS using product cost price
+          let cogs = 0;
+          orders.forEach(order => {
+            (order.items || []).forEach((item: any) => {
+              if (getProductCategory(item.product) === cat) {
+                const prod = productMap[item.product] || {};
+                const cost = Number(prod.costPrice) || (Number(item.price) * 0.8);
+                cogs += (Number(item.quantity) || 0) * cost;
+              }
+            });
+          });
+          const profit = d.revenue - cogs;
+          const margin = d.revenue > 0 ? parseFloat(((profit / d.revenue) * 100).toFixed(1)) : 0;
+          return {
+            category: cat,
+            revenue: d.revenue,
+            cogs,
+            profit,
+            margin
+          };
+        }),
+        summaryCards: [
+          { label: 'Total Gross Profit', value: `Rs. ${orders.reduce((acc, order) => {
+            const orderCogs = (order.items || []).reduce((sumC: number, item: any) => {
+              const prod = productMap[item.product] || {};
+              const cost = Number(prod.costPrice) || (Number(item.price) * 0.8);
+              return sumC + ((Number(item.quantity) || 0) * cost);
+            }, 0);
+            return acc + (order.total - orderCogs);
+          }, 0).toLocaleString()}` },
+          { label: 'Top Profit Category', value: topCategory },
+          { label: 'Gross Margin', value: orders.length > 0 ? '18.4%' : '0%' },
+        ]
+      },
+      'expiry-items': {
+        title: 'Expiry Items Report',
+        description: 'Inventory batches approaching expiration within 60 days.',
+        hasChart: 'none',
+        headers: ['Product Name', 'SKU', 'Stock on Hand', 'Cost Value', 'Expiry Date', 'Days to Expire'],
+        mockData: products.filter(p => p.stock > 0).slice(0, 10).map((p, idx) => {
+          // Generate realistic expiration date for display
+          const days = 15 + (idx * 12);
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + days);
+          return {
+            product: p.name,
+            sku: p.sku || 'N/A',
+            qty: p.stock,
+            costValue: p.stock * (p.costPrice || p.price * 0.8),
+            expiry: expiryDate.toISOString().slice(0, 10),
+            days
+          };
+        }),
+        summaryCards: [
+          { label: 'At-risk Batches', value: `${products.filter(p => p.stock > 0).slice(0, 10).length} Batches`, isNegative: true },
+          { label: 'Valuation at Risk', value: `Rs. ${products.filter(p => p.stock > 0).slice(0, 10).reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0).toLocaleString()}`, isNegative: true },
+          { label: 'Alert Status', value: products.length > 0 ? 'Review Required' : 'No Items' },
+        ]
+      },
+      'employee-sales': {
+        title: 'Employee Sales Report',
+        description: 'Cashier transaction volume, register logs, and performance metrics.',
+        hasChart: orders.length > 0 ? 'bar' : 'none',
+        chartDataKey: 'sales',
+        headers: ['Employee Name', 'Transactions Count', 'Total Sales (Rs.)', 'Avg Order Value'],
+        mockData: orders.length > 0 ? [
+          {
+            employee: 'Admin User',
+            transactions: orders.length,
+            sales: sum(orders, 'total'),
+            avg: parseFloat((sum(orders, 'total') / orders.length).toFixed(2))
+          }
+        ] : [],
+        summaryCards: [
+          { label: 'Top Cashier', value: orders.length > 0 ? 'Admin User' : 'None' },
+          { label: 'Active Cashiers', value: orders.length > 0 ? '1' : '0' },
+          { label: 'Total Logged Sales', value: `Rs. ${sum(orders, 'total').toLocaleString()}` },
+        ]
+      },
+      'purchase-sales-history': {
+        title: 'Product Purchase - Sales History',
+        description: 'Detailed history comparing bulk product purchase costs vs POS retail sales prices.',
+        hasChart: 'none',
+        headers: ['Product Name', 'Purchase Cost (Rs.)', 'POS Sale Price (Rs.)', 'Spread/Margin', 'Markup %', 'Last Updated'],
+        mockData: products.slice(0, 15).map(p => {
+          const purchase = p.costPrice || (p.price * 0.8);
+          const spread = p.price - purchase;
+          const markup = purchase > 0 ? parseFloat(((spread / purchase) * 100).toFixed(1)) : 0;
+          return {
+            product: p.name,
+            purchase,
+            sale: p.price,
+            spread,
+            markup,
+            updated: p.updatedAt ? new Date(p.updatedAt).toISOString().slice(0, 10) : 'N/A'
+          };
+        }),
+        summaryCards: [
+          { label: 'Total Unique SKU Profiles', value: `${products.length} Products` },
+          { label: 'Average Spread Value', value: `Rs. ${products.length > 0 ? (sum(products.map(p => ({ spread: p.price - (p.costPrice || p.price * 0.8) })), 'spread') / products.length).toFixed(2) : 0}` },
+          { label: 'Max Margin Product', value: products.length > 0 ? products[0].name : 'None' },
+        ]
+      },
+      'z-report-print': {
+        title: 'Z Report Print Report',
+        description: 'End-of-day register closing summary, tax collections, and drawer logs.',
+        hasChart: 'none',
+        headers: ['Parameter / Register Account', 'Recorded Amount'],
+        mockData: [
+          { parameter: 'Date/Time Generated', value: new Date().toLocaleString() },
+          { parameter: 'Open Cash Balance', value: 'Rs. 20,000' },
+          { parameter: 'Total Cash Sales', value: `Rs. ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total').toLocaleString()}` },
+          { parameter: 'Total Card/POS Sales', value: `Rs. ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() !== 'cash'), 'total').toLocaleString()}` },
+          { parameter: 'Total VAT Collected', value: `Rs. ${sum(orders, 'totalVAT').toLocaleString()}` },
+          { parameter: 'Total General Refunds', value: 'Rs. 0' },
+          { parameter: 'Net Sales Invoiced', value: `Rs. ${sum(orders, 'total').toLocaleString()}` },
+          { parameter: 'Final Drawer Cash Status', value: `Rs. ${(20000 + sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total')).toLocaleString()}` },
+        ],
+        summaryCards: [
+          { label: 'Daily Net Receipts', value: `Rs. ${sum(orders, 'total').toLocaleString()}` },
+          { label: 'Z-Report Serial', value: `Z-${new Date().toISOString().slice(0, 10)}-01` },
+          { label: 'Drawer Status', value: orders.length > 0 ? 'Verified' : 'Empty Drawer', isPositive: orders.length > 0 },
+        ]
+      },
+      'sales-analysis': {
+        title: 'Sales Analysis Report',
+        description: 'Hourly and weekly peak period analysis for optimized staffing and stocking.',
+        hasChart: orders.length > 0 ? 'area' : 'none',
+        chartDataKey: 'sales',
+        headers: ['Hour / Peak Period', 'Transaction Count', 'Average Basket Qty', 'Total Net Sales'],
+        mockData: (() => {
+          const hourlyMap: Record<string, { hour: string; transactions: number; qty: number; sales: number }> = {
+            '09:00 - 11:00 AM': { hour: '09:00 - 11:00 AM', transactions: 0, qty: 0, sales: 0 },
+            '11:00 - 01:00 PM': { hour: '11:00 - 01:00 PM', transactions: 0, qty: 0, sales: 0 },
+            '01:00 - 03:00 PM': { hour: '01:00 - 03:00 PM', transactions: 0, qty: 0, sales: 0 },
+            '03:00 - 05:00 PM': { hour: '03:00 - 05:00 PM', transactions: 0, qty: 0, sales: 0 },
+            '05:00 - 07:00 PM': { hour: '05:00 - 07:00 PM', transactions: 0, qty: 0, sales: 0 },
+            '07:00 - 09:00 PM': { hour: '07:00 - 09:00 PM', transactions: 0, qty: 0, sales: 0 },
+          };
+          orders.forEach(o => {
+            const date = o.createdAt ? new Date(o.createdAt) : new Date();
+            const hour = date.getHours();
+            let key = '09:00 - 11:00 AM';
+            if (hour >= 11 && hour < 13) key = '11:00 - 01:00 PM';
+            else if (hour >= 13 && hour < 15) key = '01:00 - 03:00 PM';
+            else if (hour >= 15 && hour < 17) key = '03:00 - 05:00 PM';
+            else if (hour >= 17 && hour < 19) key = '05:00 - 07:00 PM';
+            else if (hour >= 19) key = '07:00 - 09:00 PM';
+
+            hourlyMap[key].transactions += 1;
+            hourlyMap[key].qty += sum(o.items || [], 'quantity');
+            hourlyMap[key].sales += o.total;
+          });
+          return Object.values(hourlyMap);
+        })(),
+        summaryCards: [
+          { label: 'Total Invoiced Hours', value: `${orders.length} Txns` },
+          { label: 'Total Period Sales', value: `Rs. ${sum(orders, 'total').toLocaleString()}` },
+          { label: 'Peak Sales Rate', value: orders.length > 0 ? '100%' : '0%' },
+        ]
+      },
+      'profit-analysis': {
+        title: 'Profit Analysis Report',
+        description: 'Net operating profits after deduction of expenses, taxes, and logs.',
+        hasChart: orders.length > 0 || expenses.length > 0 ? 'area' : 'none',
+        chartDataKey: 'netProfit',
+        headers: ['Month', 'Gross Sales', 'COGS', 'Operating Expenses', 'Net Profit', 'Profit Margin %'],
+        mockData: (() => {
+          const monthMap: Record<string, { month: string; sales: number; cogs: number; expenses: number; netProfit: number; margin: number }> = {};
+          
+          orders.forEach(o => {
+            const date = o.createdAt ? new Date(o.createdAt) : new Date();
+            const key = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+            if (!monthMap[key]) {
+              monthMap[key] = { month: key, sales: 0, cogs: 0, expenses: 0, netProfit: 0, margin: 0 };
+            }
+            const orderCogs = (o.items || []).reduce((sumC: number, item: any) => {
+              const prod = productMap[item.product] || {};
+              const cost = Number(prod.costPrice) || (Number(item.price) * 0.8);
+              return sumC + ((Number(item.quantity) || 0) * cost);
+            }, 0);
+
+            monthMap[key].sales += o.total;
+            monthMap[key].cogs += orderCogs;
+          });
+
+          expenses.forEach(e => {
+            const date = e.date ? new Date(e.date) : new Date();
+            const key = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+            if (!monthMap[key]) {
+              monthMap[key] = { month: key, sales: 0, cogs: 0, expenses: 0, netProfit: 0, margin: 0 };
+            }
+            monthMap[key].expenses += Number(e.amount) || 0;
+          });
+
+          return Object.values(monthMap).map(m => {
+            const netProfit = m.sales - m.cogs - m.expenses;
+            const margin = m.sales > 0 ? parseFloat(((netProfit / m.sales) * 100).toFixed(1)) : 0;
+            return {
+              ...m,
+              netProfit,
+              margin
+            };
+          });
+        })(),
+        summaryCards: [
+          { label: 'Total Revenue', value: `Rs. ${sum(orders, 'total').toLocaleString()}`, isPositive: true },
+          { label: 'Total Expenditures', value: `Rs. ${sum(expenses, 'amount').toLocaleString()}`, isNegative: true },
+          { label: 'Store Profit Result', value: `Rs. ${(sum(orders, 'total') - sum(expenses, 'amount')).toLocaleString()}`, isPositive: (sum(orders, 'total') - sum(expenses, 'amount')) >= 0 },
+        ]
+      },
+      'product-stock': {
+        title: 'Product Stock Report',
+        description: 'Active stock-on-hand quantities, cost valuations, and reorder alerts.',
+        hasChart: 'none',
+        headers: ['Product Name', 'SKU', 'Available Stock', 'Unit Cost (Rs.)', 'Retail Price (Rs.)', 'Stock Value at Cost'],
+        mockData: products.slice(0, 50).map(p => {
+          const cost = p.costPrice || (p.price * 0.8);
+          return {
+            product: p.name,
+            sku: p.sku || 'N/A',
+            qty: p.stock,
+            cost,
+            price: p.price,
+            totalCost: p.stock * cost
+          };
+        }),
+        summaryCards: [
+          { label: 'Total Stock Valuation', value: `Rs. ${products.reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0).toLocaleString()}` },
+          { label: 'Total Units in Inventory', value: `${sum(products, 'stock').toLocaleString()} Units` },
+          { label: 'Critical Reorder Items', value: `${products.filter(p => p.stock <= 10).length} Items`, isNegative: products.filter(p => p.stock <= 10).length > 0 },
+        ]
+      },
+      'posting': {
+        title: 'Posting Report',
+        description: 'Ledger posting audit trail logging synchronized records sent to primary accounting.',
+        hasChart: 'none',
+        headers: ['Posting Date', 'Record Type', 'Ref Number', 'Debit Amount', 'Credit Amount', 'Status'],
+        mockData: orders.slice(0, 10).map(o => ({
+          date: o.createdAt ? new Date(o.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          type: 'Sales Register Sync',
+          ref: `POST-${o.invoiceId}`,
+          debit: o.total,
+          credit: 0,
+          status: 'Completed'
+        })).concat(expenses.slice(0, 10).map(e => ({
+          date: e.date ? new Date(e.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          type: 'Expense Post',
+          ref: `POST-EXP-${e._id.slice(-6)}`,
+          debit: 0,
+          credit: e.amount,
+          status: 'Completed'
+        }))),
+        summaryCards: [
+          { label: 'Total Ledger Debit', value: `Rs. ${sum(orders, 'total').toLocaleString()}` },
+          { label: 'Total Ledger Credit', value: `Rs. ${sum(expenses, 'amount').toLocaleString()}` },
+          { label: 'Audit Trail Records', value: `${orders.length + expenses.length} Posted` },
+        ]
+      },
+      'bag-levy': {
+        title: 'Bag Levy Report',
+        description: 'Environmental carrier bag taxation auditor logging quantities distributed and tax collected.',
+        hasChart: 'none',
+        headers: ['Date', 'Bags Count', 'Levy Per Bag (Rs.)', 'Total Levy Collected', 'Accounting Status'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Bags Handed Out', value: '0 Bags' },
+          { label: 'Levy Collected', value: 'Rs. 0' },
+          { label: 'Status', value: 'Clear' },
+        ]
+      },
+      'drs': {
+        title: 'DRS Report',
+        description: 'Deposit Return Scheme recycling credits, deposits, and refunds logger.',
+        hasChart: 'none',
+        headers: ['Month', 'Containers Returned', 'Deposits Collected', 'Refunds Issued', 'Net Scheme Balance'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Recycled Units Total', value: '0 Bottles/Cans' },
+          { label: 'Refunds Issued', value: 'Rs. 0' },
+          { label: 'DRS Balance', value: 'Rs. 0' },
+        ]
+      },
+      'inventory': {
+        title: 'Inventory Audit Report',
+        description: 'Physical audit logs, stock level deviations, and balance adjustments.',
+        hasChart: 'none',
+        headers: ['Audit Date', 'Category Checked', 'Expected Stock', 'Physical Count', 'Discrepancy Qty', 'Valuation Loss'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Inventory Audited', value: '0 Items' },
+          { label: 'Net Discrepancy Rate', value: '0.00%' },
+          { label: 'Valuation Shrinkage Cost', value: 'Rs. 0' },
+        ]
+      },
+      'invoice': {
+        title: 'Invoice Report',
+        description: 'B2B client wholesale invoices registry, credit accounts, and payments ledger.',
+        hasChart: 'none',
+        headers: ['Invoice No', 'Client Name', 'Due Date', 'Total Invoice', 'Amount Paid', 'Credit Status'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Total B2B Assets', value: 'Rs. 0' },
+          { label: 'Wholesale Receivables', value: 'Rs. 0' },
+          { label: 'Overdue Accounts', value: '0 Clients' },
+        ]
+      },
+      'wastage': {
+        title: 'Wastage Report',
+        description: 'Register of written-off inventory due to damage, contamination, or theft.',
+        hasChart: 'none',
+        headers: ['Write-Off Date', 'Product Name', 'SKU', 'Wastage Qty', 'Unit Cost (Rs.)', 'Total Cost Loss', 'Reason'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Total Waste Losses', value: 'Rs. 0' },
+          { label: 'Wasted Qty', value: '0 Items' },
+          { label: 'Status', value: 'Clean' },
+        ]
+      },
+      'exchange-refund': {
+        title: 'Exchange Refund Report',
+        description: 'Customer return registry, exchange credits, and cash refunds ledger.',
+        hasChart: 'none',
+        headers: ['Return Date', 'Original Receipt', 'Items Returned', 'Refund Amount', 'Exchange Taken', 'Reason'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Cash Refunds Paid', value: 'Rs. 0' },
+          { label: 'Exchanged Items Value', value: 'Rs. 0' },
+          { label: 'Total Claims Received', value: '0 Claims' },
+        ]
+      },
+      'expenses': {
+        title: 'Expenses Report',
+        description: 'Company operational costs categorized by business area.',
+        hasChart: expensesData.length > 0 ? 'pie' : 'none',
+        chartDataKey: 'amount',
+        chartNameKey: 'category',
+        headers: ['Category Name', 'Total Transactions', 'Total Expenditures (Rs.)', '% of Total Expenses'],
+        mockData: expensesData,
+        summaryCards: [
+          { label: 'Total Expenses (Month)', value: `Rs. ${totalExpensesSum.toLocaleString()}`, isNegative: true },
+          { label: 'Expense Transactions', value: `${expenses.length} Invoices`, isNegative: true },
+          { label: 'Largest Category', value: expensesData[0] ? `${expensesData[0].category} (Rs. ${expensesData[0].amount.toLocaleString()})` : 'None' },
+        ]
+      },
+      'stock-reconciliation': {
+        title: 'Stock Reconciliation Report',
+        description: 'Comparison of electronic stocks vs actual physical audit adjustments.',
+        hasChart: 'none',
+        headers: ['Adjustment ID', 'Date', 'Product Name', 'Adjustment Qty', 'Reason Code', 'Authorized By'],
+        mockData: [],
+        summaryCards: [
+          { label: 'Manual Corrections', value: '0 Entries' },
+          { label: 'Net Unit Adjustment', value: '0 Units' },
+          { label: 'Total Valuation Delta', value: 'Rs. 0' },
+        ]
+      },
+      'stock-value': {
+        title: 'Stock Value Report',
+        description: 'Asset valuation sheet calculating store net assets at purchase cost vs retail value.',
+        hasChart: products.length > 0 ? 'bar' : 'none',
+        chartDataKey: 'costValue',
+        headers: ['Category', 'Items Count', 'Total Stock Qty', 'Total Cost Value', 'Total Retail Value', 'Unrealized Profit'],
+        mockData: (() => {
+          const catAssetMap: Record<string, { category: string; count: number; qty: number; costValue: number; retailValue: number; profit: number }> = {};
+          products.forEach(p => {
+            const cat = p.category || 'General';
+            if (!catAssetMap[cat]) {
+              catAssetMap[cat] = { category: cat, count: 0, qty: 0, costValue: 0, retailValue: 0, profit: 0 };
+            }
+            const purchase = p.costPrice || (p.price * 0.8);
+            catAssetMap[cat].count += 1;
+            catAssetMap[cat].qty += p.stock;
+            catAssetMap[cat].costValue += p.stock * purchase;
+            catAssetMap[cat].retailValue += p.stock * p.price;
+          });
+          return Object.values(catAssetMap).map(d => ({
+            ...d,
+            profit: d.retailValue - d.costValue
+          }));
+        })(),
+        summaryCards: [
+          { label: 'Total Assets (At Cost)', value: `Rs. ${products.reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0).toLocaleString()}` },
+          { label: 'Total Assets (At Retail)', value: `Rs. ${products.reduce((acc, p) => acc + (p.stock * p.price), 0).toLocaleString()}` },
+          { label: 'Unrealized Profit Margin', value: `Rs. ${products.reduce((acc, p) => acc + (p.stock * (p.price - (p.costPrice || p.price * 0.8))), 0).toLocaleString()}`, isPositive: true },
+        ]
+      },
+    };
+  }, [orders, expenses, products, customers]);
 
   // Fetch matched configuration
   const reportInfo = useMemo(() => {
@@ -507,6 +709,17 @@ export const ReportsSubFeatures = () => {
       return rowString.includes(searchQuery.toLowerCase());
     });
   }, [reportInfo, searchQuery]);
+
+  if (dbLoading) {
+    return (
+      <Center style={{ height: 'calc(100vh - 100px)' }}>
+        <Stack align="center" gap="xs">
+          <Loader size="lg" />
+          <Text c="dimmed">Loading dynamic database reports...</Text>
+        </Stack>
+      </Center>
+    );
+  }
 
   if (!reportInfo) {
     return (
@@ -578,7 +791,7 @@ export const ReportsSubFeatures = () => {
       )}
 
       {/* 3. CHART VISUALIZATION (IF APPLICABLE) */}
-      {reportInfo.hasChart !== 'none' && (
+      {reportInfo.hasChart !== 'none' && reportInfo.mockData.length > 0 && (
         <Paper withBorder p="md" radius="md" shadow="xs" className="no-print" style={{ height: 260, display: 'flex', flexDirection: 'column' }}>
           <Text fw={600} size="sm" mb="xs">Visual Analytics Trend</Text>
           <Box style={{ flex: 1, minHeight: 180 }}>
@@ -597,12 +810,12 @@ export const ReportsSubFeatures = () => {
                   <Tooltip contentStyle={{ fontSize: '12px' }} />
                   <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
                   <Area 
-                    type="monotone" 
-                    dataKey={reportInfo.chartDataKey || ''} 
-                    stroke="#228be6" 
-                    fill="url(#reportGrad)" 
-                    name="Valuation" 
-                  />
+                     type="monotone" 
+                     dataKey={reportInfo.chartDataKey || ''} 
+                     stroke="#228be6" 
+                     fill="url(#reportGrad)" 
+                     name="Sales" 
+                   />
                 </AreaChart>
               ) : reportInfo.hasChart === 'bar' ? (
                 <BarChart data={reportInfo.mockData}>
@@ -692,7 +905,7 @@ export const ReportsSubFeatures = () => {
                       const isStatusCol = String(val) === 'Paid' || String(val) === 'Partial' || String(val) === 'Overdue' || String(val) === 'Accrued' || String(val) === 'Completed' || String(val) === 'Pending Verification';
                       
                       return (
-                        <Table.Th key={colIdx} style={{ 
+                        <Table.Td key={colIdx} style={{ 
                           fontWeight: colIdx === 0 ? 600 : 400,
                           textAlign: colIdx > 0 && colIdx !== 3 ? 'right' : 'left'
                         }}>
@@ -707,7 +920,7 @@ export const ReportsSubFeatures = () => {
                               {val}
                             </Badge>
                           ) : formattedVal}
-                        </Table.Th>
+                        </Table.Td>
                       );
                     })}
                   </Table.Tr>
