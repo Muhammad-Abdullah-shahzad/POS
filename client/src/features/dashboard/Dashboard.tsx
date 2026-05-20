@@ -392,48 +392,49 @@ const Dashboard = () => {
                      <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
                        <Flex h={85}>
                          {/* CASH PAY BUTTON */}
-                         <Box w="18%" style={{ borderRight: `1px solid ${customColors.border}`, position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
-                           <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1621451537084-482c73073e0f?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.7 }} />
-                           <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
-                             <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br/>PAY</Text>
+                         <Box w="18%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
+                           <Flex align="center" justify="center" h="100%">
+                             <Text fw="bold" size="16px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br/>PAY</Text>
                            </Flex>
                          </Box>
 
                          {/* TOTALS GRID */}
-                         <Box w="38%" style={{ borderRight: `1px solid ${customColors.border}` }}>
-                           <Grid gutter={0} style={{ height: '100%' }}>
-                             <Grid.Col span={5} style={{ borderBottom: `1px solid ${customColors.border}`, borderRight: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
-                               <Text size="12px" c="black">Sub Total</Text>
-                             </Grid.Col>
-                             <Grid.Col span={7} style={{ borderBottom: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
-                               <Text size="13px" c="black" ta="right">{subTotal.toFixed(2)}</Text>
-                             </Grid.Col>
-                             
-                             <Grid.Col span={5} style={{ borderBottom: `1px solid ${customColors.border}`, borderRight: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
-                               <Text size="12px" c="black">Deposit</Text>
-                             </Grid.Col>
-                             <Grid.Col span={7} style={{ borderBottom: `1px solid ${customColors.border}`, padding: '2px 4px', backgroundColor: '#e2e2e2' }}>
-                               <Text size="13px" c="black" ta="right">{deposit.toFixed(2)}</Text>
-                             </Grid.Col>
-                             
-                             <Grid.Col span={5} style={{ borderRight: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
-                               <Text size="14px" c="black" mt={2}>TOTAL</Text>
-                             </Grid.Col>
-                             <Grid.Col span={7} style={{ padding: '2px 4px' }}>
-                               <Text size="15px" c="black" ta="right" mt={2}>{total.toFixed(2)}</Text>
-                             </Grid.Col>
-                           </Grid>
+                         <Box w="38%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
+                            <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                               <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                                  <Text size="13px" c="black">Sub Total</Text>
+                               </Flex>
+                               <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
+                                  <Text size="14px" c="black">{subTotal.toFixed(2)}</Text>
+                               </Flex>
+                            </Flex>
+                            <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                               <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                                  <Text size="13px" c="black">Deposit</Text>
+                               </Flex>
+                               <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
+                                  <Text size="14px" c="black">{deposit.toFixed(2)}</Text>
+                               </Flex>
+                            </Flex>
+                            <Flex style={{ flex: 1 }}>
+                               <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                                  <Text size="15px" c="black">TOTAL</Text>
+                               </Flex>
+                               <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
+                                  <Text size="16px" c="black">{total.toFixed(2)}</Text>
+                               </Flex>
+                            </Flex>
                          </Box>
 
                          {/* INPUTS */}
-                         <Box w="26%" style={{ borderRight: `1px solid ${customColors.border}` }} p="4px 6px">
-                           <Flex align="center" justify="space-between" mb="6px">
-                             <Text size="11px" c="black">CASH</Text>
-                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 32, minHeight: 32, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
+                         <Box w="26%" style={{ borderRight: `1px solid ${customColors.border}` }} p="6px 8px">
+                           <Flex align="center" justify="space-between" h="50%" pb="3px">
+                             <Text size="12px" c="black">CASH</Text>
+                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
                            </Flex>
-                           <Flex align="center" justify="space-between">
-                             <Text size="11px" c="black">CARD</Text>
-                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 32, minHeight: 32, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
+                           <Flex align="center" justify="space-between" h="50%" pt="3px">
+                             <Text size="12px" c="black">CARD</Text>
+                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
                            </Flex>
                          </Box>
 
