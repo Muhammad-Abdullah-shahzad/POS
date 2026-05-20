@@ -43,14 +43,25 @@ const Dashboard = () => {
 
   const [stagingItem, setStagingItem] = useState<{ id?: string; name: string; barcode: string; qty: number | string; price: number | string }>({ name: '', barcode: '', qty: '', price: '' });
 
-  const [fishModalOpened, setFishModalOpened] = useState(false);
-  const [fishSearch, setFishSearch] = useState('');
-  const fishItems = [
-    "SEA BASS", "SEA BREAM", "PINK BREAM", "SARADINE", "KING FISH", "TUNA BONITO", "TUNA FILLETS",
-    "SALMON", "SHARK FILLETS", "PRAWNS", "RED MULLETS", "SPANISH POMPANO", "GREY MULLETS", "RAHU FISH",
-    "BOAL FISH", "MIRGAL", "HAKE FISH", "HILSHA FISH", "SALT FISH", "RED SNAPER FISH", "SMOKE TURKEY WINGS",
-    "Salted dry Fish", "", "", "", "", "", ""
-  ];
+  const [categoryModalOpened, setCategoryModalOpened] = useState(false);
+  const [openedCategoryName, setOpenedCategoryName] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+
+  const categoryItemsMap: Record<string, string[]> = {
+    "FISH AND SEAFOOD": [
+      "SEA BASS", "SEA BREAM", "PINK BREAM", "SARADINE", "KING FISH", "TUNA BONITO", "TUNA FILLETS",
+      "SALMON", "SHARK FILLETS", "PRAWNS", "RED MULLETS", "SPANISH POMPANO", "GREY MULLETS", "RAHU FISH",
+      "BOAL FISH", "MIRGAL", "HAKE FISH", "HILSHA FISH", "SALT FISH", "RED SNAPER FISH", "SMOKE TURKEY WINGS",
+      "Salted dry Fish"
+    ],
+    "LAMB BEEF": ["LAMB CHOPS", "BEEF STEAK", "MINCED BEEF", "LAMB SHANK", "BEEF RIBS", "ROAST BEEF", "BEEF BRISKET", "LAMB LEG"],
+    "CHICKEN": ["WHOLE CHICKEN", "CHICKEN BREAST", "CHICKEN WINGS", "CHICKEN THIGHS", "DRUMSTICKS", "CHICKEN MINCE", "CHICKEN LIVER"],
+    "FRUITS": ["APPLE", "BANANA", "ORANGE", "MANGO", "GRAPES", "PINEAPPLE", "WATERMELON", "STRAWBERRY", "PEACH", "PEAR"],
+    "VEG": ["POTATO", "ONION", "TOMATO", "CARROT", "BROCCOLI", "SPINACH", "CABBAGE", "BELL PEPPER", "GARLIC", "GINGER"],
+    "BAKERY AND DAIRY": ["MILK", "BREAD", "EGGS", "BUTTER", "CHEESE", "YOGURT", "CROISSANT", "BAGUETTE", "CAKE", "MUFFIN"]
+  };
+  
+  const currentCategoryItems = categoryItemsMap[openedCategoryName] || [];
 
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -359,12 +370,12 @@ const Dashboard = () => {
                           {name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234')}, 
                           {name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234')}, 
                           {name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234')}, 
-                          {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => setFishModalOpened(true)}, 
-                          {name: 'LAMB BEEF', color: customColors.orangeBtn}, 
-                          {name: 'CHICKEN', color: customColors.orangeBtn}, 
-                          {name: 'FRUITS', color: customColors.orangeBtn}, 
-                          {name: 'VEG', color: customColors.orangeBtn}, 
-                          {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn}
+                          {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategoryModalOpened(true); }}, 
+                          {name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategoryModalOpened(true); }}, 
+                          {name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategoryModalOpened(true); }}, 
+                          {name: 'FRUITS', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FRUITS'); setCategoryModalOpened(true); }}, 
+                          {name: 'VEG', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('VEG'); setCategoryModalOpened(true); }}, 
+                          {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('BAKERY AND DAIRY'); setCategoryModalOpened(true); }}
                         ].map(cat => (
                            <Grid.Col span={4} key={cat.name}>
                               <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '32px' }}>
@@ -555,8 +566,8 @@ const Dashboard = () => {
       </div>
 
       <Modal 
-        opened={fishModalOpened} 
-        onClose={() => setFishModalOpened(false)}
+        opened={categoryModalOpened} 
+        onClose={() => setCategoryModalOpened(false)}
         size="100%"
         fullScreen
         withCloseButton={false}
@@ -565,15 +576,15 @@ const Dashboard = () => {
       >
         {/* HEADER */}
         <Flex align="center" bg="white" p="md" style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
-          <Text size="24px" fw={800} c="#2c3e50" style={{ letterSpacing: '1px' }}>FISH & SEAFOOD</Text>
+          <Text size="24px" fw={800} c="#2c3e50" style={{ letterSpacing: '1px' }}>{openedCategoryName}</Text>
           <Flex align="center" ml="auto" gap="xl">
             <Flex align="center" gap="sm">
               <Text size="sm" fw={600} c="dimmed">Search Product</Text>
               <TextInput 
                 size="md" 
                 placeholder="Type here..."
-                value={fishSearch} 
-                onChange={(e) => setFishSearch(e.target.value)} 
+                value={categorySearch} 
+                onChange={(e) => setCategorySearch(e.target.value)} 
                 styles={{ input: { borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#f8f9fa' } }} 
               />
             </Flex>
@@ -587,7 +598,7 @@ const Dashboard = () => {
         {/* GRID AREA */}
         <Box flex={1} p="xl" style={{ overflowY: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
-            {fishItems.filter(f => f !== "").map((fish, index) => (
+            {currentCategoryItems.filter(item => item !== "").map((item, index) => (
               <Paper 
                 key={index} 
                 shadow="sm" 
@@ -595,7 +606,7 @@ const Dashboard = () => {
                 withBorder 
                 style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '180px' }}
                 onClick={() => {
-                  handleCategoryItem(fish, 'fsh123');
+                  handleCategoryItem(item, 'cat123');
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
@@ -604,7 +615,7 @@ const Dashboard = () => {
                    <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
                 </Box>
                 <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886' }}>
-                  <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{fish}</Text>
+                  <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{item}</Text>
                 </Box>
               </Paper>
             ))}
@@ -619,7 +630,7 @@ const Dashboard = () => {
           <Flex gap="md">
             <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬆</Button>
             <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬇</Button>
-            <Button h={80} w={160} radius="md" color="orange.6" size="xl" style={{ boxShadow: '0 4px 14px rgba(255, 146, 43, 0.4)' }} onClick={() => setFishModalOpened(false)}>
+            <Button h={80} w={160} radius="md" color="orange.6" size="xl" style={{ boxShadow: '0 4px 14px rgba(255, 146, 43, 0.4)' }} onClick={() => setCategoryModalOpened(false)}>
               <Text size="xl" fw={800}>DONE</Text>
             </Button>
           </Flex>
