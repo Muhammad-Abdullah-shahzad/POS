@@ -2,11 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   Paper, Text, Title, Table, Badge, Button, Group, Stack, 
-  TextInput, Select, NumberInput, SimpleGrid, Box, FileButton
+  TextInput, Select, NumberInput, SimpleGrid, Box, FileButton,
+  Checkbox, Tabs, Modal, ActionIcon, Divider, Grid
 } from '@mantine/core';
 import { 
   IconTags, IconTrash, IconFileSpreadsheet, IconCheck, IconX,
-  IconScale, IconSearch
+  IconScale, IconSearch, IconWorld, IconGift, IconPercentage, 
+  IconArrowUpRight, IconBuildingSkyscraper, IconEdit, IconPlus, IconExternalLink
 } from '@tabler/icons-react';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
@@ -46,6 +48,227 @@ export const ProductsSubFeatures = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  // ----------------------------------------------------
+  // ONLINE PRODUCTS STATE
+  // ----------------------------------------------------
+  const [onlineProducts, setOnlineProducts] = useState<Record<string, { isOnline: boolean; onlinePrice: number }>>(() => {
+    const saved = localStorage.getItem('onlineProductsStore');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const handleToggleOnline = (productId: string, currentProd: Product) => {
+    const prev = onlineProducts[productId] || { isOnline: false, onlinePrice: currentProd.price };
+    const updated = {
+      ...onlineProducts,
+      [productId]: {
+        ...prev,
+        isOnline: !prev.isOnline
+      }
+    };
+    setOnlineProducts(updated);
+    localStorage.setItem('onlineProductsStore', JSON.stringify(updated));
+    notifications.show({
+      title: 'Online Channel Updated',
+      message: `${currentProd.name} is now ${!prev.isOnline ? 'Active' : 'Inactive'} on Web & Mobile Store Channels.`,
+      color: !prev.isOnline ? 'green' : 'gray',
+      icon: <IconWorld size={16} />
+    });
+  };
+
+  const handleOnlinePriceChange = (productId: string, val: number) => {
+    const prev = onlineProducts[productId] || { isOnline: false, onlinePrice: 0 };
+    const updated = {
+      ...onlineProducts,
+      [productId]: {
+        ...prev,
+        onlinePrice: val
+      }
+    };
+    setOnlineProducts(updated);
+    localStorage.setItem('onlineProductsStore', JSON.stringify(updated));
+  };
+
+  // ----------------------------------------------------
+  // OFFERS STATE & HANDLERS
+  // ----------------------------------------------------
+  const [offers, setOffers] = useState<any[]>(() => {
+    const saved = localStorage.getItem('customProductOffers');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', code: 'EAD10', type: 'Category Discount', target: 'Beverages', value: 10, status: 'Active' },
+      { id: '2', code: 'BOGO-TEA', type: 'BOGO Free', target: 'Discount Tapal Tea Premium', value: 100, status: 'Active' }
+    ];
+  });
+  const [newOfferCode, setNewOfferCode] = useState('');
+  const [newOfferType, setNewOfferType] = useState('Category Discount');
+  const [newOfferTarget, setNewOfferTarget] = useState('');
+  const [newOfferValue, setNewOfferValue] = useState<number | string>(10);
+
+  const handleAddOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOfferCode.trim()) return;
+    const newOffer = {
+      id: String(Date.now()),
+      code: newOfferCode.trim().toUpperCase(),
+      type: newOfferType,
+      target: newOfferTarget || 'All Products',
+      value: Number(newOfferValue) || 0,
+      status: 'Active'
+    };
+    const updated = [newOffer, ...offers];
+    setOffers(updated);
+    localStorage.setItem('customProductOffers', JSON.stringify(updated));
+    setNewOfferCode('');
+    setNewOfferValue(10);
+    setNewOfferTarget('');
+    notifications.show({
+      title: 'Promo Created',
+      message: `Active campaign code ${newOffer.code} is now live and working!`,
+      color: 'teal',
+      icon: <IconGift size={16} />
+    });
+  };
+
+  const handleDeleteOffer = (id: string) => {
+    const updated = offers.filter(o => o.id !== id);
+    setOffers(updated);
+    localStorage.setItem('customProductOffers', JSON.stringify(updated));
+    notifications.show({
+      title: 'Offer Removed',
+      message: 'Promotional campaign deactivated successfully.',
+      color: 'red',
+      icon: <IconTrash size={16} />
+    });
+  };
+
+  // ----------------------------------------------------
+  // ADVANCED CATEGORY ACTIONS STATE & HANDLERS
+  // ----------------------------------------------------
+  const [selectedProdIds, setSelectedProdIds] = useState<string[]>([]);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState<number | string>(10);
+  const [increasePriceModalOpen, setIncreasePriceModalOpen] = useState(false);
+  const [increasePercent, setIncreasePercent] = useState<number | string>(5);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [targetCategory, setTargetCategory] = useState('');
+  const [superCatModalOpen, setSuperCatModalOpen] = useState(false);
+  const [superCategories, setSuperCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('customSuperCategories');
+    return saved ? JSON.parse(saved) : ['Dry Grocery', 'Fresh Foods', 'Beverages & Snacks'];
+  });
+  const [newSuperCatName, setNewSuperCatName] = useState('');
+
+  const handleAddSuperCategory = () => {
+    if (!newSuperCatName.trim()) return;
+    if (superCategories.includes(newSuperCatName.trim())) {
+      notifications.show({ title: 'Error', message: 'Super category already exists', color: 'red' });
+      return;
+    }
+    const updated = [...superCategories, newSuperCatName.trim()];
+    setSuperCategories(updated);
+    localStorage.setItem('customSuperCategories', JSON.stringify(updated));
+    setNewSuperCatName('');
+    notifications.show({ title: 'Success', message: 'Super Category defined successfully', color: 'green' });
+  };
+
+  // Companies (Manufacturers) state
+  const [companies, setCompanies] = useState<string[]>(() => {
+    const saved = localStorage.getItem('customCompanies');
+    return saved ? JSON.parse(saved) : ['Nestle', 'Unilever', 'National Foods', 'Tapal Tea'];
+  });
+  const [selectedCompany, setSelectedCompany] = useState<string>('');
+  const [companyModalOpen, setCompanyModalOpen] = useState(false);
+  const [companyModalMode, setCompanyModalMode] = useState<'add' | 'edit'>('add');
+  const [companyInputVal, setCompanyInputVal] = useState('');
+
+  const handleAddCompany = () => {
+    if (!companyInputVal.trim()) return;
+    if (companies.includes(companyInputVal.trim())) {
+      notifications.show({ title: 'Error', message: 'Company already exists', color: 'red' });
+      return;
+    }
+    const updated = [...companies, companyInputVal.trim()];
+    setCompanies(updated);
+    localStorage.setItem('customCompanies', JSON.stringify(updated));
+    setSelectedCompany(companyInputVal.trim());
+    setCompanyModalOpen(false);
+    setCompanyInputVal('');
+    notifications.show({ title: 'Success', message: 'Brand Manufacturer Company added', color: 'green' });
+  };
+
+  const handleEditCompany = () => {
+    if (!selectedCompany || !companyInputVal.trim()) return;
+    const updated = companies.map(c => c === selectedCompany ? companyInputVal.trim() : c);
+    setCompanies(updated);
+    localStorage.setItem('customCompanies', JSON.stringify(updated));
+    setSelectedCompany(companyInputVal.trim());
+    setCompanyModalOpen(false);
+    setCompanyInputVal('');
+    notifications.show({ title: 'Success', message: 'Brand Manufacturer Company renamed', color: 'green' });
+  };
+
+  const handleDeleteCompany = () => {
+    if (!selectedCompany) return;
+    const updated = companies.filter(c => c !== selectedCompany);
+    setCompanies(updated);
+    localStorage.setItem('customCompanies', JSON.stringify(updated));
+    setSelectedCompany('');
+    notifications.show({ title: 'Success', message: 'Brand Manufacturer Company deleted', color: 'red' });
+  };
+
+  const handleApplyDiscount = () => {
+    const pct = Number(discountPercent) || 0;
+    setProducts(products.map(p => {
+      if (selectedProdIds.includes(p._id)) {
+        return { ...p, price: Math.max(0, parseFloat((p.price * (1 - pct / 100)).toFixed(2))) };
+      }
+      return p;
+    }));
+    setDiscountModalOpen(false);
+    notifications.show({
+      title: 'Discount Applied',
+      message: `Successfully applied a ${pct}% promotional discount to ${selectedProdIds.length} selected retail items.`,
+      color: 'teal',
+      icon: <IconCheck size={16} />
+    });
+    setSelectedProdIds([]);
+  };
+
+  const handleIncreasePrice = () => {
+    const pct = Number(increasePercent) || 0;
+    setProducts(products.map(p => {
+      if (selectedProdIds.includes(p._id)) {
+        return { ...p, price: parseFloat((p.price * (1 + pct / 100)).toFixed(2)) };
+      }
+      return p;
+    }));
+    setIncreasePriceModalOpen(false);
+    notifications.show({
+      title: 'Prices Calibrated',
+      message: `Successfully increased selling prices for ${selectedProdIds.length} items by ${pct}%.`,
+      color: 'teal',
+      icon: <IconCheck size={16} />
+    });
+    setSelectedProdIds([]);
+  };
+
+  const handleMoveProducts = () => {
+    if (!targetCategory) return;
+    setProducts(products.map(p => {
+      if (selectedProdIds.includes(p._id)) {
+        return { ...p, category: targetCategory };
+      }
+      return p;
+    }));
+    setMoveModalOpen(false);
+    notifications.show({
+      title: 'Department Transferred',
+      message: `Shifted and re-grouped ${selectedProdIds.length} catalog items into ${targetCategory} department.`,
+      color: 'teal',
+      icon: <IconCheck size={16} />
+    });
+    setSelectedProdIds([]);
+  };
 
   // ----------------------------------------------------
   // 1. MANAGE CATEGORIES STATE & HANDLERS
@@ -303,57 +526,524 @@ export const ProductsSubFeatures = () => {
       {subPath === 'category' && (
         <Stack gap="md" style={{ flex: 1, overflowY: 'auto' }}>
           <div>
-            <Title order={2}>Manage Product Categories</Title>
-            <Text size="sm" c="dimmed">Define product inventory segments and audit department performance stats.</Text>
+            <Title order={2}>Manage Product Channels & Campaigns</Title>
+            <Text size="sm" c="dimmed">Define product inventory categories, e-commerce sync channels, bulk pricing, and active promotional campaigns.</Text>
           </div>
 
-          <Paper withBorder p="md" radius="md">
-            <form onSubmit={handleAddCategory}>
+          <Tabs defaultValue="categories" variant="outline" radius="md">
+            <Tabs.List mb="md">
+              <Tabs.Tab value="categories" leftSection={<IconTags size={16} />}>
+                Manage Categories & Bulk Operations
+              </Tabs.Tab>
+              <Tabs.Tab value="online" leftSection={<IconWorld size={16} />}>
+                Manage Online Products
+              </Tabs.Tab>
+              <Tabs.Tab value="offers" leftSection={<IconGift size={16} />}>
+                Manage Offers & Coupons
+              </Tabs.Tab>
+            </Tabs.List>
+
+            {/* TAB 1: CATEGORIES & BULK OPERATIONS */}
+            <Tabs.Panel value="categories">
+              <SimpleGrid cols={{ base: 1, md: 5 }} spacing="md">
+                {/* Left side: Category Creation and Stats (Span 2) */}
+                <Box style={{ gridColumn: 'span 2' }}>
+                  <Stack gap="md">
+                    <Paper withBorder p="md" radius="md">
+                      <Title order={4} mb="xs">Create Category</Title>
+                      <form onSubmit={handleAddCategory}>
+                        <Stack gap="sm">
+                          <TextInput
+                            label="New Category Name"
+                            placeholder="e.g. Household & Detergents"
+                            required
+                            value={newCatName}
+                            onChange={(e) => setNewCatName(e.target.value)}
+                          />
+                          <Button type="submit" leftSection={<IconPlus size={16} />} color="blue" fullWidth>
+                            Add Category
+                          </Button>
+                        </Stack>
+                      </form>
+                    </Paper>
+
+                    <Paper withBorder radius="md" p="md">
+                      <Title order={4} mb="xs">Categories Performance</Title>
+                      <Table striped highlightOnHover verticalSpacing="xs">
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Name</Table.Th>
+                            <Table.Th style={{ textAlign: 'right' }}>SKUs</Table.Th>
+                            <Table.Th style={{ textAlign: 'right' }}>Assets</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {categoriesWithStats.map((cat, idx) => (
+                            <Table.Tr key={idx}>
+                              <Table.Td fw={600}>{cat.name}</Table.Td>
+                              <Table.Td style={{ textAlign: 'right' }}>{cat.count} SKUs</Table.Td>
+                              <Table.Td style={{ textAlign: 'right' }} c="teal" fw={600}>Rs. {cat.value.toLocaleString()}</Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </Paper>
+                  </Stack>
+                </Box>
+
+                {/* Right side: Bulk Operations & Product Category Mover (Span 3) */}
+                <Box style={{ gridColumn: 'span 3' }}>
+                  <Paper withBorder p="md" radius="md" bg="var(--mantine-color-gray-0)">
+                    <Stack gap="md">
+                      <Title order={4} c="blue">Advanced Catalog Actions</Title>
+                      
+                      {/* Company Selection Panel (Matching Screenshot) */}
+                      <Paper p="sm" withBorder radius="md" bg="white">
+                        <Grid align="flex-end">
+                          <Grid.Col span={4}>
+                            <Select
+                              label="Company"
+                              placeholder="Select Manufacturer..."
+                              data={companies}
+                              value={selectedCompany}
+                              onChange={(val) => setSelectedCompany(val || '')}
+                              clearable
+                            />
+                          </Grid.Col>
+                          <Grid.Col span={8}>
+                            <Group gap="xs" justify="flex-end">
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                color="blue"
+                                leftSection={<IconPlus size={14} />}
+                                onClick={() => {
+                                  setCompanyModalMode('add');
+                                  setCompanyInputVal('');
+                                  setCompanyModalOpen(true);
+                                }}
+                              >
+                                Add New Company
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                color="yellow"
+                                disabled={!selectedCompany}
+                                leftSection={<IconEdit size={14} />}
+                                onClick={() => {
+                                  setCompanyModalMode('edit');
+                                  setCompanyInputVal(selectedCompany);
+                                  setCompanyModalOpen(true);
+                                }}
+                              >
+                                EDIT
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                color="red"
+                                disabled={!selectedCompany}
+                                leftSection={<IconTrash size={14} />}
+                                onClick={handleDeleteCompany}
+                              >
+                                DELETE
+                              </Button>
+                            </Group>
+                          </Grid.Col>
+                        </Grid>
+                      </Paper>
+
+                      {/* Bulk Action Buttons (Matching Screenshot) */}
+                      <Paper p="sm" withBorder radius="md" bg="white">
+                        <Stack gap="xs">
+                          <Text size="xs" fw={700} c="dimmed">BULK ACTIONS FOR SELECTED ITEMS</Text>
+                          <SimpleGrid cols={2} spacing="xs">
+                            <Button 
+                              variant="filled" 
+                              color="blue" 
+                              leftSection={<IconPercentage size={16} />}
+                              disabled={selectedProdIds.length === 0}
+                              onClick={() => setDiscountModalOpen(true)}
+                            >
+                              Apply Discount %
+                            </Button>
+                            <Button 
+                              variant="filled" 
+                              color="teal" 
+                              leftSection={<IconArrowUpRight size={16} />}
+                              disabled={selectedProdIds.length === 0}
+                              onClick={() => setIncreasePriceModalOpen(true)}
+                            >
+                              Increase Selling Price
+                            </Button>
+                            <Button 
+                              variant="filled" 
+                              color="orange" 
+                              leftSection={<IconScale size={16} />}
+                              disabled={selectedProdIds.length === 0}
+                              onClick={() => setMoveModalOpen(true)}
+                            >
+                              Move Products
+                            </Button>
+                            <Button 
+                              variant="filled" 
+                              color="grape" 
+                              leftSection={<IconBuildingSkyscraper size={16} />}
+                              onClick={() => setSuperCatModalOpen(true)}
+                            >
+                              Manage Super Category
+                            </Button>
+                          </SimpleGrid>
+                        </Stack>
+                      </Paper>
+
+                      {/* Product Selector with Checkboxes (Matching Screenshot) */}
+                      <Paper p="sm" withBorder radius="md" bg="white">
+                        <Stack gap="xs">
+                          <Group justify="space-between" align="center">
+                            <Text size="sm" fw={600} c="red">*Select Products to move to other category</Text>
+                            <Checkbox
+                              label="Select All"
+                              checked={products.length > 0 && selectedProdIds.length === products.length}
+                              indeterminate={selectedProdIds.length > 0 && selectedProdIds.length < products.length}
+                              onChange={(event) => {
+                                if (event.currentTarget.checked) {
+                                  setSelectedProdIds(products.map(p => p._id));
+                                } else {
+                                  setSelectedProdIds([]);
+                                }
+                              }}
+                              fw={600}
+                            />
+                          </Group>
+                          
+                          <Divider />
+
+                          <Box style={{ maxHeight: 220, overflowY: 'auto' }}>
+                            <Table striped verticalSpacing="xs">
+                              <Table.Thead>
+                                <Table.Tr>
+                                  <Table.Th style={{ width: 40 }}></Table.Th>
+                                  <Table.Th>Product Name</Table.Th>
+                                  <Table.Th>Current Category</Table.Th>
+                                  <Table.Th style={{ textAlign: 'right' }}>Price</Table.Th>
+                                </Table.Tr>
+                              </Table.Thead>
+                              <Table.Tbody>
+                                {products.map((p) => (
+                                  <Table.Tr key={p._id}>
+                                    <Table.Td>
+                                      <Checkbox
+                                        checked={selectedProdIds.includes(p._id)}
+                                        onChange={(event) => {
+                                          if (event.currentTarget.checked) {
+                                            setSelectedProdIds([...selectedProdIds, p._id]);
+                                          } else {
+                                            setSelectedProdIds(selectedProdIds.filter(id => id !== p._id));
+                                          }
+                                        }}
+                                      />
+                                    </Table.Td>
+                                    <Table.Td fw={500}>{p.name}</Table.Td>
+                                    <Table.Td>
+                                      <Badge variant="light" color="blue">{p.category || 'Unassigned'}</Badge>
+                                    </Table.Td>
+                                    <Table.Td style={{ textAlign: 'right' }}>Rs. {p.price.toFixed(2)}</Table.Td>
+                                  </Table.Tr>
+                                ))}
+                                {products.length === 0 && (
+                                  <Table.Tr>
+                                    <Table.Td colSpan={4} style={{ textAlign: 'center' }}>
+                                      <Text c="dimmed" size="sm">No catalog products registered.</Text>
+                                    </Table.Td>
+                                  </Table.Tr>
+                                )}
+                              </Table.Tbody>
+                            </Table>
+                          </Box>
+                        </Stack>
+                      </Paper>
+
+                    </Stack>
+                  </Paper>
+                </Box>
+              </SimpleGrid>
+            </Tabs.Panel>
+
+            {/* TAB 2: MANAGE ONLINE PRODUCTS */}
+            <Tabs.Panel value="online">
+              <Paper withBorder p="md" radius="md">
+                <Stack gap="md">
+                  <div>
+                    <Title order={3} c="green">Web StoreSync Channels</Title>
+                    <Text size="sm" c="dimmed">Toggle products visibility and pricing for your online e-commerce website and delivery mobile app channels.</Text>
+                  </div>
+
+                  <Table striped highlightOnHover>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Product Name</Table.Th>
+                        <Table.Th>SKU</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Retail Price</Table.Th>
+                        <Table.Th style={{ width: 160 }}>Online Price (Rs.)</Table.Th>
+                        <Table.Th style={{ textAlign: 'center' }}>Channel Status</Table.Th>
+                        <Table.Th style={{ textAlign: 'center' }}>Direct Web Link</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {products.map((p) => {
+                        const status = onlineProducts[p._id] || { isOnline: false, onlinePrice: p.price };
+                        return (
+                          <Table.Tr key={p._id}>
+                            <Table.Td fw={600}>{p.name}</Table.Td>
+                            <Table.Td>{p.sku}</Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>Rs. {p.price.toFixed(2)}</Table.Td>
+                            <Table.Td>
+                              <NumberInput
+                                min={0}
+                                value={status.onlinePrice}
+                                onChange={(val) => handleOnlinePriceChange(p._id, Number(val) || 0)}
+                                disabled={!status.isOnline}
+                              />
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'center' }}>
+                              <Button
+                                size="xs"
+                                variant={status.isOnline ? 'filled' : 'outline'}
+                                color={status.isOnline ? 'green' : 'gray'}
+                                leftSection={<IconWorld size={14} />}
+                                onClick={() => handleToggleOnline(p._id, p)}
+                              >
+                                {status.isOnline ? 'Online' : 'Offline'}
+                              </Button>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'center' }}>
+                              {status.isOnline ? (
+                                <ActionIcon color="blue" variant="light" size="sm" onClick={() => window.open(`https://example.com/shop/${p.sku}`, '_blank')}>
+                                  <IconExternalLink size={16} />
+                                </ActionIcon>
+                              ) : (
+                                <Text size="xs" c="dimmed">Inactive</Text>
+                              )}
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </Stack>
+              </Paper>
+            </Tabs.Panel>
+
+            {/* TAB 3: MANAGE OFFERS */}
+            <Tabs.Panel value="offers">
+              <SimpleGrid cols={{ base: 1, md: 5 }} spacing="md">
+                {/* Promo Code Form (Span 2) */}
+                <Box style={{ gridColumn: 'span 2' }}>
+                  <Paper withBorder p="md" radius="md">
+                    <Title order={4} mb="sm" c="pink">Add New Discount / BOGO Offer</Title>
+                    <form onSubmit={handleAddOffer}>
+                      <Stack gap="sm">
+                        <TextInput
+                          label="Campaign Promo Code"
+                          placeholder="e.g. SUMMER50"
+                          required
+                          value={newOfferCode}
+                          onChange={(e) => setNewOfferCode(e.target.value)}
+                        />
+                        <Select
+                          label="Promo Offer Type"
+                          data={['Category Discount', 'Flat Percentage', 'BOGO Free']}
+                          value={newOfferType}
+                          onChange={(val) => setNewOfferType(val || 'Category Discount')}
+                          required
+                        />
+                        <TextInput
+                          label="Target Product / Category"
+                          placeholder="e.g. Beverages or Tea"
+                          value={newOfferTarget}
+                          onChange={(e) => setNewOfferTarget(e.target.value)}
+                          required
+                        />
+                        <NumberInput
+                          label="Discount / Incentive Value (%)"
+                          min={1}
+                          max={100}
+                          value={newOfferValue}
+                          onChange={(val) => setNewOfferValue(Number(val) || 0)}
+                          required
+                        />
+                        <Button type="submit" color="pink" leftSection={<IconGift size={16} />} mt="xs" fullWidth>
+                          Activate Promo Offer
+                        </Button>
+                      </Stack>
+                    </form>
+                  </Paper>
+                </Box>
+
+                {/* Promo Codes ledger (Span 3) */}
+                <Box style={{ gridColumn: 'span 3' }}>
+                  <Paper withBorder p="md" radius="md">
+                    <Group justify="space-between" mb="md">
+                      <Title order={4}>Active Promo Campaigns Ledger</Title>
+                      <Badge color="pink" size="lg" variant="dot">Live Campaigns</Badge>
+                    </Group>
+
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Promo Code</Table.Th>
+                          <Table.Th>Type</Table.Th>
+                          <Table.Th>Target Category / SKU</Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>Incentive</Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {offers.map((offer) => (
+                          <Table.Tr key={offer.id}>
+                            <Table.Td>
+                              <Badge color="pink" variant="filled" size="md">{offer.code}</Badge>
+                            </Table.Td>
+                            <Table.Td>{offer.type}</Table.Td>
+                            <Table.Td fw={500}>{offer.target}</Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }} fw={700} c="green">{offer.value}% OFF</Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <ActionIcon color="red" variant="subtle" onClick={() => handleDeleteOffer(offer.id)}>
+                                <IconTrash size={16} />
+                              </ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                        {offers.length === 0 && (
+                          <Table.Tr>
+                            <Table.Td colSpan={5} style={{ textAlign: 'center' }}>
+                              <Text c="dimmed">No discount offer campaigns running.</Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </Paper>
+                </Box>
+              </SimpleGrid>
+            </Tabs.Panel>
+          </Tabs>
+
+          {/* =========================================================================
+              MODALS FOR BULK OPERATIONS & COMPANY CRUD
+              ========================================================================= */}
+          {/* 1. Discount Modal */}
+          <Modal opened={discountModalOpen} onClose={() => setDiscountModalOpen(false)} title="Apply Bulk Percentage Discount" size="sm" centered>
+            <Stack gap="md">
+              <Text size="sm">Enter the percentage discount to deduct from the retail price of <strong>{selectedProdIds.length}</strong> selected products.</Text>
+              <NumberInput
+                label="Discount (%)"
+                min={1}
+                max={99}
+                value={discountPercent}
+                onChange={(val) => setDiscountPercent(Number(val) || 0)}
+                required
+              />
+              <Group justify="flex-end">
+                <Button variant="subtle" color="gray" onClick={() => setDiscountModalOpen(false)}>Cancel</Button>
+                <Button color="blue" onClick={handleApplyDiscount}>Apply Discount</Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          {/* 2. Price Increase Modal */}
+          <Modal opened={increasePriceModalOpen} onClose={() => setIncreasePriceModalOpen(false)} title="Calibrate Price (Increase)" size="sm" centered>
+            <Stack gap="md">
+              <Text size="sm">Enter the percentage increase to append to the selling price of <strong>{selectedProdIds.length}</strong> selected products.</Text>
+              <NumberInput
+                label="Price Increase (%)"
+                min={1}
+                max={500}
+                value={increasePercent}
+                onChange={(val) => setIncreasePercent(Number(val) || 0)}
+                required
+              />
+              <Group justify="flex-end">
+                <Button variant="subtle" color="gray" onClick={() => setIncreasePriceModalOpen(false)}>Cancel</Button>
+                <Button color="teal" onClick={handleIncreasePrice}>Increase Prices</Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          {/* 3. Move Category Modal */}
+          <Modal opened={moveModalOpen} onClose={() => setMoveModalOpen(false)} title="Bulk Move Products" size="sm" centered>
+            <Stack gap="md">
+              <Text size="sm">Choose the target inventory category/department to relocate <strong>{selectedProdIds.length}</strong> products.</Text>
+              <Select
+                label="Target Category"
+                placeholder="Choose category..."
+                data={Array.from(new Set([...customCategories, ...products.map(p => p.category)])).filter(Boolean)}
+                value={targetCategory}
+                onChange={(val) => setTargetCategory(val || '')}
+                required
+              />
+              <Group justify="flex-end">
+                <Button variant="subtle" color="gray" onClick={() => setMoveModalOpen(false)}>Cancel</Button>
+                <Button color="orange" onClick={handleMoveProducts}>Relocate Products</Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          {/* 4. Manage Super Category Modal */}
+          <Modal opened={superCatModalOpen} onClose={() => setSuperCatModalOpen(false)} title="Manage Super Categories" size="md" centered>
+            <Stack gap="md">
+              <Text size="sm">Define new Super Categories (top-level divisions) for e-commerce and retail shelf navigation.</Text>
               <Group align="flex-end">
                 <TextInput
-                  label="New Category Name"
-                  placeholder="e.g. Household & Detergents"
-                  required
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
+                  label="Super Category Name"
+                  placeholder="e.g. Grocery"
+                  value={newSuperCatName}
+                  onChange={(e) => setNewSuperCatName(e.target.value)}
                   style={{ flex: 1 }}
                 />
-                <Button type="submit" leftSection={<IconTags size={16} />} color="blue">
-                  Create Category
-                </Button>
+                <Button color="grape" onClick={handleAddSuperCategory}>Add</Button>
               </Group>
-            </form>
-          </Paper>
 
-          <Paper withBorder radius="md" p="md">
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Category Name</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Active Products Count</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Total Units Stocked</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Total Estimated Assets (At Retail)</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {categoriesWithStats.map((cat, idx) => (
-                  <Table.Tr key={idx}>
-                    <Table.Td fw={600}>{cat.name}</Table.Td>
-                    <Table.Td style={{ textAlign: 'right' }}>{cat.count} SKUs</Table.Td>
-                    <Table.Td style={{ textAlign: 'right' }}>{cat.stock} Units</Table.Td>
-                    <Table.Td style={{ textAlign: 'right' }} c="teal" fw={600}>Rs. {cat.value.toLocaleString()}</Table.Td>
-                  </Table.Tr>
-                ))}
-                {categoriesWithStats.length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={4} style={{ textAlign: 'center' }}>
-                      <Text c="dimmed">No product categories registered.</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                )}
-              </Table.Tbody>
-            </Table>
-          </Paper>
+              <Divider label="Active Super Categories" labelPosition="center" />
+              <Table striped>
+                <Table.Tbody>
+                  {superCategories.map((sc, idx) => (
+                    <Table.Tr key={idx}>
+                      <Table.Td fw={600}>{sc}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <ActionIcon color="red" variant="subtle" onClick={() => {
+                          const updated = superCategories.filter(item => item !== sc);
+                          setSuperCategories(updated);
+                          localStorage.setItem('customSuperCategories', JSON.stringify(updated));
+                        }}>
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Stack>
+          </Modal>
+
+          {/* 5. Company Modal */}
+          <Modal opened={companyModalOpen} onClose={() => setCompanyModalOpen(false)} title={companyModalMode === 'add' ? 'Add New Manufacturer/Company' : 'Rename Manufacturer/Company'} size="sm" centered>
+            <Stack gap="md">
+              <TextInput
+                label="Company Name"
+                placeholder="e.g. Nestle Pakistan"
+                value={companyInputVal}
+                onChange={(e) => setCompanyInputVal(e.target.value)}
+                required
+              />
+              <Group justify="flex-end">
+                <Button variant="subtle" color="gray" onClick={() => setCompanyModalOpen(false)}>Cancel</Button>
+                <Button color="blue" onClick={companyModalMode === 'add' ? handleAddCompany : handleEditCompany}>Save</Button>
+              </Group>
+            </Stack>
+          </Modal>
         </Stack>
       )}
 
