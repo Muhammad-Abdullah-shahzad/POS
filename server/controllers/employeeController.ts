@@ -19,3 +19,31 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     res.status(400).json(errorResponse('Bad Request', error.message));
   }
 };
+
+export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    if (!employee) {
+      res.status(404).json(errorResponse('Not Found', 'Employee not found'));
+      return;
+    }
+    res.json(successResponse(employee, 'Employee updated successfully'));
+  } catch (error: any) {
+    res.status(400).json(errorResponse('Bad Request', error.message));
+  }
+};
+
+export const deleteEmployee = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findByIdAndDelete(id);
+    if (!employee) {
+      res.status(404).json(errorResponse('Not Found', 'Employee not found'));
+      return;
+    }
+    res.json(successResponse(null, 'Employee deleted successfully'));
+  } catch (error: any) {
+    res.status(500).json(errorResponse('Server Error', error.message));
+  }
+};
