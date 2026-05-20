@@ -260,218 +260,225 @@ const Dashboard = () => {
               </Paper>
           </Grid.Col>
 
-          {/* MIDDLE COLUMN */}
-          <Grid.Col span={4}>
-            <Flex align="center" gap="xs" mb="xs">
-              <Text size="sm">Employee</Text>
-              <Select data={['admin']} defaultValue="admin" size="xs" flex={1} styles={{ input: { borderRadius: 0 } }} />
-              <Button style={btnStyle} size="xs" px="lg">LOCK</Button>
-            </Flex>
-            
-            <Paper withBorder p={0} style={{ border: `2px solid ${customColors.headerBg}`, borderRadius: 0 }} bg={customColors.bg}>
-               <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={2}>
-                  <Text size="11px" c="white">Customer  -   Number - </Text>
-                  <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5} onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }}>Clear</Button>
-               </Flex>
-               
-               <Box p="xs">
-                   <fieldset style={{ border: `1px solid ${customColors.border}`, margin: 0, padding: '5px', position: 'relative' }}>
-                      <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Search</legend>
-                      <Flex gap="xs" mb={5} align="center">
-                         <Button style={btnStyle} size="xs" w={70} h={24}><Text size="11px">Barcode</Text></Button>
-                         <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                         <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">ENTER</Text></Button>
-                      </Flex>
-                      <Flex gap="xs" align="center">
-                         <Text size="11px" w={70}>Product</Text>
-                         <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                         <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">BACK</Text></Button>
-                      </Flex>
-                   </fieldset>
-
-                   <fieldset style={{ border: `1px solid ${customColors.border}`, margin: '5px 0 0 0', padding: '5px', position: 'relative' }}>
-                      <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Details</legend>
-                      <Flex gap="xs" align="flex-start" mb={5}>
-                         <Text size="12px" w={55} mt={5}>Product</Text>
-                         <TextInput size="md" flex={1} value={stagingItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
-                      </Flex>
-                      <Flex gap="xs" align="center" mb={5}>
-                         <Text size="12px" w={55}>Barcode</Text>
-                         <TextInput size="xs" flex={1} value={stagingItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                      </Flex>
-                      <Flex gap="xs" align="center" mb={5}>
-                         <Text size="12px" w={55}>Weight</Text>
-                         <Box flex={1}></Box>
-                         <Text size="12px">Quantity</Text>
-                         <TextInput size="xs" w={60} value={stagingItem.qty} onChange={(e) => {
-                           const val = e.target.value;
-                           if (val === '') setStagingItem(p => ({ ...p, qty: '' }));
-                           else {
-                             const pVal = parseInt(val);
-                             if (!isNaN(pVal)) setStagingItem(p => ({ ...p, qty: pVal }));
-                           }
-                         }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                      </Flex>
-                      <Flex gap="xs" align="center" mb={10}>
-                         <Select data={['1pc']} defaultValue="1pc" size="xs" w={80} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                         <Box flex={1} />
-                         <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(1)}>+</Button>
-                         <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(-1)}>-</Button>
-                      </Flex>
-                      <Flex gap="xs" align="center" mb={5}>
-                         <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={typeof stagingItem.price === 'number' ? stagingItem.price.toFixed(2) : stagingItem.price} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
-                         <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{((Number(stagingItem.qty) || 0) * (Number(stagingItem.price) || 0)).toFixed(2)}</Text></Box>
-                      </Flex>
-
-                      <Flex gap={5} mt="sm">
-                         <Button onClick={handleAddItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
-                         <Button onClick={handleUpdateItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
-                         <Button onClick={handleRemoveItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
-                         <Button onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
-                      </Flex>
-                   </fieldset>
-               </Box>
-            </Paper>
-            
-            <Paper mt="xs" p={0} style={{ border: `1px solid ${customColors.border}`, borderRadius: 0 }} bg={customColors.bg}>
-               <Flex h={85}>
-                 {/* CASH PAY BUTTON */}
-                 <Box w="20%" style={{ borderRight: `1px solid ${customColors.border}` }} p={2}>
-                    <Box 
-                      onClick={() => handleCheckout('CASH')}
-                      style={{ 
-                        width: '100%', height: '100%', 
-                        backgroundImage: 'url("https://images.unsplash.com/photo-1580519542036-ed47f3e42214?auto=format&fit=crop&q=80&w=200")', 
-                        backgroundSize: 'cover', backgroundPosition: 'center',
-                        position: 'relative', cursor: 'pointer',
-                        border: '1px solid #ccc'
-                      }}
-                    >
-                      <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text fw="bold" ta="center" size="sm" style={{ lineHeight: 1.1, color: 'black' }}>CASH<br/>PAY</Text>
-                      </Box>
-                    </Box>
-                 </Box>
-
-                 {/* TOTALS */}
-                 <Box w="35%" style={{ borderRight: `1px solid ${customColors.border}` }}>
-                    <Flex style={{borderBottom: `1px solid ${customColors.border}`}} h="33.33%">
-                      <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="11px" p={4}>Sub Total</Text></Box>
-                      <Box flex={1} ta="right" bg={customColors.panelBg}><Text size="11px" p={4}>{subTotal.toFixed(2)}</Text></Box>
+          {/* RIGHT PANEL (Middle + Right Columns combined) */}
+          <Grid.Col span={8.5}>
+            <Flex direction="column" h="100%">
+               <Grid style={{ flexGrow: 1 }}>
+                  {/* MIDDLE COLUMN CONTENT */}
+                  <Grid.Col span={5.5}>
+                    <Flex align="center" gap="xs" mb="xs">
+                      <Text size="sm">Employee</Text>
+                      <Select data={['admin']} defaultValue="admin" size="xs" flex={1} styles={{ input: { borderRadius: 0 } }} />
+                      <Button style={btnStyle} size="xs" px="lg">LOCK</Button>
                     </Flex>
-                    <Flex style={{borderBottom: `1px solid ${customColors.border}`}} h="33.33%">
-                      <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="11px" p={4}>Deposit</Text></Box>
-                      <Box flex={1} ta="right" bg={customColors.panelBg}><Text size="11px" p={4}>{deposit.toFixed(2)}</Text></Box>
-                    </Flex>
-                    <Flex h="33.33%">
-                      <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="12px" fw="bold" p={4}>TOTAL</Text></Box>
-                      <Box flex={1} ta="right" bg={customColors.panelBg}><Text size="12px" fw="bold" p={4}>{total.toFixed(2)}</Text></Box>
-                    </Flex>
-                 </Box>
+                    
+                    <Paper withBorder p={0} style={{ border: `2px solid ${customColors.headerBg}`, borderRadius: 0 }} bg={customColors.bg}>
+                       <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={2}>
+                          <Text size="11px" c="white">Customer  -   Number - </Text>
+                          <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5} onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }}>Clear</Button>
+                       </Flex>
+                       
+                       <Box p="xs">
+                           <fieldset style={{ border: `1px solid ${customColors.border}`, margin: 0, padding: '5px', position: 'relative' }}>
+                              <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Search</legend>
+                              <Flex gap="xs" mb={5} align="center">
+                                 <Button style={btnStyle} size="xs" w={70} h={24}><Text size="11px">Barcode</Text></Button>
+                                 <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                                 <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">ENTER</Text></Button>
+                              </Flex>
+                              <Flex gap="xs" align="center">
+                                 <Text size="11px" w={70}>Product</Text>
+                                 <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                                 <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">BACK</Text></Button>
+                              </Flex>
+                           </fieldset>
 
-                 {/* INPUTS */}
-                 <Box w="25%" style={{ borderRight: `1px solid ${customColors.border}` }} p={5}>
-                    <Flex align="center" mb={5} h="45%">
-                      <Text size="10px" w={35}>CASH</Text>
-                      <TextInput size="xs" flex={1} defaultValue="0.00" styles={{ input: { borderRadius: 0, textAlign: 'right', height: '100%', minHeight: 24, padding: '0 4px', fontSize: '14px', border: `1px solid ${customColors.border}` } }} />
-                    </Flex>
-                    <Flex align="center" h="45%">
-                      <Text size="10px" w={35}>CARD</Text>
-                      <TextInput size="xs" flex={1} defaultValue="0.00" styles={{ input: { borderRadius: 0, textAlign: 'right', height: '100%', minHeight: 24, padding: '0 4px', fontSize: '14px', border: `1px solid ${customColors.border}` } }} />
-                    </Flex>
-                 </Box>
+                           <fieldset style={{ border: `1px solid ${customColors.border}`, margin: '5px 0 0 0', padding: '5px', position: 'relative' }}>
+                              <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Details</legend>
+                              <Flex gap="xs" align="flex-start" mb={5}>
+                                 <Text size="12px" w={55} mt={5}>Product</Text>
+                                 <TextInput size="md" flex={1} value={stagingItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
+                              </Flex>
+                              <Flex gap="xs" align="center" mb={5}>
+                                 <Text size="12px" w={55}>Barcode</Text>
+                                 <TextInput size="xs" flex={1} value={stagingItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                              </Flex>
+                              <Flex gap="xs" align="center" mb={5}>
+                                 <Text size="12px" w={55}>Weight</Text>
+                                 <Box flex={1}></Box>
+                                 <Text size="12px">Quantity</Text>
+                                 <TextInput size="xs" w={60} value={stagingItem.qty} onChange={(e) => {
+                                   const val = e.target.value;
+                                   if (val === '') setStagingItem(p => ({ ...p, qty: '' }));
+                                   else {
+                                     const pVal = parseInt(val);
+                                     if (!isNaN(pVal)) setStagingItem(p => ({ ...p, qty: pVal }));
+                                   }
+                                 }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                              </Flex>
+                              <Flex gap="xs" align="center" mb={10}>
+                                 <Select data={['1pc']} defaultValue="1pc" size="xs" w={80} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                                 <Box flex={1} />
+                                 <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(1)}>+</Button>
+                                 <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(-1)}>-</Button>
+                              </Flex>
+                              <Flex gap="xs" align="center" mb={5}>
+                                 <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={typeof stagingItem.price === 'number' ? stagingItem.price.toFixed(2) : stagingItem.price} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
+                                 <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{((Number(stagingItem.qty) || 0) * (Number(stagingItem.price) || 0)).toFixed(2)}</Text></Box>
+                              </Flex>
 
-                 {/* CARD PAY BUTTON */}
-                 <Box w="20%" p={2}>
-                    <Box 
-                      onClick={() => handleCheckout('CARD')}
-                      style={{ 
-                        width: '100%', height: '100%', 
-                        backgroundImage: 'url("https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=200")', 
-                        backgroundSize: 'cover', backgroundPosition: 'center',
-                        position: 'relative', cursor: 'pointer',
-                        border: '1px solid #ccc'
-                      }}
-                    >
-                      <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text fw="bold" ta="center" size="sm" style={{ lineHeight: 1.1, color: 'black' }}>CARD<br/>PAY</Text>
-                      </Box>
-                    </Box>
-                 </Box>
-               </Flex>
-            </Paper>
-          </Grid.Col>
+                              <Flex gap={5} mt="sm">
+                                 <Button onClick={handleAddItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
+                                 <Button onClick={handleUpdateItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
+                                 <Button onClick={handleRemoveItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
+                                 <Button onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
+                              </Flex>
+                           </fieldset>
+                       </Box>
+                    </Paper>
+                  </Grid.Col>
 
-          {/* RIGHT COLUMN */}
-          <Grid.Col span={4.5}>
-             <Grid mb="sm">
-                {[
-                  {name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('OPEN ITEM', 'open1234')}, 
-                  {name: 'HOUSE HOLD', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('HOUSE HOLD', 'hh1234')}, 
-                  {name: 'SWEETS', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('SWEETS', 'sw1234')}, 
-                  {name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234')}, 
-                  {name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234')}, 
-                  {name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234')}, 
-                  {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn}, 
-                  {name: 'LAMB BEEF', color: customColors.orangeBtn}, 
-                  {name: 'CHICKEN', color: customColors.orangeBtn}, 
-                  {name: 'FRUITS', color: customColors.orangeBtn}, 
-                  {name: 'VEG', color: customColors.orangeBtn}, 
-                  {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn}
-                ].map(cat => (
-                   <Grid.Col span={4} key={cat.name}>
-                      <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '40px' }}>
-                         <Text size="10px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1.1}}>{cat.name}</Text>
-                      </Button>
-                   </Grid.Col>
-                ))}
-             </Grid>
+                  {/* RIGHT COLUMN CONTENT */}
+                  <Grid.Col span={6.5}>
+                     <Grid mb="sm">
+                        {[
+                          {name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('OPEN ITEM', 'open1234')}, 
+                          {name: 'HOUSE HOLD', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('HOUSE HOLD', 'hh1234')}, 
+                          {name: 'SWEETS', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('SWEETS', 'sw1234')}, 
+                          {name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234')}, 
+                          {name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234')}, 
+                          {name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234')}, 
+                          {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn}, 
+                          {name: 'LAMB BEEF', color: customColors.orangeBtn}, 
+                          {name: 'CHICKEN', color: customColors.orangeBtn}, 
+                          {name: 'FRUITS', color: customColors.orangeBtn}, 
+                          {name: 'VEG', color: customColors.orangeBtn}, 
+                          {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn}
+                        ].map(cat => (
+                           <Grid.Col span={4} key={cat.name}>
+                              <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '40px' }}>
+                                 <Text size="10px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1.1}}>{cat.name}</Text>
+                              </Button>
+                           </Grid.Col>
+                        ))}
+                     </Grid>
 
-             <Grid>
-                <Grid.Col span={8}>
-                   <Grid>
-                      {[1,2,3,4,5,6,7,8,9,0,'00','X'].map(num => (
-                         <Grid.Col span={4} key={num}>
-                            <Button fullWidth style={{...btnStyle, height: '45px'}}><Text size="xl" fw="normal">{num}</Text></Button>
-                         </Grid.Col>
-                      ))}
-                      <Grid.Col span={6}>
-                         <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="11px">Clear All</Text></Button>
-                      </Grid.Col>
-                      <Grid.Col span={3}>
-                         <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="11px">C</Text></Button>
-                      </Grid.Col>
-                      <Grid.Col span={3} p={0}>
-                         <Box style={{ border: `1px solid ${customColors.border}`, height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
-                            <Checkbox label={<Text size="9px" style={{lineHeight:1, whiteSpace: 'nowrap'}}>ENABLE<br/>PRINTING</Text>} size="xs" defaultChecked />
+                     <Grid>
+                        {[1,2,3,4,5,6,7,8,9,0,'00','X'].map(num => (
+                           <Grid.Col span={4} key={num}>
+                              <Button fullWidth style={{...btnStyle, height: '45px'}}><Text size="xl" fw="normal">{num}</Text></Button>
+                           </Grid.Col>
+                        ))}
+                        <Grid.Col span={6}>
+                           <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="11px">Clear All</Text></Button>
+                        </Grid.Col>
+                        <Grid.Col span={3}>
+                           <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="11px">C</Text></Button>
+                        </Grid.Col>
+                        <Grid.Col span={3} p={0}>
+                           <Box style={{ border: `1px solid ${customColors.border}`, height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
+                              <Checkbox label={<Text size="9px" style={{lineHeight:1, whiteSpace: 'nowrap'}}>ENABLE<br/>PRINTING</Text>} size="xs" defaultChecked />
+                           </Box>
+                        </Grid.Col>
+                     </Grid>
+                  </Grid.Col>
+               </Grid>
+
+               {/* BOTTOM PAYMENT SECTION */}
+               <Flex gap={8} mt="xs">
+                  <Box flex={1}>
+                     <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
+                       <Flex h={85}>
+                         {/* CASH PAY BUTTON */}
+                         <Box w="18%" style={{ borderRight: `1px solid ${customColors.border}`, position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
+                           <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1621451537084-482c73073e0f?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.7 }} />
+                           <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
+                             <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br/>PAY</Text>
+                           </Flex>
                          </Box>
-                      </Grid.Col>
-                   </Grid>
-                </Grid.Col>
-                <Grid.Col span={4}>
-                   <Flex direction="column" gap={4} h="100%">
-                      <Button style={btnStyle} flex={1}><Text size="xl" fw="normal">+</Text></Button>
-                      <Button style={btnStyle} flex={1} px={2}><Text size="10px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>EDIT DETAILS</Text></Button>
-                      <Button style={btnStyle} flex={1} px={2}><Text size="10px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>EDIT PRICE</Text></Button>
-                   </Flex>
-                </Grid.Col>
-             </Grid>
 
-             <Flex gap={4} mt="sm">
-                {[2,5,10,20,50].map(val => (
-                   <Button key={val} flex={1} style={{ backgroundColor: val <= 5 ? '#5d736b' : (val <= 10 ? '#db878a' : (val <= 20 ? '#82b9ce' : '#dfcca2')), color: '#000', border: '2px solid white', borderRadius: '2px', height: '35px' }}>
-                      <Text fw="bold">{val}</Text>
-                   </Button>
-                ))}
-             </Flex>
+                         {/* TOTALS GRID */}
+                         <Box w="38%" style={{ borderRight: `1px solid ${customColors.border}` }}>
+                           <Grid gutter={0} style={{ height: '100%' }}>
+                             <Grid.Col span={5} style={{ borderBottom: `1px solid ${customColors.border}`, borderRight: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
+                               <Text size="12px" c="black">Sub Total</Text>
+                             </Grid.Col>
+                             <Grid.Col span={7} style={{ borderBottom: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
+                               <Text size="13px" c="black" ta="right">{subTotal.toFixed(2)}</Text>
+                             </Grid.Col>
+                             
+                             <Grid.Col span={5} style={{ borderBottom: `1px solid ${customColors.border}`, borderRight: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
+                               <Text size="12px" c="black">Deposit</Text>
+                             </Grid.Col>
+                             <Grid.Col span={7} style={{ borderBottom: `1px solid ${customColors.border}`, padding: '2px 4px', backgroundColor: '#e2e2e2' }}>
+                               <Text size="13px" c="black" ta="right">{deposit.toFixed(2)}</Text>
+                             </Grid.Col>
+                             
+                             <Grid.Col span={5} style={{ borderRight: `1px solid ${customColors.border}`, padding: '2px 4px' }}>
+                               <Text size="14px" c="black" mt={2}>TOTAL</Text>
+                             </Grid.Col>
+                             <Grid.Col span={7} style={{ padding: '2px 4px' }}>
+                               <Text size="15px" c="black" ta="right" mt={2}>{total.toFixed(2)}</Text>
+                             </Grid.Col>
+                           </Grid>
+                         </Box>
 
-             <Flex gap={4} mt="xs">
-                {['PAY DUES', 'SHOW ALL OFFERS', 'OPEN TILL', 'PAYBILL', 'OPTIONS', 'CLOSE (Ctrl + X)'].map((opt, i) => (
-                   <Button onClick={opt === 'PAYBILL' ? () => handleCheckout('MIXED') : undefined} key={opt} flex={i === 5 ? 1.2 : 1} style={{ backgroundColor: i === 5 ? '#c96263' : customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '40px' }}>
-                      <Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1}}>{opt}</Text>
-                   </Button>
-                ))}
-             </Flex>
+                         {/* INPUTS */}
+                         <Box w="26%" style={{ borderRight: `1px solid ${customColors.border}` }} p="4px 6px">
+                           <Flex align="center" justify="space-between" mb="6px">
+                             <Text size="11px" c="black">CASH</Text>
+                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 32, minHeight: 32, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
+                           </Flex>
+                           <Flex align="center" justify="space-between">
+                             <Text size="11px" c="black">CARD</Text>
+                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 32, minHeight: 32, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
+                           </Flex>
+                         </Box>
+
+                         {/* CARD PAY BUTTON */}
+                         <Box w="18%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
+                           <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
+                           <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
+                             <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br/>PAY</Text>
+                           </Flex>
+                         </Box>
+                       </Flex>
+                     </Box>
+
+                     <Flex gap={4} mt="xs">
+                        {[
+                          { label: '2', bg: '#7a8954' },
+                          { label: '5', bg: '#687a71' },
+                          { label: '10', bg: '#cc7b7b' },
+                          { label: '20', bg: '#7ba2b8' },
+                          { label: '50', bg: '#dcb882' }
+                        ].map((btn) => (
+                           <Button key={btn.label} flex={1} style={{ backgroundColor: btn.bg, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}>
+                              <Text size="18px" fw="bold" c="black">{btn.label}</Text>
+                           </Button>
+                        ))}
+                     </Flex>
+
+                     <Flex gap={4} mt="4px">
+                        {['PAY DUES', 'SHOW ALL OFFERS', 'OPEN TILL', 'PAYBILL', 'OPTIONS'].map((opt) => (
+                           <Button onClick={opt === 'PAYBILL' ? () => handleCheckout('MIXED') : undefined} key={opt} flex={1} style={{ backgroundColor: customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}>
+                              <Text size="11px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1}}>{opt}</Text>
+                           </Button>
+                        ))}
+                     </Flex>
+                  </Box>
+                  
+                  {/* EDIT BUTTONS BLOCK */}
+                  <Box w="15%">
+                     <Flex direction="column" gap={4} h="100%">
+                        <Button style={btnStyle} flex={1.5}><Text size="xl" fw="normal">+</Text></Button>
+                        <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>EDIT DETAILS</Text></Button>
+                        <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>EDIT PRICE</Text></Button>
+                        <Button style={{...btnStyle, backgroundColor: '#c96263'}} flex={1} px={2}><Text size="12px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>CLOSE<br/>(Ctrl + X)</Text></Button>
+                     </Flex>
+                  </Box>
+               </Flex>
+            </Flex>
           </Grid.Col>
         </Grid>
       </Box>
