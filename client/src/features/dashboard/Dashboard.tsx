@@ -32,7 +32,7 @@ interface CustomerCart {
 
 const Dashboard = () => {
   const [carts, setCarts] = useState<CustomerCart[]>([
-    { id: 'customer1', name: 'CUSTOMER 1', items: [{ id: '1', name: 'book', barcode: 'book123', qty: 1, price: 1000.00 }], selectedItemId: '1' },
+    { id: 'customer1', name: 'CUSTOMER 1', items: [], selectedItemId: '' },
     { id: 'customer2', name: 'CUSTOMER 2', items: [], selectedItemId: '' },
     { id: 'customer3', name: 'CUSTOMER 3', items: [], selectedItemId: '' }
   ]);
@@ -40,6 +40,8 @@ const Dashboard = () => {
 
   const [transactionNo, setTransactionNo] = useState<number>(1);
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
+
+  const [stagingItem, setStagingItem] = useState<{ id?: string; name: string; barcode: string; qty: number | string; price: number | string }>({ name: '', barcode: '', qty: '', price: '' });
 
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -71,40 +73,55 @@ const Dashboard = () => {
     }));
   };
 
-  const selectedItem = cartItems.find(item => item.id === selectedItemId) || { name: '', barcode: '', qty: 1, price: 0 };
-
   const handleCategoryItem = (categoryName: string, defaultBarcode: string) => {
-    const newItem = {
-      id: Date.now().toString(),
+    updateSelectedItemId('');
+    setStagingItem({
       name: categoryName,
       barcode: defaultBarcode,
       qty: 1,
       price: 1.00
+    });
+  };
+
+  const handleAddItem = () => {
+    if (!stagingItem.name) return;
+    const newItem = {
+      id: Date.now().toString(),
+      name: stagingItem.name,
+      barcode: stagingItem.barcode,
+      qty: Number(stagingItem.qty) || 1,
+      price: Number(stagingItem.price) || 0
     };
     updateCartItems(prev => [...prev, newItem]);
-    updateSelectedItemId(newItem.id);
+    updateSelectedItemId('');
+    setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+  };
+
+  const handleUpdateItem = () => {
+    if (!stagingItem.id) return;
+    updateCartItems(prev => prev.map(item => 
+      item.id === stagingItem.id ? { ...item, name: stagingItem.name, barcode: stagingItem.barcode, qty: Number(stagingItem.qty) || 1, price: Number(stagingItem.price) || 0 } : item
+    ));
+  };
+
+  const handleRemoveItem = () => {
+    if (!stagingItem.id) return;
+    updateCartItems(prev => prev.filter(item => item.id !== stagingItem.id));
+    updateSelectedItemId('');
+    setStagingItem({ name: '', barcode: '', qty: '', price: '' });
   };
 
   const handleQuantityChange = (delta: number) => {
-    if (!selectedItemId) return;
-    updateCartItems(prev => prev.map(item => {
-      if (item.id === selectedItemId) {
-        const newQty = Math.max(1, item.qty + delta);
-        return { ...item, qty: newQty };
-      }
-      return item;
-    }));
+    setStagingItem(prev => ({ ...prev, qty: Math.max(1, (Number(prev.qty) || 0) + delta) }));
   };
 
   const handlePriceChange = (val: string) => {
-    if (!selectedItemId) return;
+    if (val === '') {
+      setStagingItem(prev => ({ ...prev, price: '' }));
+      return;
+    }
     const parsedPrice = parseFloat(val);
-    updateCartItems(prev => prev.map(item => {
-      if (item.id === selectedItemId) {
-        return { ...item, price: isNaN(parsedPrice) ? 0 : parsedPrice };
-      }
-      return item;
-    }));
+    setStagingItem(prev => ({ ...prev, price: isNaN(parsedPrice) ? '' : parsedPrice }));
   };
 
   const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
@@ -126,6 +143,7 @@ const Dashboard = () => {
     setTransactionNo(prev => prev + 1);
     updateCartItems([]);
     updateSelectedItemId('');
+    setStagingItem({ name: '', barcode: '', qty: '', price: '' });
   };
 
   const handleRePrint = () => {
@@ -141,6 +159,7 @@ const Dashboard = () => {
     const newId = `customer${nextNum}`;
     setCarts(prev => [...prev, { id: newId, name: `CUSTOMER ${nextNum}`, items: [], selectedItemId: '' }]);
     setActiveCartId(newId);
+    setStagingItem({ name: '', barcode: '', qty: '', price: '' });
   };
 
   const customColors = {
@@ -170,7 +189,19 @@ const Dashboard = () => {
         <Grid>
           {/* LEFT COLUMN */}
           <Grid.Col span={3.5}>
-              <Tabs value={activeCartId} onChange={(val) => val && setActiveCartId(val)} variant="outline" bg="white" styles={{ tab: { padding: '4px 8px', fontSize: '12px', borderBottom: 'none' } }}>
+              <Tabs value={activeCartId} onChange={(val) => {
+                if (val) {
+                  setActiveCartId(val);
+                  const cart = carts.find(c => c.id === val);
+                  if (cart && cart.selectedItemId) {
+                    const item = cart.items.find(i => i.id === cart.selectedItemId);
+                    if (item) setStagingItem({ id: item.id, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price });
+                    else setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+                  } else {
+                    setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+                  }
+                }
+              }} variant="outline" bg="white" styles={{ tab: { padding: '4px 8px', fontSize: '12px', borderBottom: 'none' } }}>
                 <Tabs.List style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
                   {carts.map(cart => (
                     <Tabs.Tab key={cart.id} value={cart.id} bg={activeCartId === cart.id ? "white" : "gray.2"}>
@@ -197,7 +228,10 @@ const Dashboard = () => {
                       <Table.Tr 
                         key={item.id} 
                         bg={selectedItemId === item.id ? customColors.selectedRow : undefined}
-                        onClick={() => updateSelectedItemId(item.id)}
+                        onClick={() => {
+                          updateSelectedItemId(item.id);
+                          setStagingItem({ id: item.id, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price });
+                        }}
                         style={{ cursor: 'pointer' }}
                       >
                         <Table.Td style={{fontSize:'12px', padding:'4px 8px'}} fw={selectedItemId === item.id ? "bold" : "normal"}>{item.name}</Table.Td>
@@ -237,7 +271,7 @@ const Dashboard = () => {
             <Paper withBorder p={0} style={{ border: `2px solid ${customColors.headerBg}`, borderRadius: 0 }} bg={customColors.bg}>
                <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={2}>
                   <Text size="11px" c="white">Customer  -   Number - </Text>
-                  <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5}>Clear</Button>
+                  <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5} onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }}>Clear</Button>
                </Flex>
                
                <Box p="xs">
@@ -259,20 +293,22 @@ const Dashboard = () => {
                       <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Details</legend>
                       <Flex gap="xs" align="flex-start" mb={5}>
                          <Text size="12px" w={55} mt={5}>Product</Text>
-                         <TextInput size="md" flex={1} value={selectedItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
+                         <TextInput size="md" flex={1} value={stagingItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
                       </Flex>
                       <Flex gap="xs" align="center" mb={5}>
                          <Text size="12px" w={55}>Barcode</Text>
-                         <TextInput size="xs" flex={1} value={selectedItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                         <TextInput size="xs" flex={1} value={stagingItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
                       </Flex>
                       <Flex gap="xs" align="center" mb={5}>
                          <Text size="12px" w={55}>Weight</Text>
                          <Box flex={1}></Box>
                          <Text size="12px">Quantity</Text>
-                         <TextInput size="xs" w={60} value={selectedItem.qty} onChange={(e) => {
-                           const val = parseInt(e.target.value);
-                           if (!isNaN(val)) {
-                              handleQuantityChange(val - selectedItem.qty);
+                         <TextInput size="xs" w={60} value={stagingItem.qty} onChange={(e) => {
+                           const val = e.target.value;
+                           if (val === '') setStagingItem(p => ({ ...p, qty: '' }));
+                           else {
+                             const pVal = parseInt(val);
+                             if (!isNaN(pVal)) setStagingItem(p => ({ ...p, qty: pVal }));
                            }
                          }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
                       </Flex>
@@ -283,15 +319,15 @@ const Dashboard = () => {
                          <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(-1)}>-</Button>
                       </Flex>
                       <Flex gap="xs" align="center" mb={5}>
-                         <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={selectedItem.price.toFixed(2)} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
-                         <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{(selectedItem.qty * selectedItem.price).toFixed(2)}</Text></Box>
+                         <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={typeof stagingItem.price === 'number' ? stagingItem.price.toFixed(2) : stagingItem.price} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
+                         <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{((Number(stagingItem.qty) || 0) * (Number(stagingItem.price) || 0)).toFixed(2)}</Text></Box>
                       </Flex>
 
                       <Flex gap={5} mt="sm">
-                         <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
-                         <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
-                         <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
-                         <Button style={btnStyle} size="xs" flex={1} h={30} px={0} onClick={() => { updateCartItems([]); updateSelectedItemId(''); }}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
+                         <Button onClick={handleAddItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
+                         <Button onClick={handleUpdateItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
+                         <Button onClick={handleRemoveItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
+                         <Button onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
                       </Flex>
                    </fieldset>
                </Box>
@@ -431,7 +467,7 @@ const Dashboard = () => {
 
              <Flex gap={4} mt="xs">
                 {['PAY DUES', 'SHOW ALL OFFERS', 'OPEN TILL', 'PAYBILL', 'OPTIONS', 'CLOSE (Ctrl + X)'].map((opt, i) => (
-                   <Button onClick={opt === 'PAYBILL' ? handleCheckout : undefined} key={opt} flex={i === 5 ? 1.2 : 1} style={{ backgroundColor: i === 5 ? '#c96263' : customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '40px' }}>
+                   <Button onClick={opt === 'PAYBILL' ? () => handleCheckout('MIXED') : undefined} key={opt} flex={i === 5 ? 1.2 : 1} style={{ backgroundColor: i === 5 ? '#c96263' : customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '40px' }}>
                       <Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1}}>{opt}</Text>
                    </Button>
                 ))}
