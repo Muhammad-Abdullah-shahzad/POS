@@ -2,8 +2,61 @@ import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button, 
   Box, Checkbox 
 } from '@mantine/core';
+import { useState } from 'react';
+
+interface CartItem {
+  id: string;
+  name: string;
+  barcode: string;
+  qty: number;
+  price: number;
+}
 
 const Dashboard = () => {
+  const [cartItems, setCartItems] = useState<CartItem[]>([
+    { id: '1', name: 'book', barcode: 'book123', qty: 1, price: 1000.00 }
+  ]);
+  const [selectedItemId, setSelectedItemId] = useState<string>('1');
+
+  const selectedItem = cartItems.find(item => item.id === selectedItemId) || { name: '', barcode: '', qty: 1, price: 0 };
+
+  const handleOpenItem = () => {
+    const newItem = {
+      id: Date.now().toString(),
+      name: 'OPEN ITEM',
+      barcode: 'open1234',
+      qty: 1,
+      price: 1.00
+    };
+    setCartItems(prev => [...prev, newItem]);
+    setSelectedItemId(newItem.id);
+  };
+
+  const handleQuantityChange = (delta: number) => {
+    if (!selectedItemId) return;
+    setCartItems(prev => prev.map(item => {
+      if (item.id === selectedItemId) {
+        const newQty = Math.max(1, item.qty + delta);
+        return { ...item, qty: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const handlePriceChange = (val: string) => {
+    if (!selectedItemId) return;
+    const parsedPrice = parseFloat(val);
+    setCartItems(prev => prev.map(item => {
+      if (item.id === selectedItemId) {
+        return { ...item, price: isNaN(parsedPrice) ? 0 : parsedPrice };
+      }
+      return item;
+    }));
+  };
+
+  const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
+  const deposit = 0.00;
+  const total = subTotal - deposit;
 
   const customColors = {
     bg: '#d2dadb',
@@ -39,7 +92,7 @@ const Dashboard = () => {
               </Tabs.List>
             </Tabs>
             
-            <Paper withBorder mt={0} h={520} bg="white" style={{ borderTop: 0, borderRadius: 0, border: `2px solid ${customColors.border}` }}>
+            <Paper withBorder mt={0} h={520} bg="white" style={{ borderTop: 0, borderRadius: 0, border: `2px solid ${customColors.border}`, overflowY: 'auto' }}>
               <Table stickyHeader>
                 <Table.Thead bg={customColors.tableHeaderRow}>
                   <Table.Tr>
@@ -49,11 +102,18 @@ const Dashboard = () => {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  <Table.Tr bg={customColors.selectedRow}>
-                    <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>book</Table.Td>
-                    <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>1 X 1</Table.Td>
-                    <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>1000.00</Table.Td>
-                  </Table.Tr>
+                  {cartItems.map((item) => (
+                    <Table.Tr 
+                      key={item.id} 
+                      bg={selectedItemId === item.id ? customColors.selectedRow : undefined}
+                      onClick={() => setSelectedItemId(item.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <Table.Td style={{fontSize:'12px', padding:'4px 8px'}} fw={selectedItemId === item.id ? "bold" : "normal"}>{item.name}</Table.Td>
+                      <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>{item.qty} X 1</Table.Td>
+                      <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>{(item.qty * item.price).toFixed(2)}</Table.Td>
+                    </Table.Tr>
+                  ))}
                 </Table.Tbody>
               </Table>
             </Paper>
@@ -108,34 +168,39 @@ const Dashboard = () => {
                     <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Details</legend>
                     <Flex gap="xs" align="flex-start" mb={5}>
                        <Text size="12px" w={55} mt={5}>Product</Text>
-                       <TextInput size="md" flex={1} value="OPEN ITEM" readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
+                       <TextInput size="md" flex={1} value={selectedItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
                     </Flex>
                     <Flex gap="xs" align="center" mb={5}>
                        <Text size="12px" w={55}>Barcode</Text>
-                       <TextInput size="xs" flex={1} value="open1234" readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                       <TextInput size="xs" flex={1} value={selectedItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
                     </Flex>
                     <Flex gap="xs" align="center" mb={5}>
                        <Text size="12px" w={55}>Weight</Text>
                        <Box flex={1}></Box>
                        <Text size="12px">Quantity</Text>
-                       <TextInput size="xs" w={60} defaultValue="1" styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                       <TextInput size="xs" w={60} value={selectedItem.qty} onChange={(e) => {
+                         const val = parseInt(e.target.value);
+                         if (!isNaN(val)) {
+                            handleQuantityChange(val - selectedItem.qty);
+                         }
+                       }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
                     </Flex>
                     <Flex gap="xs" align="center" mb={10}>
                        <Select data={['1pc']} defaultValue="1pc" size="xs" w={80} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
                        <Box flex={1} />
-                       <Button style={btnStyle} size="xs" w={40} h={24}>+</Button>
-                       <Button style={btnStyle} size="xs" w={40} h={24}>-</Button>
+                       <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(1)}>+</Button>
+                       <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(-1)}>-</Button>
                     </Flex>
                     <Flex gap="xs" align="center" mb={5}>
-                       <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" defaultValue="1.00" styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
-                       <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">1.00</Text></Box>
+                       <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={selectedItem.price.toFixed(2)} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
+                       <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{(selectedItem.qty * selectedItem.price).toFixed(2)}</Text></Box>
                     </Flex>
 
                     <Flex gap={5} mt="sm">
                        <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
                        <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
                        <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
-                       <Button style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
+                       <Button style={btnStyle} size="xs" flex={1} h={30} px={0} onClick={() => { setCartItems([]); setSelectedItemId(''); }}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
                     </Flex>
                  </fieldset>
              </Box>
@@ -152,15 +217,15 @@ const Dashboard = () => {
                <Grid.Col span={5} p={0}>
                   <Flex style={{borderBottom: `1px solid ${customColors.border}`}}>
                     <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="11px" p={4}>Sub Total</Text></Box>
-                    <Box flex={1} ta="right" bg="white"><Text size="11px" p={4}>1000.00</Text></Box>
+                    <Box flex={1} ta="right" bg="white"><Text size="11px" p={4}>{subTotal.toFixed(2)}</Text></Box>
                   </Flex>
                   <Flex style={{borderBottom: `1px solid ${customColors.border}`}}>
                     <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="11px" p={4}>Deposit</Text></Box>
-                    <Box flex={1} ta="right" bg="white"><Text size="11px" p={4}>0.00</Text></Box>
+                    <Box flex={1} ta="right" bg="white"><Text size="11px" p={4}>{deposit.toFixed(2)}</Text></Box>
                   </Flex>
                   <Flex>
                     <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="12px" fw="bold" p={4}>TOTAL</Text></Box>
-                    <Box flex={1} ta="right" bg="white"><Text size="12px" fw="bold" p={4}>1000.00</Text></Box>
+                    <Box flex={1} ta="right" bg="white"><Text size="12px" fw="bold" p={4}>{total.toFixed(2)}</Text></Box>
                   </Flex>
                </Grid.Col>
                <Grid.Col span={4} p={0} style={{ borderLeft: `1px solid ${customColors.border}` }}>
@@ -181,7 +246,7 @@ const Dashboard = () => {
         <Grid.Col span={4.5}>
            <Grid mb="sm">
               {[
-                {name: 'OPEN ITEM', color: customColors.greenBtnTop}, 
+                {name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: handleOpenItem}, 
                 {name: 'HOUSE HOLD', color: customColors.greenBtnTop}, 
                 {name: 'SWEETS', color: customColors.greenBtnTop}, 
                 {name: 'MINERALS', color: customColors.greenBtnMid}, 
@@ -195,7 +260,7 @@ const Dashboard = () => {
                 {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn}
               ].map(cat => (
                  <Grid.Col span={4} key={cat.name}>
-                    <Button fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '40px' }}>
+                    <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '40px' }}>
                        <Text size="10px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1.1}}>{cat.name}</Text>
                     </Button>
                  </Grid.Col>
