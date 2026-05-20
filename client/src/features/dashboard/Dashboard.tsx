@@ -144,17 +144,28 @@ const Dashboard = () => {
     setStagingItem(prev => ({ ...prev, price: isNaN(parsedPrice) ? '' : parsedPrice }));
   };
 
+  const [depositInput, setDepositInput] = useState<string>('');
+  const [returnPopupOpened, setReturnPopupOpened] = useState(false);
+  const [returnAmount, setReturnAmount] = useState(0);
+
   const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
-  const deposit = 0.00;
-  const total = subTotal - deposit;
+  const depositVal = Number(depositInput) || 0;
+  const total = subTotal; 
 
   const handleCheckout = (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
+    
+    if (method === 'CASH') {
+      const retAmt = depositVal - total;
+      setReturnAmount(retAmt);
+      setReturnPopupOpened(true);
+    }
+
     const newTransaction: Transaction = {
       transactionNo,
       items: [...cartItems],
       subTotal,
-      deposit,
+      deposit: depositVal,
       total,
       date: new Date().toLocaleString(),
       paymentMethod: method
@@ -433,7 +444,12 @@ const Dashboard = () => {
                                   <Text size="13px" c="black">Deposit</Text>
                                </Flex>
                                <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
-                                  <Text size="14px" c="black">{deposit.toFixed(2)}</Text>
+                                  <TextInput 
+                                    value={depositInput}
+                                    onChange={(e) => setDepositInput(e.target.value)}
+                                    placeholder="0.00"
+                                    styles={{ input: { textAlign: 'right', border: 'none', background: 'transparent', height: 20, minHeight: 20, padding: 0, fontSize: '14px', color: 'black', fontWeight: 'bold' } }}
+                                  />
                                </Flex>
                             </Flex>
                             <Flex style={{ flex: 1 }}>
@@ -634,6 +650,18 @@ const Dashboard = () => {
               <Text size="xl" fw={800}>DONE</Text>
             </Button>
           </Flex>
+        </Flex>
+      </Modal>
+
+      <Modal opened={returnPopupOpened} onClose={() => { setReturnPopupOpened(false); setDepositInput(''); }} title={<Text size="xl" fw="bold" c="dark">Change / Return Amount</Text>} centered>
+        <Flex direction="column" align="center" justify="center" p="xl">
+          <Text size="md" c="dimmed" mb="sm">Amount to return to customer:</Text>
+          <Text size="48px" fw={900} c={returnAmount >= 0 ? 'green.7' : 'red.7'}>
+            {returnAmount >= 0 ? `$${returnAmount.toFixed(2)}` : `-$${Math.abs(returnAmount).toFixed(2)}`}
+          </Text>
+          <Button mt="xl" size="lg" fullWidth color="blue" onClick={() => { setReturnPopupOpened(false); setDepositInput(''); }}>
+            OK (Next Customer)
+          </Button>
         </Flex>
       </Modal>
     </>
