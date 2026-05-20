@@ -29,6 +29,19 @@ const MainLayout = () => {
     { label: 'POS Terminal', icon: IconReceipt2, path: '/pos' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
     { 
+      label: 'Product', 
+      icon: IconPackage, 
+      children: [
+        { label: 'Manage Category', path: '/products/category' },
+        { label: 'Manage Products', path: '/products' },
+        { label: 'Edit Price', path: '/products/edit-price' },
+        { label: 'Barcodes', path: '/products/codes' },
+        { label: 'Wastage Management', path: '/products/wastage' },
+        { label: 'Excel Sheet Load', path: '/products/excel-load' },
+        { label: 'Stock Reconciliation', path: '/products/reconciliation' },
+      ]
+    },
+    { 
       label: 'Stock', 
       icon: IconPackage, 
       children: [

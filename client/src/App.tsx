@@ -22,6 +22,7 @@ import {
   SupplierPayments, 
   ManageProductCodes 
 } from './features/products/StockSubFeatures';
+import { ProductsSubFeatures } from './features/products/ProductsSubFeatures';
 import { ReportsSubFeatures } from './features/reports/ReportsSubFeatures';
 import BankManagement from './features/bank/BankManagement';
 import Customers from './features/customers/Customers';
@@ -44,6 +45,7 @@ function App() {
         <Route path="invoices" element={<Navigate to="/receipts" replace />} />
         <Route path="products" element={<Products />} />
         <Route path="products/codes" element={<ManageProductCodes />} />
+        <Route path="products/:subPath" element={<ProductsSubFeatures />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="suppliers" element={<Suppliers />} />
