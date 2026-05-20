@@ -185,10 +185,11 @@ const Dashboard = () => {
 
   return (
     <>
-      <Box p="xs" bg={customColors.bg} h="100%" style={{ border: `2px solid ${customColors.border}` }}>
+      <Box p="xs" bg={customColors.bg} h="100vh" style={{ border: `2px solid ${customColors.border}`, overflow: 'hidden' }}>
         <Grid>
           {/* LEFT COLUMN */}
           <Grid.Col span={3.5}>
+            <Flex direction="column" h="calc(100vh - 24px)">
               <Tabs value={activeCartId} onChange={(val) => {
                 if (val) {
                   setActiveCartId(val);
@@ -214,7 +215,7 @@ const Dashboard = () => {
                 </Tabs.List>
               </Tabs>
               
-              <Paper withBorder mt={0} h={520} bg="white" style={{ borderTop: 0, borderRadius: 0, border: `2px solid ${customColors.border}`, overflowY: 'auto' }}>
+              <Paper withBorder mt={0} bg="white" style={{ flexGrow: 1, borderTop: 0, borderRadius: 0, border: `2px solid ${customColors.border}`, overflowY: 'auto' }}>
                 <Table stickyHeader>
                   <Table.Thead bg={customColors.tableHeaderRow}>
                     <Table.Tr>
@@ -256,14 +257,15 @@ const Dashboard = () => {
                      <Flex justify="space-between"><Text size="11px">Return Amt</Text><Text size="11px" fw="bold">0.00</Text></Flex>
                      <Button size="xs" style={btnStyle} fullWidth mt={5} h={24} onClick={handleRePrint}>Re Print</Button>
                    </Grid.Col>
-                 </Grid>
-              </Paper>
+                  </Grid>
+               </Paper>
+            </Flex>
           </Grid.Col>
 
           {/* RIGHT PANEL (Middle + Right Columns combined) */}
           <Grid.Col span={8.5}>
-            <Flex direction="column" h="100%">
-               <Grid style={{ flexGrow: 1 }}>
+            <Flex direction="column" h="calc(100vh - 24px)">
+               <Grid style={{ flexGrow: 1, alignContent: 'flex-start' }}>
                   {/* MIDDLE COLUMN CONTENT */}
                   <Grid.Col span={5.5}>
                     <Flex align="center" gap="xs" mb="xs">
@@ -356,7 +358,7 @@ const Dashboard = () => {
                           {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn}
                         ].map(cat => (
                            <Grid.Col span={4} key={cat.name}>
-                              <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '40px' }}>
+                              <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '32px' }}>
                                  <Text size="10px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1.1}}>{cat.name}</Text>
                               </Button>
                            </Grid.Col>
@@ -366,17 +368,17 @@ const Dashboard = () => {
                      <Grid>
                         {[1,2,3,4,5,6,7,8,9,0,'00','X'].map(num => (
                            <Grid.Col span={4} key={num}>
-                              <Button fullWidth style={{...btnStyle, height: '45px'}}><Text size="xl" fw="normal">{num}</Text></Button>
+                              <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="xl" fw="normal">{num}</Text></Button>
                            </Grid.Col>
                         ))}
                         <Grid.Col span={6}>
-                           <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="11px">Clear All</Text></Button>
+                           <Button fullWidth style={{...btnStyle, height: '28px'}}><Text size="11px">Clear All</Text></Button>
                         </Grid.Col>
                         <Grid.Col span={3}>
-                           <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="11px">C</Text></Button>
+                           <Button fullWidth style={{...btnStyle, height: '28px'}}><Text size="11px">C</Text></Button>
                         </Grid.Col>
                         <Grid.Col span={3} p={0}>
-                           <Box style={{ border: `1px solid ${customColors.border}`, height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
+                           <Box style={{ border: `1px solid ${customColors.border}`, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
                               <Checkbox label={<Text size="9px" style={{lineHeight:1, whiteSpace: 'nowrap'}}>ENABLE<br/>PRINTING</Text>} size="xs" defaultChecked />
                            </Box>
                         </Grid.Col>
