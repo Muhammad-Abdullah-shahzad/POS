@@ -3,6 +3,7 @@ import {
   Box, Checkbox, Modal, Autocomplete, SimpleGrid
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
@@ -36,6 +37,7 @@ interface CustomerCart {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [carts, setCarts] = useState<CustomerCart[]>([
     { id: 'customer1', name: 'CUSTOMER 1', items: [], selectedItemId: '' },
     { id: 'customer2', name: 'CUSTOMER 2', items: [], selectedItemId: '' },
@@ -224,33 +226,35 @@ const Dashboard = () => {
     }
   };
 
-  const handleOptionAction = (actionName: string) => {
+  const handleOptionAction = (actionName: string, path: string) => {
+    setOptionsModalOpened(false);
     notifications.show({
-      title: 'POS Command',
-      message: `Running command: ${actionName}`,
+      title: 'POS Command Redirect',
+      message: `Redirecting to: ${actionName}`,
       color: 'teal',
       icon: <IconCheck size={16} />
     });
+    navigate(path);
   };
 
   const optionButtons = [
-    { label: 'Z REPORT', action: () => handleOptionAction('Z REPORT') },
-    { label: 'TILL REPORT', action: () => handleOptionAction('TILL REPORT') },
-    { label: 'Post Amount', action: () => handleOptionAction('Post Amount'), isSpecial: true },
-    { label: 'EXCH / REF', action: () => handleOptionAction('EXCH / REF') },
-    { label: 'VOID TRANS', action: () => handleOptionAction('VOID TRANS') },
-    { label: 'RE PRINT BILL', action: () => { setOptionsModalOpened(false); handleRePrint(); } },
-    { label: 'CATEGORY PRIORITY', action: () => handleOptionAction('CATEGORY PRIORITY') },
-    { label: 'MANAGE CUSTOMER', action: () => handleOptionAction('MANAGE CUSTOMER') },
-    { label: 'CASH / CARD TRANS', action: () => handleOptionAction('CASH / CARD TRANS') },
-    { label: 'ADD EXPENSES', action: () => handleOptionAction('ADD EXPENSES') },
-    { label: 'ADD VOUCHER', action: () => handleOptionAction('ADD VOUCHER') },
-    { label: 'CIGARETTE MACHINE REPORT', action: () => handleOptionAction('CIGARETTE MACHINE REPORT') },
-    { label: 'VIEW EXPIRY REPORT', action: () => handleOptionAction('VIEW EXPIRY REPORT') },
-    { label: 'MANAGE ONLINE ORDERS', action: () => handleOptionAction('MANAGE ONLINE ORDERS') },
-    { label: 'Download Invoice', action: () => handleOptionAction('Download Invoice') },
-    { label: 'DELI REPORT', action: () => handleOptionAction('DELI REPORT') },
-    { label: 'CASH LIFT', action: () => handleOptionAction('CASH LIFT') },
+    { label: 'Z REPORT', action: () => handleOptionAction('Z REPORT', '/reports/z-report-print') },
+    { label: 'TILL REPORT', action: () => handleOptionAction('TILL REPORT', '/reports/sales-summary') },
+    { label: 'Post Amount', action: () => handleOptionAction('Post Amount', '/reports/posting'), isSpecial: true },
+    { label: 'EXCH / REF', action: () => handleOptionAction('EXCH / REF', '/reports/exchange-refund') },
+    { label: 'VOID TRANS', action: () => handleOptionAction('VOID TRANS', '/receipts') },
+    { label: 'RE PRINT BILL', action: () => handleOptionAction('RE PRINT BILL', '/receipts') },
+    { label: 'CATEGORY PRIORITY', action: () => handleOptionAction('CATEGORY PRIORITY', '/products/category') },
+    { label: 'MANAGE CUSTOMER', action: () => handleOptionAction('MANAGE CUSTOMER', '/customers') },
+    { label: 'CASH / CARD TRANS', action: () => handleOptionAction('CASH / CARD TRANS', '/reports/transaction-sales') },
+    { label: 'ADD EXPENSES', action: () => handleOptionAction('ADD EXPENSES', '/expenses') },
+    { label: 'ADD VOUCHER', action: () => handleOptionAction('ADD VOUCHER', '/products/category') },
+    { label: 'CIGARETTE MACHINE REPORT', action: () => handleOptionAction('CIGARETTE MACHINE REPORT', '/reports/sales-analysis') },
+    { label: 'VIEW EXPIRY REPORT', action: () => handleOptionAction('VIEW EXPIRY REPORT', '/reports/expiry-items') },
+    { label: 'MANAGE ONLINE ORDERS', action: () => handleOptionAction('MANAGE ONLINE ORDERS', '/products/category') },
+    { label: 'Download Invoice', action: () => handleOptionAction('Download Invoice', '/receipts') },
+    { label: 'DELI REPORT', action: () => handleOptionAction('DELI REPORT', '/reports/category-sale') },
+    { label: 'CASH LIFT', action: () => handleOptionAction('CASH LIFT', '/bank') },
     { label: 'BACK', action: () => setOptionsModalOpened(false) },
   ];
 
