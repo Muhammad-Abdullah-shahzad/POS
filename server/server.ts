@@ -28,6 +28,7 @@ import analyticsRoutes from './routes/analyticsRoutes';
 import supplierRoutes from './routes/supplierRoutes';
 import employeeRoutes from './routes/employeeRoutes';
 import bankRoutes from './routes/bankRoutes';
+import customerRoutes from './routes/customerRoutes';
 
 // Import Routes
 app.use('/api/auth', authRoutes);
@@ -39,6 +40,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/banks', bankRoutes);
+app.use('/api/customers', customerRoutes);
 
 
 const PORT = process.env.PORT || 5000;

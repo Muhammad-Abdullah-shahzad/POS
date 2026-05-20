@@ -10,6 +10,7 @@ import Analysis from './features/analytics/Analysis';
 import Suppliers from './features/suppliers/Suppliers';
 import Employees from './features/employees/Employees';
 import BankManagement from './features/bank/BankManagement';
+import Customers from './features/customers/Customers';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -33,6 +34,7 @@ function App() {
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="employees" element={<Employees />} />
         <Route path="bank" element={<BankManagement />} />
+        <Route path="customers" element={<Customers />} />
       </Route>
     </Routes>
   );

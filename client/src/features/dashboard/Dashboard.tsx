@@ -1,9 +1,10 @@
 import { 
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button, 
-  Box, Checkbox, Modal 
+  Box, Checkbox, Modal, Autocomplete
 } from '@mantine/core';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import api from '../../services/api';
 
 interface CartItem {
   id: string;
@@ -28,6 +29,8 @@ interface CustomerCart {
   name: string;
   items: CartItem[];
   selectedItemId: string;
+  customerId?: string;
+  customerPhone?: string;
 }
 
 const Dashboard = () => {
@@ -46,6 +49,19 @@ const Dashboard = () => {
   const [categoryModalOpened, setCategoryModalOpened] = useState(false);
   const [openedCategoryName, setOpenedCategoryName] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  const [dbCustomers, setDbCustomers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchDbCustomers = async () => {
+      try {
+        const { data } = await api.get('/customers');
+        setDbCustomers(data.data || []);
+      } catch (err) {
+        console.error("Failed to fetch customers for POS", err);
+      }
+    };
+    fetchDbCustomers();
+  }, []);
 
   const categoryItemsMap: Record<string, string[]> = {
     "FISH AND SEAFOOD": [
@@ -152,13 +168,25 @@ const Dashboard = () => {
   const depositVal = Number(depositInput) || 0;
   const total = subTotal; 
 
-  const handleCheckout = (method: string = 'MIXED') => {
+  const handleCheckout = async (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
     
     if (method === 'CASH') {
       const retAmt = depositVal - total;
       setReturnAmount(retAmt);
       setReturnPopupOpened(true);
+    }
+
+    // Update customer visits & revenue in MongoDB if a customer is selected
+    if (activeCart.customerId) {
+      try {
+        await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total });
+        // Refresh dbCustomers list
+        const { data } = await api.get('/customers');
+        setDbCustomers(data.data || []);
+      } catch (err) {
+        console.error("Failed to update customer stats in database", err);
+      }
     }
 
     const newTransaction: Transaction = {
@@ -170,11 +198,19 @@ const Dashboard = () => {
       date: new Date().toLocaleString(),
       paymentMethod: method
     };
+    
+    // Add customer data fields for printing
+    (newTransaction as any).customerName = activeCart.customerId ? activeCart.name : 'Walk-in';
+    (newTransaction as any).customerPhone = activeCart.customerPhone || '';
+
     setLastTransaction(newTransaction);
     setTransactionNo(prev => prev + 1);
     updateCartItems([]);
     updateSelectedItemId('');
     setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+    
+    // Reset selected customer for this cart tab
+    setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
   };
 
   const handleRePrint = () => {
@@ -306,10 +342,60 @@ const Dashboard = () => {
                     </Flex>
                     
                     <Paper withBorder p={0} style={{ border: `2px solid ${customColors.headerBg}`, borderRadius: 0 }} bg={customColors.bg}>
-                       <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={2}>
-                          <Text size="11px" c="white">Customer  -   Number - </Text>
-                          <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5} onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }}>Clear</Button>
-                       </Flex>
+                        <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={3} gap="xs">
+                           <Flex align="center" gap="xs" flex={1}>
+                              <Text size="10px" c="white" style={{whiteSpace:'nowrap'}}>Customer:</Text>
+                              <Autocomplete
+                                size="xs"
+                                placeholder="Search registered..."
+                                value={activeCart.customerId ? `${activeCart.name} (${activeCart.customerPhone})` : (activeCart.name.startsWith('CUSTOMER ') ? '' : activeCart.name)}
+                                data={dbCustomers.map(c => `${c.name} (${c.contactNum1})`)}
+                                onChange={(val) => {
+                                  // Check if it matches a customer in the db
+                                  const matched = dbCustomers.find(c => `${c.name} (${c.contactNum1})` === val);
+                                  setCarts(prev => prev.map(c => {
+                                    if (c.id === activeCartId) {
+                                      if (matched) {
+                                        return { 
+                                          ...c, 
+                                          name: matched.name, 
+                                          customerId: matched._id, 
+                                          customerPhone: matched.contactNum1 
+                                        };
+                                      } else {
+                                        return { 
+                                          ...c, 
+                                          name: val || `CUSTOMER ${c.id.replace('customer', '')}`, 
+                                          customerId: undefined, 
+                                          customerPhone: undefined 
+                                        };
+                                      }
+                                    }
+                                    return c;
+                                  }));
+                                }}
+                                styles={{ 
+                                  input: { 
+                                    height: 20, 
+                                    minHeight: 20, 
+                                    fontSize: '11px', 
+                                    padding: '0 4px', 
+                                    borderRadius: 2, 
+                                    border: 'none', 
+                                    backgroundColor: '#ffffff',
+                                    color: 'black'
+                                  } 
+                                }}
+                                flex={1}
+                              />
+                           </Flex>
+                           <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5} onClick={() => { 
+                             updateCartItems([]); 
+                             updateSelectedItemId(''); 
+                             setStagingItem({ name: '', barcode: '', qty: '', price: '' }); 
+                             setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
+                           }}>Clear</Button>
+                        </Flex>
                        
                        <Box p="xs">
                            <fieldset style={{ border: `1px solid ${customColors.border}`, margin: 0, padding: '5px', position: 'relative' }}>
@@ -534,7 +620,8 @@ const Dashboard = () => {
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px' }}>
                 <div>
-                  <p><strong>CUSTOMER:</strong> Walk-in</p>
+                  <p><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
+                  {(lastTransaction as any).customerPhone && <p><strong>PHONE:</strong> {(lastTransaction as any).customerPhone}</p>}
                   <p><strong>DATE:</strong> {lastTransaction.date}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -641,7 +728,7 @@ const Dashboard = () => {
         {/* BOTTOM ACTION BAR */}
         <Flex p="md" bg="white" align="center" justify="space-between" style={{ boxShadow: '0 -2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
           <Paper shadow="xs" w="60%" h={80} bg="#f8f9fa" withBorder radius="md" p="sm" style={{ display: 'flex', alignItems: 'center' }}>
-            <Text c="dimmed" size="sm" italic>Selected items will be staged for addition...</Text>
+            <Text c="dimmed" size="sm" style={{ fontStyle: 'italic' }}>Selected items will be staged for addition...</Text>
           </Paper>
           <Flex gap="md">
             <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬆</Button>

@@ -1,7 +1,7 @@
 import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconTruck, IconUsers, IconBuildingBank } from '@tabler/icons-react';
+import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconTruck, IconUsers, IconBuildingBank, IconAddressBook } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 
 const MainLayout = () => {
@@ -18,7 +18,7 @@ const MainLayout = () => {
   };
 
   const navItems = [
-    { label: 'Dashboard', icon: IconDashboard, path: '/' },
+    { label: 'Counter', icon: IconDashboard, path: '/' },
     { label: 'POS Terminal', icon: IconReceipt2, path: '/pos' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
     { label: 'Products', icon: IconPackage, path: '/products' },
@@ -27,6 +27,7 @@ const MainLayout = () => {
     { label: 'Suppliers', icon: IconTruck, path: '/suppliers' },
     { label: 'Employees', icon: IconUsers, path: '/employees' },
     { label: 'Bank', icon: IconBuildingBank, path: '/bank' },
+    { label: 'Customer Details', icon: IconAddressBook, path: '/customers' },
   ];
 
   if (!user) return null;
