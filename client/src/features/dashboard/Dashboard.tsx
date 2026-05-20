@@ -20,6 +20,7 @@ interface Transaction {
   deposit: number;
   total: number;
   date: string;
+  paymentMethod: string;
 }
 
 interface CustomerCart {
@@ -110,7 +111,7 @@ const Dashboard = () => {
   const deposit = 0.00;
   const total = subTotal - deposit;
 
-  const handleCheckout = () => {
+  const handleCheckout = (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
     const newTransaction: Transaction = {
       transactionNo,
@@ -118,7 +119,8 @@ const Dashboard = () => {
       subTotal,
       deposit,
       total,
-      date: new Date().toLocaleString()
+      date: new Date().toLocaleString(),
+      paymentMethod: method
     };
     setLastTransaction(newTransaction);
     setTransactionNo(prev => prev + 1);
@@ -296,38 +298,71 @@ const Dashboard = () => {
             </Paper>
             
             <Paper mt="xs" p={0} style={{ border: `1px solid ${customColors.border}`, borderRadius: 0 }} bg={customColors.bg}>
-               <Grid>
-                 <Grid.Col span={3} style={{ borderRight: `1px solid ${customColors.border}` }}>
-                    <Box bg="gray.3" h="100%" p={5} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                       <Box w={40} h={30} bg="green.2" mb={5}></Box> {/* Placeholder for cash image */}
-                       <Text size="11px" fw="bold" ta="center">CASH PAY</Text>
+               <Flex h={85}>
+                 {/* CASH PAY BUTTON */}
+                 <Box w="20%" style={{ borderRight: `1px solid ${customColors.border}` }} p={2}>
+                    <Box 
+                      onClick={() => handleCheckout('CASH')}
+                      style={{ 
+                        width: '100%', height: '100%', 
+                        backgroundImage: 'url("https://images.unsplash.com/photo-1580519542036-ed47f3e42214?auto=format&fit=crop&q=80&w=200")', 
+                        backgroundSize: 'cover', backgroundPosition: 'center',
+                        position: 'relative', cursor: 'pointer',
+                        border: '1px solid #ccc'
+                      }}
+                    >
+                      <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text fw="bold" ta="center" size="sm" style={{ lineHeight: 1.1, color: 'black' }}>CASH<br/>PAY</Text>
+                      </Box>
                     </Box>
-                 </Grid.Col>
-                 <Grid.Col span={5} p={0}>
-                    <Flex style={{borderBottom: `1px solid ${customColors.border}`}}>
+                 </Box>
+
+                 {/* TOTALS */}
+                 <Box w="35%" style={{ borderRight: `1px solid ${customColors.border}` }}>
+                    <Flex style={{borderBottom: `1px solid ${customColors.border}`}} h="33.33%">
                       <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="11px" p={4}>Sub Total</Text></Box>
-                      <Box flex={1} ta="right" bg="white"><Text size="11px" p={4}>{subTotal.toFixed(2)}</Text></Box>
+                      <Box flex={1} ta="right" bg={customColors.panelBg}><Text size="11px" p={4}>{subTotal.toFixed(2)}</Text></Box>
                     </Flex>
-                    <Flex style={{borderBottom: `1px solid ${customColors.border}`}}>
+                    <Flex style={{borderBottom: `1px solid ${customColors.border}`}} h="33.33%">
                       <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="11px" p={4}>Deposit</Text></Box>
-                      <Box flex={1} ta="right" bg="white"><Text size="11px" p={4}>{deposit.toFixed(2)}</Text></Box>
+                      <Box flex={1} ta="right" bg={customColors.panelBg}><Text size="11px" p={4}>{deposit.toFixed(2)}</Text></Box>
                     </Flex>
-                    <Flex>
+                    <Flex h="33.33%">
                       <Box w={70} style={{borderRight:`1px solid ${customColors.border}`}}><Text size="12px" fw="bold" p={4}>TOTAL</Text></Box>
-                      <Box flex={1} ta="right" bg="white"><Text size="12px" fw="bold" p={4}>{total.toFixed(2)}</Text></Box>
+                      <Box flex={1} ta="right" bg={customColors.panelBg}><Text size="12px" fw="bold" p={4}>{total.toFixed(2)}</Text></Box>
                     </Flex>
-                 </Grid.Col>
-                 <Grid.Col span={4} p={0} style={{ borderLeft: `1px solid ${customColors.border}` }}>
-                    <Flex align="center" style={{borderBottom: `1px solid ${customColors.border}`}} h={34}>
-                      <Text size="10px" w={35} pl={2}>CASH</Text>
-                      <TextInput size="xs" flex={1} defaultValue="0.00" styles={{ input: { border: 0, borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34 } }} />
+                 </Box>
+
+                 {/* INPUTS */}
+                 <Box w="25%" style={{ borderRight: `1px solid ${customColors.border}` }} p={5}>
+                    <Flex align="center" mb={5} h="45%">
+                      <Text size="10px" w={35}>CASH</Text>
+                      <TextInput size="xs" flex={1} defaultValue="0.00" styles={{ input: { borderRadius: 0, textAlign: 'right', height: '100%', minHeight: 24, padding: '0 4px', fontSize: '14px', border: `1px solid ${customColors.border}` } }} />
                     </Flex>
-                    <Flex align="center" h={34}>
-                      <Text size="10px" w={35} pl={2}>CARD</Text>
-                      <TextInput size="xs" flex={1} defaultValue="0.00" styles={{ input: { border: 0, borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34 } }} />
+                    <Flex align="center" h="45%">
+                      <Text size="10px" w={35}>CARD</Text>
+                      <TextInput size="xs" flex={1} defaultValue="0.00" styles={{ input: { borderRadius: 0, textAlign: 'right', height: '100%', minHeight: 24, padding: '0 4px', fontSize: '14px', border: `1px solid ${customColors.border}` } }} />
                     </Flex>
-                 </Grid.Col>
-               </Grid>
+                 </Box>
+
+                 {/* CARD PAY BUTTON */}
+                 <Box w="20%" p={2}>
+                    <Box 
+                      onClick={() => handleCheckout('CARD')}
+                      style={{ 
+                        width: '100%', height: '100%', 
+                        backgroundImage: 'url("https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=200")', 
+                        backgroundSize: 'cover', backgroundPosition: 'center',
+                        position: 'relative', cursor: 'pointer',
+                        border: '1px solid #ccc'
+                      }}
+                    >
+                      <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text fw="bold" ta="center" size="sm" style={{ lineHeight: 1.1, color: 'black' }}>CARD<br/>PAY</Text>
+                      </Box>
+                    </Box>
+                 </Box>
+               </Flex>
             </Paper>
           </Grid.Col>
 
