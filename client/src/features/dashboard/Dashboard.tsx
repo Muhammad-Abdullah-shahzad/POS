@@ -133,6 +133,7 @@ const [categorySearch, setCategorySearch] = useState('');
   const [openTillModalOpened, setOpenTillModalOpened] = useState(false);
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
+  const [enablePrinting, setEnablePrinting] = useState(true);
 
   useEffect(() => {
     const fetchDbData = async () => {
@@ -367,7 +368,6 @@ const [categorySearch, setCategorySearch] = useState('');
       setReturnAmount(retAmt);
       setReturnPopupOpened(true);
     }
-
     // Update customer visits & revenue in MongoDB if a customer is selected
     if (activeCart.customerId) {
       try {
@@ -422,6 +422,12 @@ const [categorySearch, setCategorySearch] = useState('');
 
     setLastTransaction(newTransaction);
     setTransactionNo(prev => prev + 1);
+
+    // Auto-print receipt if Enable Printing is checked and payment is CASH
+    if (enablePrinting && method === 'CASH') {
+      setTimeout(() => handlePrint(), 100);
+    }
+
     updateCartItems([]);
     updateSelectedItemId('');
     setStagingItem({ name: '', barcode: '', qty: '', price: '' });
@@ -924,7 +930,7 @@ const [categorySearch, setCategorySearch] = useState('');
                     </Grid.Col>
                     <Grid.Col span={3} p={0}>
                       <Box style={{ border: `1px solid ${customColors.border}`, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
-                        <Checkbox label={<Text size="9px" style={{ lineHeight: 1, whiteSpace: 'nowrap' }}>ENABLE<br />PRINTING</Text>} size="xs" defaultChecked />
+                        <Checkbox label={<Text size="9px" style={{ lineHeight: 1, whiteSpace: 'nowrap' }}>ENABLE<br />PRINTING</Text>} size="xs" checked={enablePrinting} onChange={(e) => setEnablePrinting(e.currentTarget.checked)} />
                       </Box>
                     </Grid.Col>
                   </Grid>
