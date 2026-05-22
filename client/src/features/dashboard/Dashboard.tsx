@@ -1,6 +1,6 @@
 import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
-  Box, Checkbox, Modal, Autocomplete, SimpleGrid, NumberInput
+  Box, Checkbox, Modal, Autocomplete, SimpleGrid, NumberInput, Divider
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -1341,116 +1341,217 @@ const [categorySearch, setCategorySearch] = useState('');
       <Modal
         opened={quickProductModalOpened}
         onClose={() => setQuickProductModalOpened(false)}
-        title={<Text size="lg" fw="bold" c="white">Quick Register Product</Text>}
+        title={
+          <Flex align="center" gap="xs">
+            <Text size="lg" fw={800} c="white" style={{ letterSpacing: '0.5px' }}>
+              ⚡ Quick Register Product
+            </Text>
+          </Flex>
+        }
         centered
-        size="md"
+        size="lg"
         styles={{
           content: {
-            backgroundColor: '#405c6b',
-            border: '4px solid #ffffff',
-            borderRadius: '4px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            backgroundColor: '#2e4a58',
+            border: '3px solid #7ec8e3',
+            borderRadius: '6px',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
             color: '#ffffff'
           },
           header: {
-            backgroundColor: '#405c6b',
-            color: '#ffffff'
+            backgroundColor: '#243b47',
+            color: '#ffffff',
+            borderBottom: '2px solid #7ec8e3',
+            paddingBottom: '12px'
           },
           body: {
-            padding: '20px'
+            padding: '24px'
           },
           close: {
             color: '#ffffff'
           }
         }}
       >
-        <Flex direction="column" gap="sm">
-          <SimpleGrid cols={2} spacing="xs">
+        <Flex direction="column" gap="md">
+
+          {/* ── REQUIRED SECTION ── */}
+          <Box
+            style={{
+              background: 'rgba(126,200,227,0.12)',
+              border: '2px solid #7ec8e3',
+              borderRadius: '6px',
+              padding: '16px'
+            }}
+          >
+            <Text size="xs" fw={700} c="#7ec8e3" mb="xs" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+              ★ Required
+            </Text>
             <TextInput
-              label={<Text size="xs" fw="bold" c="white">Product Name</Text>}
+              label={
+                <Flex align="center" gap={4}>
+                  <Text size="sm" fw={700} c="white">Product Name</Text>
+                  <Text size="sm" c="#ff6b6b" fw={900}>*</Text>
+                </Flex>
+              }
               placeholder="e.g. Sufi Cooking Oil (5L)"
               value={quickProductName}
               onChange={(e) => setQuickProductName(e.target.value)}
               required
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+              size="md"
+              styles={{
+                input: {
+                  borderRadius: '4px',
+                  height: '44px',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  border: quickProductName.trim() ? '2px solid #7ec8e3' : '2px solid #ff6b6b',
+                  backgroundColor: '#1e3340',
+                  color: '#ffffff',
+                }
+              }}
             />
-            <Select
-              label={<Text size="xs" fw="bold" c="white">Category (Optional)</Text>}
-              data={productCategoriesList}
-              value={quickProductCategory}
-              onChange={(val) => setQuickProductCategory(val || 'FISH AND SEAFOOD')}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-          </SimpleGrid>
+            <Text size="xs" c="rgba(255,255,255,0.5)" mt={6}>
+              Only Product Name is required to register. All other details can be filled later from the Products Catalog.
+            </Text>
+          </Box>
 
-          <SimpleGrid cols={2} spacing="xs">
-            <TextInput
-              label={<Text size="xs" fw="bold" c="white">Barcode</Text>}
-              value={quickProductBarcode}
-              disabled
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-            <TextInput
-              label={<Text size="xs" fw="bold" c="white">SKU (Optional)</Text>}
-              placeholder="e.g. SKU-12345"
-              value={quickProductSku}
-              onChange={(e) => setQuickProductSku(e.target.value)}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-          </SimpleGrid>
+          {/* ── OPTIONAL SECTION ── */}
+          <Divider
+            label={
+              <Text size="xs" fw={600} c="rgba(255,255,255,0.45)" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Optional — Fill Later in Products Catalog
+              </Text>
+            }
+            labelPosition="center"
+            color="rgba(255,255,255,0.15)"
+          />
 
-          <SimpleGrid cols={2} spacing="xs">
-            <NumberInput
-              label={<Text size="xs" fw="bold" c="white">Selling Price (Rs. - Optional)</Text>}
-              value={quickProductPrice}
-              onChange={(val) => setQuickProductPrice(val)}
-              min={0}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-            <NumberInput
-              label={<Text size="xs" fw="bold" c="white">Cost Price (Rs. - Optional)</Text>}
-              value={quickProductCostPrice}
-              onChange={(val) => setQuickProductCostPrice(val)}
-              min={0}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-          </SimpleGrid>
+          <Box style={{ opacity: 0.75 }}>
+            <SimpleGrid cols={2} spacing="xs" mb="xs">
+              <TextInput
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Barcode (auto-filled)</Text>}
+                value={quickProductBarcode}
+                disabled
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: 'rgba(255,255,255,0.4)',
+                    border: '1px solid rgba(255,255,255,0.15)'
+                  }
+                }}
+              />
+              <TextInput
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">SKU</Text>}
+                placeholder="Auto-generated if blank"
+                value={quickProductSku}
+                onChange={(e) => setQuickProductSku(e.target.value)}
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }
+                }}
+              />
+            </SimpleGrid>
 
-          <SimpleGrid cols={3} spacing="xs">
-            <NumberInput
-              label={<Text size="xs" fw="bold" c="white">VAT Rate (% - Optional)</Text>}
-              value={quickProductVatRate}
-              onChange={(val) => setQuickProductVatRate(val)}
-              min={0}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-            <Select
-              label={<Text size="xs" fw="bold" c="white">VAT Type (Optional)</Text>}
-              data={[
-                { label: 'Inclusive', value: 'inclusive' },
-                { label: 'Exclusive', value: 'exclusive' }
-              ]}
-              value={quickProductVatType}
-              onChange={(val) => setQuickProductVatType((val as 'inclusive' | 'exclusive') || 'inclusive')}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-            <NumberInput
-              label={<Text size="xs" fw="bold" c="white">Initial Stock (Optional)</Text>}
-              value={quickProductStock}
-              onChange={(val) => setQuickProductStock(val)}
-              min={0}
-              styles={{ input: { borderRadius: '2px', height: '36px' } }}
-            />
-          </SimpleGrid>
+            <SimpleGrid cols={2} spacing="xs" mb="xs">
+              <Select
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Category</Text>}
+                data={productCategoriesList}
+                value={quickProductCategory}
+                onChange={(val) => setQuickProductCategory(val || 'FISH AND SEAFOOD')}
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }
+                }}
+              />
+              <NumberInput
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Initial Stock</Text>}
+                value={quickProductStock}
+                onChange={(val) => setQuickProductStock(val)}
+                min={0}
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }
+                }}
+              />
+            </SimpleGrid>
 
-          <Flex gap="sm" mt="md" justify="flex-end">
+            <SimpleGrid cols={3} spacing="xs">
+              <NumberInput
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Selling Price (Rs.)</Text>}
+                value={quickProductPrice}
+                onChange={(val) => setQuickProductPrice(val)}
+                min={0}
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }
+                }}
+              />
+              <NumberInput
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Cost Price (Rs.)</Text>}
+                value={quickProductCostPrice}
+                onChange={(val) => setQuickProductCostPrice(val)}
+                min={0}
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }
+                }}
+              />
+              <NumberInput
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">VAT Rate (%)</Text>}
+                value={quickProductVatRate}
+                onChange={(val) => setQuickProductVatRate(val)}
+                min={0}
+                styles={{
+                  input: {
+                    borderRadius: '3px',
+                    height: '34px',
+                    backgroundColor: '#1a2e3a',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }
+                }}
+              />
+            </SimpleGrid>
+          </Box>
+
+          {/* ── ACTION BUTTONS ── */}
+          <Flex gap="sm" mt="sm" justify="flex-end">
             <Button
               variant="outline"
+              size="sm"
               styles={{
                 root: {
-                  borderColor: '#ffffff',
-                  color: '#ffffff',
-                  borderRadius: '2px'
+                  borderColor: 'rgba(255,255,255,0.35)',
+                  color: 'rgba(255,255,255,0.7)',
+                  borderRadius: '4px',
+                  '&:hover': { borderColor: '#ffffff', color: '#ffffff' }
                 }
               }}
               onClick={() => setQuickProductModalOpened(false)}
@@ -1459,15 +1560,20 @@ const [categorySearch, setCategorySearch] = useState('');
             </Button>
             <Button
               loading={quickProductLoading}
+              size="sm"
+              disabled={!quickProductName.trim()}
               onClick={handleQuickSaveProduct}
               style={{
-                backgroundColor: customColors.orangeBtn,
+                backgroundColor: quickProductName.trim() ? customColors.orangeBtn : 'rgba(100,100,100,0.5)',
                 color: '#ffffff',
-                border: '2px solid #ffffff',
-                borderRadius: '2px'
+                border: quickProductName.trim() ? '2px solid #ffffff' : '2px solid rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                fontWeight: 700,
+                letterSpacing: '0.5px',
+                minWidth: '130px'
               }}
             >
-              Register & Add
+              ⚡ Register & Add
             </Button>
           </Flex>
         </Flex>
