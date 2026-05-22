@@ -1,6 +1,6 @@
 import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
-  Box, Checkbox, Modal, Autocomplete, SimpleGrid
+  Box, Checkbox, Modal, Autocomplete, SimpleGrid, Textarea
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -102,22 +102,30 @@ const Dashboard = () => {
   const [stagingItem, setStagingItem] = useState<{ id?: string; name: string; barcode: string; qty: number | string; price: number | string }>({ name: '', barcode: '', qty: '', price: '' });
 
   const [categoryModalOpened, setCategoryModalOpened] = useState(false);
+  const [optionsModalOpened, setOptionsModalOpened] = useState(false);
+  const [voidModalOpened, setVoidModalOpened] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('');
+  const [voidReason, setVoidReason] = useState<string>('');
   const [openedCategoryName, setOpenedCategoryName] = useState('');
-  const [categorySearch, setCategorySearch] = useState('');
+const [categorySearch, setCategorySearch] = useState('');
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
-  const [optionsModalOpened, setOptionsModalOpened] = useState(false);
 
   useEffect(() => {
-    const fetchDbCustomers = async () => {
+    const fetchDbData = async () => {
       try {
-        const { data } = await api.get('/customers');
-        setDbCustomers(data.data || []);
+        const [custRes, orderRes] = await Promise.all([
+          api.get('/customers'),
+          api.get('/orders')
+        ]);
+        setDbCustomers(custRes.data.data || []);
+        setOrders(orderRes.data.data || []);
       } catch (err) {
-        console.error("Failed to fetch customers for POS", err);
+        console.error("Failed to fetch initial POS data", err);
       }
     };
-    fetchDbCustomers();
+    fetchDbData();
   }, []);
 
   // Load last transaction and transaction count from the database on mount
@@ -408,7 +416,7 @@ const Dashboard = () => {
     { label: 'TILL REPORT', action: () => handleOptionAction('TILL REPORT', '/reports/sales-summary') },
     { label: 'Post Amount', action: () => handleOptionAction('Post Amount', '/reports/posting'), isSpecial: true },
     { label: 'EXCH / REF', action: () => handleOptionAction('EXCH / REF', '/reports/exchange-refund') },
-    { label: 'VOID TRANS', action: () => handleOptionAction('VOID TRANS', '/receipts') },
+    { label: 'VOID TRANS', action: () => setVoidModalOpened(true) },
     { label: 'RE PRINT BILL', action: () => handleOptionAction('RE PRINT BILL', '/receipts') },
     { label: 'CATEGORY PRIORITY', action: () => handleOptionAction('CATEGORY PRIORITY', '/products/category') },
     { label: 'MANAGE CUSTOMER', action: () => handleOptionAction('MANAGE CUSTOMER', '/customers') },
@@ -1030,6 +1038,23 @@ const Dashboard = () => {
             </Button>
           ))}
         </SimpleGrid>
+      </Modal>
+
+      {/* VOID TRANS MODAL */}
+      <Modal opened={voidModalOpened} onClose={() => setVoidModalOpened(false)} title="Void Transaction">
+        <Select 
+          label="Select Order" 
+          data={orders.map(o => ({ value: o._id, label: `Order #${o._id.slice(-6)} - $${o.total.toFixed(2)}` }))} 
+          onChange={(val) => setSelectedOrderId(val || '')}
+        />
+        <TextInput label="Reason for void" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
+        <Button mt="md" fullWidth color="red" onClick={async () => {
+           try {
+             await api.delete(`/orders/${selectedOrderId}?reason=${voidReason}`);
+             notifications.show({ title: 'Success', message: 'Order voided', color: 'green' });
+             setVoidModalOpened(false);
+           } catch(e) { notifications.show({ title: 'Error', message: 'Void failed', color: 'red' }); }
+        }}>Confirm Void</Button>
       </Modal>
     </>
   );
