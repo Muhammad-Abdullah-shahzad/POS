@@ -128,18 +128,25 @@ export const updateStock = async (req: Request, res: Response): Promise<void> =>
 
 export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Delete request headers:', req.headers);
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) {
+      console.log('Product not found for deletion');
       res.status(404).json(errorResponse('Product not found'));
       return;
     }
+    console.log('Deleted product:', product);
     // Delete image file if exists
     if (product.image) {
       const filePath = path.join(process.cwd(), product.image.replace(/^\//, ''));
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log('Deleted image file at', filePath);
+      }
     }
     res.json(successResponse(null, 'Product deleted successfully'));
   } catch (error: any) {
+    console.error('Delete product error:', error);
     res.status(500).json(errorResponse('Server Error', error.message));
   }
 };

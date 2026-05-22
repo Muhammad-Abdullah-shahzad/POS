@@ -5,7 +5,7 @@ import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { IconCheck, IconX, IconPlus, IconTags, IconBarcode, IconTrash, IconPhoto } from '@tabler/icons-react';
+import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto } from '@tabler/icons-react';
 
 interface Product {
   _id: string;
@@ -26,7 +26,7 @@ const Products = () => {
   const [opened, { open, close }] = useDisclosure(false);
   const [stockModalOpened, setStockModalOpened] = useState(false);
   const [searchStockOpened, setSearchStockOpened] = useState(false);
-  const [categoryOpened, { open: openCategory, close: closeCategory }] = useDisclosure(false);
+  const [categoryOpened, { close: closeCategory }] = useDisclosure(false);
   const [loading, setLoading] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);

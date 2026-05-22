@@ -79,11 +79,7 @@ const POS = () => {
     addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction,
   } = usePosStore();
 
-  // Persisted product discount percentages from catalog
-  const [productDiscounts, setProductDiscounts] = useState<Record<string, number>>(() => {
-    const saved = localStorage.getItem('productDiscounts');
-    return saved ? JSON.parse(saved) : {};
-  });
+
 
   const handlePrint = useReactToPrint({ contentRef: componentRef });
 

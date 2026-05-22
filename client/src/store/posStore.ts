@@ -14,6 +14,7 @@ export interface CartItem {
   discountPct: number;  // Discount % applied (0 if none)
   discountAmt: number;  // Total discount amount for this quantity
   finalPrice: number;   // totalPrice - discountAmt
+  discountLabel?: string; // Optional label for discount source
 }
 
 export interface LastTransaction {
