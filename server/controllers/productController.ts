@@ -87,6 +87,23 @@ export const getProductByBarcode = async (req: Request, res: Response): Promise<
   }
 };
 
+export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    if (!product) {
+      res.status(404).json(errorResponse('Product not found'));
+      return;
+    }
+    res.json(successResponse(product, 'Product updated successfully'));
+  } catch (error: any) {
+    res.status(400).json(errorResponse('Bad Request', error.message));
+  }
+};
+
 export const updateStock = async (req: Request, res: Response): Promise<void> => {
   try {
     const { quantity } = req.body;

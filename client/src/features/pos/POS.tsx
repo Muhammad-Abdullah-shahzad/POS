@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon } from '@mantine/core';
+import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon, Badge } from '@mantine/core';
 import { IconTrash, IconBarcode, IconPlus, IconMinus } from '@tabler/icons-react';
 import { usePosStore } from '../../store/posStore';
 import api from '../../services/api';
@@ -8,33 +8,94 @@ import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { IconCheck, IconX, IconAlertCircle } from '@tabler/icons-react';
 
+// Read active offers from localStorage
+interface Offer {
+  id: string;
+  code: string;
+  type: string;   // 'Category Discount' | 'Flat Percentage' | 'BOGO Free'
+  target: string; // category name or product name
+  value: number;  // discount %
+  status: string; // 'Active' | 'Inactive'
+}
+
+const getActiveOffers = (): Offer[] => {
+  try {
+    const saved = localStorage.getItem('customProductOffers');
+    if (!saved) return [];
+    return JSON.parse(saved).filter((o: Offer) => o.status === 'Active');
+  } catch {
+    return [];
+  }
+};
+
+// Find best applicable discount for a product
+const getDiscountForProduct = (productName: string, category: string): { pct: number; label: string } => {
+  const offers = getActiveOffers();
+  let bestPct = 0;
+  let bestLabel = '';
+
+  // Normalize for comparison
+  const normName = productName.trim().toLowerCase();
+  const normCat = category.trim().toLowerCase();
+
+  console.log('[POS Discount] Product:', normName, '| Category:', normCat);
+  console.log('[POS Discount] Active offers:', offers);
+
+  for (const offer of offers) {
+    const target = (offer.target || '').trim().toLowerCase();
+    const pct = Math.min(Number(offer.value) || 0, 100);
+    if (pct <= 0) continue;
+
+    const matchesCategory =
+      (offer.type === 'Category Discount' || offer.type === 'Flat Percentage') &&
+      normCat === target;
+    const matchesProduct = normName === target;
+    // Also match if target is contained in category or vice versa (partial match)
+    const partialCatMatch =
+      (offer.type === 'Category Discount' || offer.type === 'Flat Percentage') &&
+      (normCat.includes(target) || target.includes(normCat));
+
+    console.log(`[POS Discount] Offer "${offer.code}" target="${target}" matchesCat=${matchesCategory} matchesProd=${matchesProduct} partial=${partialCatMatch}`);
+
+    if ((matchesCategory || matchesProduct || partialCatMatch) && pct > bestPct) {
+      bestPct = pct;
+      bestLabel = `${offer.code} (${pct}% off)`;
+    }
+  }
+
+  console.log('[POS Discount] Best discount:', bestPct, bestLabel);
+  return { pct: bestPct, label: bestLabel };
+};
 
 const POS = () => {
   const [barcode, setBarcode] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const componentRef = useRef<HTMLDivElement>(null);
-  const lastScanRef = useRef<{ barcode: string, time: number }>({ barcode: '', time: 0 });
+  const lastScanRef = useRef<{ barcode: string; time: number }>({ barcode: '', time: 0 });
 
-  const { cart, subtotal, totalVAT, total, lastTransaction, addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction } = usePosStore();
+  const {
+    cart, subtotal, totalVAT, totalDiscount, total, lastTransaction,
+    addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction,
+  } = usePosStore();
 
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
+  // Persisted product discount percentages from catalog
+  const [productDiscounts, setProductDiscounts] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('productDiscounts');
+    return saved ? JSON.parse(saved) : {};
   });
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  const handlePrint = useReactToPrint({ contentRef: componentRef });
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedBarcode = barcode.trim();
     if (!trimmedBarcode) return;
 
-    // Counter measure for rapid duplicate scans (barcode scanner issue)
     const now = Date.now();
     if (trimmedBarcode === lastScanRef.current.barcode && (now - lastScanRef.current.time) < 500) {
-      console.log('Duplicate scan detected and ignored');
       setBarcode('');
       return;
     }
@@ -46,17 +107,12 @@ const POS = () => {
       const product = data.data;
 
       if (product.stock <= 0) {
-        notifications.show({
-          title: 'Out of Stock',
-          message: `${product.name} is currently unavailable.`,
-          color: 'red',
-          icon: <IconX size={16} />,
-        });
+        notifications.show({ title: 'Out of Stock', message: `${product.name} is currently unavailable.`, color: 'red', icon: <IconX size={16} /> });
         setBarcode('');
         return;
       }
 
-      // Extract VAT based on type
+      // --- VAT calculation ---
       let vatAmount = 0;
       let basePrice = product.price;
       let totalPrice = 0;
@@ -64,49 +120,66 @@ const POS = () => {
       if (product.vatType === 'inclusive') {
         vatAmount = product.price - (product.price / (1 + product.vatRate / 100));
         basePrice = product.price - vatAmount;
-        totalPrice = product.price; // The final price remains the same
+        totalPrice = product.price;
       } else {
         vatAmount = product.price * (product.vatRate / 100);
         basePrice = product.price;
-        totalPrice = product.price + vatAmount; // The final price adds VAT
+        totalPrice = product.price + vatAmount;
       }
+
+      // --- Discount lookup ---
+      // Determine discount from offers or catalog-specific discounts
+      const offerDiscount = getDiscountForProduct(
+        product.name,
+        product.category || ''
+      );
+      // Read latest catalog discount percentages directly from localStorage
+      const savedDiscounts = localStorage.getItem('productDiscounts');
+      const productDiscounts = savedDiscounts ? JSON.parse(savedDiscounts) : {};
+      const catalogDiscountPct = productDiscounts[product._id] || 0;
+      const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
+      const discountLabel = offerDiscount.label;
+      const discountAmt = parseFloat((totalPrice * (discountPct / 100)).toFixed(2));
+      const finalPrice = parseFloat((totalPrice - discountAmt).toFixed(2));
 
       const existingItem = cart.find(item => item.product === product._id);
       if (existingItem && existingItem.quantity >= product.stock) {
-        notifications.show({
-          title: 'Stock Limit Reached',
-          message: `Only ${product.stock} units of ${product.name} are available.`,
-          color: 'yellow',
-          icon: <IconAlertCircle size={16} />,
-        });
+        notifications.show({ title: 'Stock Limit Reached', message: `Only ${product.stock} units available.`, color: 'yellow', icon: <IconAlertCircle size={16} /> });
         setBarcode('');
         return;
+      }
+
+      if (discountPct > 0) {
+        notifications.show({
+          title: 'Discount Applied!',
+          message: `${discountLabel} applied to ${product.name}`,
+          color: 'teal',
+          icon: <IconCheck size={16} />,
+        });
       }
 
       addToCart({
         product: product._id,
         name: product.name,
+        category: product.category || '',
         quantity: 1,
         stock: product.stock,
         price: basePrice,
         vatRate: product.vatRate,
-        vatAmount: vatAmount,
-        totalPrice: totalPrice,
+        vatAmount,
+        totalPrice,
+        discountPct,
+        discountAmt,
+        finalPrice,
+        discountLabel,
       });
 
       setBarcode('');
     } catch (error: any) {
-      console.error('Product not found or error:', error);
       const message = error.response?.data?.message || 'Product not found or connection error';
-      notifications.show({
-        title: 'Scan Error',
-        message: message,
-        color: 'red',
-        icon: <IconX size={16} />,
-      });
+      notifications.show({ title: 'Scan Error', message, color: 'red', icon: <IconX size={16} /> });
     } finally {
       setLoading(false);
-      // Small timeout to ensure the input is enabled before focusing
       setTimeout(() => inputRef.current?.focus(), 10);
     }
   };
@@ -118,12 +191,11 @@ const POS = () => {
         items: cart,
         subtotal,
         totalVAT,
-        discount: 0,
+        discount: totalDiscount,
         total,
-        paymentMethod: 'cash'
+        paymentMethod: 'cash',
       });
 
-      // Save last transaction before clearing cart
       const order = data?.data;
       const transNo = order?.invoiceId || `REC-${Date.now().toString().slice(-7)}`;
       setLastTransaction({
@@ -136,23 +208,11 @@ const POS = () => {
       });
 
       handlePrint();
-
-      notifications.show({
-        title: 'Order Completed',
-        message: `Receipt ${transNo} generated successfully`,
-        color: 'green',
-        icon: <IconCheck size={16} />,
-      });
+      notifications.show({ title: 'Order Completed', message: `Receipt ${transNo} generated successfully`, color: 'green', icon: <IconCheck size={16} /> });
       clearCart();
     } catch (error: any) {
-      console.error('Checkout failed:', error);
       const message = error.response?.data?.message || 'Checkout failed. Please check stock levels.';
-      notifications.show({
-        title: 'Checkout Failed',
-        message: message,
-        color: 'red',
-        icon: <IconAlertCircle size={16} />,
-      });
+      notifications.show({ title: 'Checkout Failed', message, color: 'red', icon: <IconAlertCircle size={16} /> });
     } finally {
       setTimeout(() => inputRef.current?.focus(), 10);
     }
@@ -192,29 +252,28 @@ const POS = () => {
                   {cart.map((item) => (
                     <Table.Tr key={item.product}>
                       <Table.Td>{item.name}</Table.Td>
-                      <Table.Td>Rs {item.price.toFixed(2)}</Table.Td>
+                      <Table.Td>
+                        {item.discountPct > 0 ? (
+                          <div>
+                            <Text size="xs" td="line-through" c="dimmed">Rs {item.totalPrice.toFixed(2)}</Text>
+                            <Text size="sm" fw={700} c="teal">Rs {item.finalPrice.toFixed(2)}</Text>
+                            <Badge size="xs" color="teal" variant="light">-{item.discountPct}%</Badge>
+                          </div>
+                        ) : (
+                          <Text size="sm">Rs {item.totalPrice.toFixed(2)}</Text>
+                        )}
+                      </Table.Td>
                       <Table.Td>
                         <Group gap="xs">
-                          <ActionIcon 
-                            size="sm" 
-                            variant="light" 
-                            onClick={() => updateQuantity(item.product, -1)}
-                            disabled={loading}
-                          >
+                          <ActionIcon size="sm" variant="light" onClick={() => updateQuantity(item.product, -1)} disabled={loading}>
                             <IconMinus size={12} />
                           </ActionIcon>
                           <Text size="sm" fw={500} w={20} ta="center">{item.quantity}</Text>
-                          <ActionIcon 
-                            size="sm" 
-                            variant="light" 
+                          <ActionIcon
+                            size="sm" variant="light"
                             onClick={() => {
                               if (item.quantity >= item.stock) {
-                                notifications.show({
-                                  title: 'Stock Limit Reached',
-                                  message: `Maximum available stock is ${item.stock}`,
-                                  color: 'yellow',
-                                  icon: <IconAlertCircle size={16} />,
-                                });
+                                notifications.show({ title: 'Stock Limit Reached', message: `Maximum available stock is ${item.stock}`, color: 'yellow', icon: <IconAlertCircle size={16} /> });
                                 return;
                               }
                               updateQuantity(item.product, 1);
@@ -226,7 +285,9 @@ const POS = () => {
                         </Group>
                       </Table.Td>
                       <Table.Td>Rs {item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
-                      <Table.Td>Rs {item.totalPrice.toFixed(2)}</Table.Td>
+                      <Table.Td fw={700}>
+                        Rs {(item.finalPrice * item.quantity / item.quantity).toFixed(2)}
+                      </Table.Td>
                       <Table.Td>
                         <ActionIcon color="red" variant="subtle" onClick={() => removeFromCart(item.product)}>
                           <IconTrash size={16} />
@@ -252,10 +313,12 @@ const POS = () => {
               <Text>Total VAT</Text>
               <Text>Rs {totalVAT.toFixed(2)}</Text>
             </Group>
-            <Group justify="space-between" mb="md">
-              <Text>Discount</Text>
-              <Text>Rs 0.00</Text>
-            </Group>
+            {totalDiscount > 0 && (
+              <Group justify="space-between" mb="xs">
+                <Text c="teal" fw={600}>Discount</Text>
+                <Text c="teal" fw={600}>- Rs {totalDiscount.toFixed(2)}</Text>
+              </Group>
+            )}
 
             <Divider my="sm" />
 
@@ -264,36 +327,28 @@ const POS = () => {
               <Title order={4} c="blue">Rs {total.toFixed(2)}</Title>
             </Group>
 
-            <Button 
-              fullWidth 
-              size="xl" 
-              color="green" 
+            <Button
+              fullWidth size="xl" color="green"
               onClick={() => {
                 modals.openConfirmModal({
                   title: 'Confirm Payment',
                   centered: true,
                   children: (
                     <Text size="sm">
-                      Are you sure you want to process this payment of <strong>Rs {total.toFixed(2)}</strong>?
+                      Process payment of <strong>Rs {total.toFixed(2)}</strong>?
+                      {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes Rs {totalDiscount.toFixed(2)} discount</Text></>}
                     </Text>
                   ),
                   labels: { confirm: 'Confirm Payment', cancel: 'No, Wait' },
                   confirmProps: { color: 'green' },
                   onConfirm: handleCheckout,
                 });
-              }} 
+              }}
               disabled={cart.length === 0}
             >
               Pay Rs {total.toFixed(2)}
             </Button>
-            <Button 
-              fullWidth 
-              mt="md" 
-              variant="light" 
-              color="red" 
-              onClick={() => { clearCart(); inputRef.current?.focus(); }} 
-              disabled={cart.length === 0}
-            >
+            <Button fullWidth mt="md" variant="light" color="red" onClick={() => { clearCart(); inputRef.current?.focus(); }} disabled={cart.length === 0}>
               Clear Cart
             </Button>
           </Paper>
@@ -305,30 +360,12 @@ const POS = () => {
         <Paper withBorder p="sm" radius="md" mt="md" className="no-print" style={{ borderColor: '#495057' }}>
           <Text size="xs" fw={700} c="dimmed" mb="xs" tt="uppercase">Last Transaction Details</Text>
           <Group gap="xl">
-            <div>
-              <Text size="xs" c="dimmed">Trans No</Text>
-              <Text size="sm" fw={700}>{lastTransaction.transNo}</Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">Trans Amt</Text>
-              <Text size="sm" fw={700}>Rs {lastTransaction.transAmt.toFixed(2)}</Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">Paid Amt</Text>
-              <Text size="sm" fw={700} c="green">Rs {lastTransaction.paidAmt.toFixed(2)}</Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">Return Amt</Text>
-              <Text size="sm" fw={700} c="blue">Rs {lastTransaction.returnAmt.toFixed(2)}</Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">Due Amt</Text>
-              <Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>Rs {lastTransaction.dueAmt.toFixed(2)}</Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">Date</Text>
-              <Text size="sm" fw={500}>{lastTransaction.date}</Text>
-            </div>
+            <div><Text size="xs" c="dimmed">Trans No</Text><Text size="sm" fw={700}>{lastTransaction.transNo}</Text></div>
+            <div><Text size="xs" c="dimmed">Trans Amt</Text><Text size="sm" fw={700}>Rs {lastTransaction.transAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Paid Amt</Text><Text size="sm" fw={700} c="green">Rs {lastTransaction.paidAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Return Amt</Text><Text size="sm" fw={700} c="blue">Rs {lastTransaction.returnAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Due Amt</Text><Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>Rs {lastTransaction.dueAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Date</Text><Text size="sm" fw={500}>{lastTransaction.date}</Text></div>
           </Group>
         </Paper>
       )}
@@ -337,69 +374,70 @@ const POS = () => {
       <div className="print-only" style={{ display: 'none' }}>
         <div ref={componentRef}>
           <div id="printable-receipt" style={{ padding: '30px', fontFamily: 'Courier, monospace', color: '#000', backgroundColor: '#fff' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
-            <h1 style={{ margin: '0', fontSize: '28px', textTransform: 'uppercase' }}>STORE POS</h1>
-            <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold' }}>123 Business Road, Commerce City</p>
-            <p style={{ margin: '2px 0', fontSize: '12px' }}>Phone: +1 234 567 8900</p>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px' }}>
-            <div>
-              <p><strong>CUSTOMER:</strong> Walk-in Customer</p>
-              <p><strong>DATE:</strong> {new Date().toLocaleString()}</p>
+            <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
+              <h1 style={{ margin: '0', fontSize: '28px', textTransform: 'uppercase' }}>STORE POS</h1>
+              <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold' }}>123 Business Road, Commerce City</p>
+              <p style={{ margin: '2px 0', fontSize: '12px' }}>Phone: +1 234 567 8900</p>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <p><strong>RECEIPT #:</strong> REC-{Date.now().toString().slice(-6)}</p>
-              <p><strong>STATUS:</strong> PAID</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px' }}>
+              <div>
+                <p><strong>CUSTOMER:</strong> Walk-in Customer</p>
+                <p><strong>DATE:</strong> {new Date().toLocaleString()}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p><strong>RECEIPT #:</strong> REC-{Date.now().toString().slice(-6)}</p>
+                <p><strong>STATUS:</strong> PAID</p>
+              </div>
             </div>
-          </div>
-          
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #000' }}>
-                <th style={{ textAlign: 'left', padding: '10px 5px' }}>DESCRIPTION</th>
-                <th style={{ textAlign: 'center', padding: '10px 5px' }}>QTY</th>
-                <th style={{ textAlign: 'right', padding: '10px 5px' }}>UNIT</th>
-                <th style={{ textAlign: 'right', padding: '10px 5px' }}>TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cart.map((item) => (
-                <tr key={`print-${item.product}`} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '10px 5px' }}>{item.name}</td>
-                  <td style={{ textAlign: 'center', padding: '10px 5px' }}>{item.quantity}</td>
-                  <td style={{ textAlign: 'right', padding: '10px 5px' }}>Rs {item.price.toFixed(2)}</td>
-                  <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 'bold' }}>Rs {item.totalPrice.toFixed(2)}</td>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #000' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 5px' }}>DESCRIPTION</th>
+                  <th style={{ textAlign: 'center', padding: '10px 5px' }}>QTY</th>
+                  <th style={{ textAlign: 'right', padding: '10px 5px' }}>UNIT</th>
+                  <th style={{ textAlign: 'right', padding: '10px 5px' }}>DISC</th>
+                  <th style={{ textAlign: 'right', padding: '10px 5px' }}>TOTAL</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ width: '250px', marginLeft: 'auto', fontSize: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
-              <span>Subtotal:</span>
-              <span>Rs {subtotal.toFixed(2)}</span>
+              </thead>
+              <tbody>
+                {cart.map((item) => (
+                  <tr key={`print-${item.product}`} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '10px 5px' }}>{item.name}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 5px' }}>{item.quantity}</td>
+                    <td style={{ textAlign: 'right', padding: '10px 5px' }}>Rs {item.price.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '10px 5px', color: '#0ca678' }}>
+                      {item.discountPct > 0 ? `-${item.discountPct}%` : '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 'bold' }}>Rs {item.finalPrice.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ width: '250px', marginLeft: 'auto', fontSize: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                <span>Subtotal:</span><span>Rs {subtotal.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                <span>Tax:</span><span>Rs {totalVAT.toFixed(2)}</span>
+              </div>
+              {totalDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', color: '#0ca678' }}>
+                  <span>Discount:</span><span>- Rs {totalDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '18px' }}>
+                <span>TOTAL:</span><span>Rs {total.toFixed(2)}</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
-              <span>Tax:</span>
-              <span>Rs {totalVAT.toFixed(2)}</span>
+            <div style={{ marginTop: '60px', textAlign: 'center', borderTop: '1px dashed #ccc', paddingTop: '20px' }}>
+              <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold' }}>THANK YOU FOR SHOPPING!</p>
+              <p style={{ margin: '5px 0', fontSize: '11px', color: '#666' }}>Please visit us again soon.</p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '18px' }}>
-              <span>TOTAL:</span>
-              <span>Rs {total.toFixed(2)}</span>
-            </div>
-          </div>
-          
-          <div style={{ marginTop: '60px', textAlign: 'center', borderTop: '1px dashed #ccc', paddingTop: '20px' }}>
-            <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold' }}>THANK YOU FOR SHOPPING!</p>
-            <p style={{ margin: '5px 0', fontSize: '11px', color: '#666' }}>Please visit us again soon.</p>
-          </div>
           </div>
         </div>
       </div>
     </>
   );
 };
-
 
 export default POS;

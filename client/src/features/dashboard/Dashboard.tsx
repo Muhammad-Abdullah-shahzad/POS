@@ -36,6 +36,57 @@ interface CustomerCart {
   customerPhone?: string;
 }
 
+// Read active offers from localStorage
+interface Offer {
+  id: string;
+  code: string;
+  type: string;   // 'Category Discount' | 'Flat Percentage' | 'BOGO Free'
+  target: string; // category name or product name
+  value: number;  // discount %
+  status: string; // 'Active' | 'Inactive'
+}
+
+const getActiveOffers = (): Offer[] => {
+  try {
+    const saved = localStorage.getItem('customProductOffers');
+    if (!saved) return [];
+    return JSON.parse(saved).filter((o: Offer) => o.status === 'Active');
+  } catch {
+    return [];
+  }
+};
+
+// Find best applicable discount for a product
+const getDiscountForProduct = (productName: string, category: string): { pct: number; label: string } => {
+  const offers = getActiveOffers();
+  let bestPct = 0;
+  let bestLabel = '';
+
+  const normName = productName.trim().toLowerCase();
+  const normCat = category.trim().toLowerCase();
+
+  for (const offer of offers) {
+    const target = (offer.target || '').trim().toLowerCase();
+    const pct = Math.min(Number(offer.value) || 0, 100);
+    if (pct <= 0) continue;
+
+    const matchesCategory =
+      (offer.type === 'Category Discount' || offer.type === 'Flat Percentage') &&
+      normCat === target;
+    const matchesProduct = normName === target;
+    const partialCatMatch =
+      (offer.type === 'Category Discount' || offer.type === 'Flat Percentage') &&
+      (normCat.includes(target) || target.includes(normCat));
+
+    if ((matchesCategory || matchesProduct || partialCatMatch) && pct > bestPct) {
+      bestPct = pct;
+      bestLabel = `${offer.code} (${pct}% off)`;
+    }
+  }
+
+  return { pct: bestPct, label: bestLabel };
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [carts, setCarts] = useState<CustomerCart[]>([
@@ -108,17 +159,40 @@ const Dashboard = () => {
       const product = (data.data || []).find((p: any) => p.barcode === barcodeSearch.trim());
       
       if (product) {
+        // Read latest catalog discount percentages directly from localStorage
+        const savedDiscounts = localStorage.getItem('productDiscounts');
+        const productDiscounts = savedDiscounts ? JSON.parse(savedDiscounts) : {};
+        const catalogDiscountPct = productDiscounts[product._id] || 0;
+
+        // Retrieve offer discount
+        const offerDiscount = getDiscountForProduct(product.name, product.category || '');
+        
+        // Find max discount percentage
+        const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
+        
+        // Calculate discounted price
+        const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
+
         const newItem: CartItem = {
           id: Date.now().toString(),
           name: product.name,
           barcode: product.barcode,
           qty: 1,
-          price: product.price
+          price: discountedPrice
         };
         updateCartItems([...cartItems, newItem]);
         updateSelectedItemId(newItem.id);
         setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
         setBarcodeSearch('');
+
+        if (discountPct > 0) {
+          notifications.show({
+            title: 'Discount Applied!',
+            message: `${discountPct}% discount applied to ${product.name}. Price: Rs ${discountedPrice.toFixed(2)}`,
+            color: 'teal',
+            icon: <IconCheck size={16} />,
+          });
+        }
       } else {
         notifications.show({ title: 'Not Found', message: `No product found with barcode ${barcodeSearch}`, color: 'red' });
       }

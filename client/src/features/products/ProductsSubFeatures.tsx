@@ -94,10 +94,14 @@ export const ProductsSubFeatures = () => {
   // ----------------------------------------------------
   const [offers, setOffers] = useState<any[]>(() => {
     const saved = localStorage.getItem('customProductOffers');
-    return saved ? JSON.parse(saved) : [
+    if (saved) return JSON.parse(saved);
+    // Save defaults to localStorage on first load
+    const defaults = [
       { id: '1', code: 'EAD10', type: 'Category Discount', target: 'Beverages', value: 10, status: 'Active' },
       { id: '2', code: 'BOGO-TEA', type: 'BOGO Free', target: 'Discount Tapal Tea Premium', value: 100, status: 'Active' }
     ];
+    localStorage.setItem('customProductOffers', JSON.stringify(defaults));
+    return defaults;
   });
   const [newOfferCode, setNewOfferCode] = useState('');
   const [newOfferType, setNewOfferType] = useState('Category Discount');
@@ -157,6 +161,11 @@ export const ProductsSubFeatures = () => {
     return saved ? JSON.parse(saved) : ['Dry Grocery', 'Fresh Foods', 'Beverages & Snacks'];
   });
   const [newSuperCatName, setNewSuperCatName] = useState('');
+  // Persisted product discount percentages
+  const [productDiscounts, setProductDiscounts] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('productDiscounts');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const handleAddSuperCategory = () => {
     if (!newSuperCatName.trim()) return;
@@ -218,12 +227,17 @@ export const ProductsSubFeatures = () => {
 
   const handleApplyDiscount = () => {
     const pct = Number(discountPercent) || 0;
-    setProducts(products.map(p => {
-      if (selectedProdIds.includes(p._id)) {
-        return { ...p, price: Math.max(0, parseFloat((p.price * (1 - pct / 100)).toFixed(2))) };
+    // Update persisted discounts for selected products
+    const updatedDiscounts = { ...productDiscounts };
+    selectedProdIds.forEach(id => {
+      if (pct > 0) {
+        updatedDiscounts[id] = pct;
+      } else {
+        delete updatedDiscounts[id];
       }
-      return p;
-    }));
+    });
+    setProductDiscounts(updatedDiscounts);
+    localStorage.setItem('productDiscounts', JSON.stringify(updatedDiscounts));
     setDiscountModalOpen(false);
     notifications.show({
       title: 'Discount Applied',
@@ -310,6 +324,15 @@ export const ProductsSubFeatures = () => {
       };
     });
   }, [products, customCategories]);
+
+  // Compute displayed price for each product based on persisted discount
+  const displayedProducts = useMemo(() => {
+    return products.map(p => {
+      const discount = productDiscounts[p._id] || 0;
+      const discountedPrice = p.price * (1 - discount / 100);
+      return { ...p, discount, displayedPrice: discountedPrice };
+    });
+  }, [products, productDiscounts]);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -780,7 +803,7 @@ export const ProductsSubFeatures = () => {
                                 </Table.Tr>
                               </Table.Thead>
                               <Table.Tbody>
-                                {products.map((p) => (
+                                {displayedProducts.map((p) => (
                                   <Table.Tr key={p._id}>
                                     <Table.Td>
                                       <Checkbox
@@ -798,7 +821,7 @@ export const ProductsSubFeatures = () => {
                                     <Table.Td>
                                       <Badge variant="light" color="blue">{p.category || 'Unassigned'}</Badge>
                                     </Table.Td>
-                                    <Table.Td style={{ textAlign: 'right' }}>Rs. {p.price.toFixed(2)}</Table.Td>
+                                    <Table.Td style={{ textAlign: 'right' }}>{p.discount > 0 ? (<>\n  <span style={{ textDecoration: 'line-through', color: 'gray' }}>Rs. {p.price.toFixed(2)}</span>{' '}\n  <span style={{ color: 'red', fontWeight: 600 }}>Rs. {p.displayedPrice.toFixed(2)} ({p.discount}%)</span>\n</>) : (<>Rs. {p.price.toFixed(2)}</>)}</Table.Td>
                                   </Table.Tr>
                                 ))}
                                 {products.length === 0 && (

@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getProducts, createProduct, getProductByBarcode, updateStock, deleteProduct, upload } from '../controllers/productController';
+import { getProducts, createProduct, getProductByBarcode, updateProduct, updateStock, deleteProduct, upload } from '../controllers/productController';
 import { protect, authorize } from '../middleware/auth';
 
 const router = express.Router();
