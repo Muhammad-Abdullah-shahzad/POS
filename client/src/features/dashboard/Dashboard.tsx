@@ -53,6 +53,7 @@ const Dashboard = () => {
   const [categoryModalOpened, setCategoryModalOpened] = useState(false);
   const [openedCategoryName, setOpenedCategoryName] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  const [barcodeSearch, setBarcodeSearch] = useState('');
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
   const [optionsModalOpened, setOptionsModalOpened] = useState(false);
 
@@ -99,6 +100,39 @@ const Dashboard = () => {
     };
     loadLastOrder();
   }, []);
+
+  const handleBarcodeSubmit = async () => {
+    if (!barcodeSearch.trim()) return;
+    try {
+      const { data } = await api.get(`/products?search=${barcodeSearch}`);
+      const product = (data.data || []).find((p: any) => p.barcode === barcodeSearch.trim());
+      
+      if (product) {
+        const newItem: CartItem = {
+          id: Date.now().toString(),
+          name: product.name,
+          barcode: product.barcode,
+          qty: 1,
+          price: product.price
+        };
+        updateCartItems([...cartItems, newItem]);
+        updateSelectedItemId(newItem.id);
+        setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
+        setBarcodeSearch('');
+      } else {
+        notifications.show({ title: 'Not Found', message: `No product found with barcode ${barcodeSearch}`, color: 'red' });
+      }
+    } catch (err) {
+      console.error("Barcode search failed", err);
+      notifications.show({ title: 'Error', message: 'Failed to search barcode', color: 'red' });
+    }
+  };
+
+  const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleBarcodeSubmit();
+    }
+  };
 
   const categoryItemsMap: Record<string, string[]> = {
     "FISH AND SEAFOOD": [
@@ -496,8 +530,16 @@ const Dashboard = () => {
                            <fieldset style={{ border: `1px solid ${customColors.border}`, margin: 0, padding: '5px', position: 'relative' }}>
                               <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Search</legend>
                               <Flex gap="xs" mb={5} align="center">
-                                 <Button style={btnStyle} size="xs" w={70} h={24}><Text size="11px">Barcode</Text></Button>
-                                 <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                                 <Button onClick={handleBarcodeSubmit} style={btnStyle} size="xs" w={70} h={24}><Text size="11px">Barcode</Text></Button>
+                                 <TextInput 
+                                   size="xs" 
+                                   flex={1} 
+                                   value={barcodeSearch}
+                                   onChange={(e) => setBarcodeSearch(e.target.value)}
+                                   onKeyDown={handleBarcodeKeyDown}
+                                   placeholder="Scan barcode..."
+                                   styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} 
+                                 />
                                  <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">ENTER</Text></Button>
                               </Flex>
                               <Flex gap="xs" align="center">
