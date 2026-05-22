@@ -111,6 +111,10 @@ const Dashboard = () => {
 const [categorySearch, setCategorySearch] = useState('');
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
+  const [quickSaveModalOpened, setQuickSaveModalOpened] = useState(false);
+  const [quickSaveName, setQuickSaveName] = useState('');
+  const [quickSavePhone, setQuickSavePhone] = useState('');
+  const [quickSaveLoading, setQuickSaveLoading] = useState(false);
 
   useEffect(() => {
     const fetchDbData = async () => {
@@ -432,6 +436,70 @@ const [categorySearch, setCategorySearch] = useState('');
     { label: 'BACK', action: () => setOptionsModalOpened(false) },
   ];
 
+  const handleQuickSaveCustomer = async () => {
+    if (!quickSaveName.trim()) {
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Name is required.',
+        color: 'red'
+      });
+      return;
+    }
+    if (!quickSavePhone.trim()) {
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Phone number is required.',
+        color: 'red'
+      });
+      return;
+    }
+
+    try {
+      setQuickSaveLoading(true);
+      const { data } = await api.post('/customers', {
+        name: quickSaveName.trim(),
+        contactNum1: quickSavePhone.trim(),
+      });
+      
+      const newCust = data.data;
+      if (newCust && newCust._id) {
+        setDbCustomers(prev => [...prev, newCust]);
+        
+        setCarts(prev => prev.map(c => {
+          if (c.id === activeCartId) {
+            return {
+              ...c,
+              name: newCust.name,
+              customerId: newCust._id,
+              customerPhone: newCust.contactNum1
+            };
+          }
+          return c;
+        }));
+
+        notifications.show({
+          title: 'Success',
+          message: 'Customer registered and linked to cart successfully.',
+          color: 'green',
+          icon: <IconCheck size={16} />,
+        });
+        
+        setQuickSaveModalOpened(false);
+        setQuickSaveName('');
+        setQuickSavePhone('');
+      }
+    } catch (err: any) {
+      console.error(err);
+      notifications.show({
+        title: 'Error Saving Customer',
+        message: err.response?.data?.message || err.message,
+        color: 'red'
+      });
+    } finally {
+      setQuickSaveLoading(false);
+    }
+  };
+
   const handleAddCustomer = () => {
     const nextNum = carts.length + 1;
     const newId = `customer${nextNum}`;
@@ -584,6 +652,18 @@ const [categorySearch, setCategorySearch] = useState('');
                               }
                               return c;
                             }));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const typedVal = (e.target as HTMLInputElement).value.trim();
+                              if (!typedVal) return;
+                              const matched = dbCustomers.find(c => `${c.name} (${c.contactNum1})` === typedVal || c.name.toLowerCase() === typedVal.toLowerCase());
+                              if (!matched) {
+                                setQuickSaveName(typedVal);
+                                setQuickSavePhone('');
+                                setQuickSaveModalOpened(true);
+                              }
+                            }
                           }}
                           styles={{
                             input: {
@@ -1055,6 +1135,83 @@ const [categorySearch, setCategorySearch] = useState('');
              setVoidModalOpened(false);
            } catch(e) { notifications.show({ title: 'Error', message: 'Void failed', color: 'red' }); }
         }}>Confirm Void</Button>
+      </Modal>
+
+      {/* QUICK SAVE CUSTOMER MODAL */}
+      <Modal
+        opened={quickSaveModalOpened}
+        onClose={() => setQuickSaveModalOpened(false)}
+        title={<Text size="lg" fw="bold" c="white">Quick Register Customer</Text>}
+        centered
+        styles={{
+          content: {
+            backgroundColor: '#405c6b',
+            border: '4px solid #ffffff',
+            borderRadius: '4px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            color: '#ffffff'
+          },
+          header: {
+            backgroundColor: '#405c6b',
+            color: '#ffffff'
+          },
+          body: {
+            padding: '20px'
+          },
+          close: {
+            color: '#ffffff'
+          }
+        }}
+      >
+        <Flex direction="column" gap="md">
+          <TextInput
+            label={<Text size="xs" fw="bold" c="white">Customer Name</Text>}
+            placeholder="Enter customer name..."
+            value={quickSaveName}
+            onChange={(e) => setQuickSaveName(e.target.value)}
+            required
+            styles={{
+              input: { borderRadius: '2px', height: '36px' }
+            }}
+          />
+          <TextInput
+            label={<Text size="xs" fw="bold" c="white">Phone Number (Required)</Text>}
+            placeholder="Enter phone number..."
+            value={quickSavePhone}
+            onChange={(e) => setQuickSavePhone(e.target.value)}
+            required
+            styles={{
+              input: { borderRadius: '2px', height: '36px' }
+            }}
+          />
+          <Flex gap="sm" mt="md" justify="flex-end">
+            <Button
+              variant="outline"
+              styles={{
+                root: {
+                  borderColor: '#ffffff',
+                  color: '#ffffff',
+                  borderRadius: '2px'
+                }
+              }}
+              onClick={() => setQuickSaveModalOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={quickSaveLoading}
+              onClick={handleQuickSaveCustomer}
+              style={{
+                backgroundColor: customColors.orangeBtn,
+                color: '#ffffff',
+                border: '2px solid #ffffff',
+                borderRadius: '2px'
+              }}
+            >
+              Save & Link
+            </Button>
+          </Flex>
+        </Flex>
       </Modal>
     </>
   );
