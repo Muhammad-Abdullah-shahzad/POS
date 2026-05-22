@@ -5,7 +5,8 @@ import {
 } from '@mantine/core';
 import { 
   IconCash, IconPrinter, IconPlus, IconTruck, 
-  IconClipboardList, IconAlertCircle, IconCalendar, IconUser, IconHash
+  IconClipboardList, IconAlertCircle, IconCalendar, IconUser, IconHash,
+  IconTrash
 } from '@tabler/icons-react';
 
 // ==========================================
@@ -112,6 +113,12 @@ export const SupplierPayments = () => {
     setPayoutAmount(0);
   };
 
+  const handleDeletePayment = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this supplier payment record?")) {
+      setPayments(prev => prev.filter(p => p.id !== id));
+    }
+  };
+
   return (
     <Stack gap="md">
       <Group justify="space-between">
@@ -194,22 +201,33 @@ export const SupplierPayments = () => {
                 </Table.Td>
                 <Table.Td>{row.date}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
-                  <Button 
-                    size="xs" 
-                    variant="light" 
-                    color={row.status === 'Paid' ? 'gray' : 'blue'}
-                    onClick={() => {
-                      setSelectedPayment(row);
-                      if (row.status === 'Paid') {
-                        setViewDetailsOpened(true);
-                      } else {
-                        setPayoutAmount(row.balance);
-                        setPayoutModalOpened(true);
-                      }
-                    }}
-                  >
-                    {row.status === 'Paid' ? 'View Details' : 'Record Payout'}
-                  </Button>
+                  <Group gap="xs" justify="flex-end">
+                    <Button 
+                      size="xs" 
+                      variant="light" 
+                      color={row.status === 'Paid' ? 'gray' : 'blue'}
+                      onClick={() => {
+                        setSelectedPayment(row);
+                        if (row.status === 'Paid') {
+                          setViewDetailsOpened(true);
+                        } else {
+                          setPayoutAmount(row.balance);
+                          setPayoutModalOpened(true);
+                        }
+                      }}
+                    >
+                      {row.status === 'Paid' ? 'View Details' : 'Record Payout'}
+                    </Button>
+                    <Button 
+                      size="xs" 
+                      variant="subtle" 
+                      color="red"
+                      onClick={() => handleDeletePayment(row.id)}
+                      title="Delete payment record"
+                    >
+                      <IconTrash size={16} />
+                    </Button>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
