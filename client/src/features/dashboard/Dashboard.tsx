@@ -550,26 +550,18 @@ const [categorySearch, setCategorySearch] = useState('');
       notifications.show({ title: 'Validation Error', message: 'Product Name is required.', color: 'red' });
       return;
     }
-    if (!quickProductSku.trim()) {
-      notifications.show({ title: 'Validation Error', message: 'SKU is required.', color: 'red' });
-      return;
-    }
-    if (!quickProductBarcode.trim()) {
-      notifications.show({ title: 'Validation Error', message: 'Barcode is required.', color: 'red' });
-      return;
-    }
-    if (!quickProductCategory) {
-      notifications.show({ title: 'Validation Error', message: 'Category is required.', color: 'red' });
-      return;
-    }
+
+    const targetBarcode = quickProductBarcode.trim() || `GEN-${Date.now()}`;
+    const targetSku = quickProductSku.trim() || `SKU-${targetBarcode.slice(-6) || Date.now().toString().slice(-6)}`;
+    const targetCategory = quickProductCategory || 'FISH AND SEAFOOD';
 
     try {
       setQuickProductLoading(true);
       const payload = {
         name: quickProductName.trim(),
-        sku: quickProductSku.trim(),
-        barcode: quickProductBarcode.trim(),
-        category: quickProductCategory,
+        sku: targetSku,
+        barcode: targetBarcode,
+        category: targetCategory,
         price: Number(quickProductPrice) || 0,
         costPrice: Number(quickProductCostPrice) || 0,
         vatRate: Number(quickProductVatRate) || 0,
@@ -1383,11 +1375,10 @@ const [categorySearch, setCategorySearch] = useState('');
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
             <Select
-              label={<Text size="xs" fw="bold" c="white">Category</Text>}
+              label={<Text size="xs" fw="bold" c="white">Category (Optional)</Text>}
               data={productCategoriesList}
               value={quickProductCategory}
               onChange={(val) => setQuickProductCategory(val || 'FISH AND SEAFOOD')}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
           </SimpleGrid>
@@ -1400,60 +1391,54 @@ const [categorySearch, setCategorySearch] = useState('');
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
             <TextInput
-              label={<Text size="xs" fw="bold" c="white">SKU</Text>}
+              label={<Text size="xs" fw="bold" c="white">SKU (Optional)</Text>}
               placeholder="e.g. SKU-12345"
               value={quickProductSku}
               onChange={(e) => setQuickProductSku(e.target.value)}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
           </SimpleGrid>
 
           <SimpleGrid cols={2} spacing="xs">
             <NumberInput
-              label={<Text size="xs" fw="bold" c="white">Selling Price (Rs.)</Text>}
+              label={<Text size="xs" fw="bold" c="white">Selling Price (Rs. - Optional)</Text>}
               value={quickProductPrice}
               onChange={(val) => setQuickProductPrice(val)}
               min={0}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
             <NumberInput
-              label={<Text size="xs" fw="bold" c="white">Cost Price (Rs.)</Text>}
+              label={<Text size="xs" fw="bold" c="white">Cost Price (Rs. - Optional)</Text>}
               value={quickProductCostPrice}
               onChange={(val) => setQuickProductCostPrice(val)}
               min={0}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
           </SimpleGrid>
 
           <SimpleGrid cols={3} spacing="xs">
             <NumberInput
-              label={<Text size="xs" fw="bold" c="white">VAT Rate (%)</Text>}
+              label={<Text size="xs" fw="bold" c="white">VAT Rate (% - Optional)</Text>}
               value={quickProductVatRate}
               onChange={(val) => setQuickProductVatRate(val)}
               min={0}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
             <Select
-              label={<Text size="xs" fw="bold" c="white">VAT Type</Text>}
+              label={<Text size="xs" fw="bold" c="white">VAT Type (Optional)</Text>}
               data={[
                 { label: 'Inclusive', value: 'inclusive' },
                 { label: 'Exclusive', value: 'exclusive' }
               ]}
               value={quickProductVatType}
               onChange={(val) => setQuickProductVatType((val as 'inclusive' | 'exclusive') || 'inclusive')}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
             <NumberInput
-              label={<Text size="xs" fw="bold" c="white">Initial Stock</Text>}
+              label={<Text size="xs" fw="bold" c="white">Initial Stock (Optional)</Text>}
               value={quickProductStock}
               onChange={(val) => setQuickProductStock(val)}
               min={0}
-              required
               styles={{ input: { borderRadius: '2px', height: '36px' } }}
             />
           </SimpleGrid>
