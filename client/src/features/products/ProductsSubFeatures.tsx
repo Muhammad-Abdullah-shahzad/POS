@@ -821,7 +821,7 @@ export const ProductsSubFeatures = () => {
                                     <Table.Td>
                                       <Badge variant="light" color="blue">{p.category || 'Unassigned'}</Badge>
                                     </Table.Td>
-                                    <Table.Td style={{ textAlign: 'right' }}>{p.discount > 0 ? (<>\n  <span style={{ textDecoration: 'line-through', color: 'gray' }}>Rs. {p.price.toFixed(2)}</span>{' '}\n  <span style={{ color: 'red', fontWeight: 600 }}>Rs. {p.displayedPrice.toFixed(2)} ({p.discount}%)</span>\n</>) : (<>Rs. {p.price.toFixed(2)}</>)}</Table.Td>
+                                    <Table.Td style={{ textAlign: 'right' }}>{p.discount > 0 ? (<><span style={{ textDecoration: 'line-through', color: 'gray' }}>Rs. {p.price.toFixed(2)}</span> <span style={{ color: 'red', fontWeight: 600 }}>Rs. {p.displayedPrice.toFixed(2)} ({p.discount}%)</span></>) : (<>Rs. {p.price.toFixed(2)}</>)}</Table.Td>
                                   </Table.Tr>
                                 ))}
                                 {products.length === 0 && (
