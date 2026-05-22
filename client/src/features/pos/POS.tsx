@@ -16,7 +16,7 @@ const POS = () => {
   const componentRef = useRef<HTMLDivElement>(null);
   const lastScanRef = useRef<{ barcode: string, time: number }>({ barcode: '', time: 0 });
 
-  const { cart, subtotal, totalVAT, total, addToCart, removeFromCart, clearCart, updateQuantity } = usePosStore();
+  const { cart, subtotal, totalVAT, total, lastTransaction, addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction } = usePosStore();
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -114,7 +114,7 @@ const POS = () => {
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     try {
-      await api.post('/orders', {
+      const { data } = await api.post('/orders', {
         items: cart,
         subtotal,
         totalVAT,
@@ -122,12 +122,24 @@ const POS = () => {
         total,
         paymentMethod: 'cash'
       });
-      // Trigger professional print using library
+
+      // Save last transaction before clearing cart
+      const order = data?.data;
+      const transNo = order?.invoiceId || `REC-${Date.now().toString().slice(-7)}`;
+      setLastTransaction({
+        transNo,
+        transAmt: total,
+        paidAmt: total,
+        returnAmt: 0,
+        dueAmt: 0,
+        date: new Date().toLocaleString(),
+      });
+
       handlePrint();
 
       notifications.show({
         title: 'Order Completed',
-        message: 'Receipt generated successfully',
+        message: `Receipt ${transNo} generated successfully`,
         color: 'green',
         icon: <IconCheck size={16} />,
       });
@@ -287,6 +299,39 @@ const POS = () => {
           </Paper>
         </Grid.Col>
       </Grid>
+
+      {/* Last Transaction Details */}
+      {lastTransaction && (
+        <Paper withBorder p="sm" radius="md" mt="md" className="no-print" style={{ borderColor: '#495057' }}>
+          <Text size="xs" fw={700} c="dimmed" mb="xs" tt="uppercase">Last Transaction Details</Text>
+          <Group gap="xl">
+            <div>
+              <Text size="xs" c="dimmed">Trans No</Text>
+              <Text size="sm" fw={700}>{lastTransaction.transNo}</Text>
+            </div>
+            <div>
+              <Text size="xs" c="dimmed">Trans Amt</Text>
+              <Text size="sm" fw={700}>Rs {lastTransaction.transAmt.toFixed(2)}</Text>
+            </div>
+            <div>
+              <Text size="xs" c="dimmed">Paid Amt</Text>
+              <Text size="sm" fw={700} c="green">Rs {lastTransaction.paidAmt.toFixed(2)}</Text>
+            </div>
+            <div>
+              <Text size="xs" c="dimmed">Return Amt</Text>
+              <Text size="sm" fw={700} c="blue">Rs {lastTransaction.returnAmt.toFixed(2)}</Text>
+            </div>
+            <div>
+              <Text size="xs" c="dimmed">Due Amt</Text>
+              <Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>Rs {lastTransaction.dueAmt.toFixed(2)}</Text>
+            </div>
+            <div>
+              <Text size="xs" c="dimmed">Date</Text>
+              <Text size="sm" fw={500}>{lastTransaction.date}</Text>
+            </div>
+          </Group>
+        </Paper>
+      )}
 
       {/* Printable Receipt */}
       <div className="print-only" style={{ display: 'none' }}>

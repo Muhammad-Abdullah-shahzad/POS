@@ -1,6 +1,7 @@
 // POS Server Entry Point
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db';
 
@@ -11,6 +12,9 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve uploaded product images
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Database
 connectDB();

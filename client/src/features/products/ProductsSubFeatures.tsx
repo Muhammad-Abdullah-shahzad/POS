@@ -274,22 +274,39 @@ export const ProductsSubFeatures = () => {
   // 1. MANAGE CATEGORIES STATE & HANDLERS
   // ----------------------------------------------------
   const [newCatName, setNewCatName] = useState('');
-  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+  const [newCatVatRate, setNewCatVatRate] = useState<number | string>(0);
+  const [newCatVatType, setNewCatVatType] = useState<string>('exclusive');
+
+  interface CategoryEntry {
+    name: string;
+    vatRate: number;
+    vatType: string;
+  }
+
+  const [customCategories, setCustomCategories] = useState<CategoryEntry[]>(() => {
     const saved = localStorage.getItem('customProductCategories');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    // Migrate old string[] format to CategoryEntry[]
+    return parsed.map((item: string | CategoryEntry) =>
+      typeof item === 'string' ? { name: item, vatRate: 0, vatType: 'exclusive' } : item
+    );
   });
 
   const categoriesWithStats = useMemo(() => {
-    const allCats = Array.from(new Set([...customCategories, ...products.map(p => p.category)])).filter(Boolean);
-    return allCats.map(catName => {
+    const allCatNames = Array.from(new Set([...customCategories.map(c => c.name), ...products.map(p => p.category)])).filter(Boolean);
+    return allCatNames.map(catName => {
       const catProducts = products.filter(p => p.category === catName);
       const totalStock = catProducts.reduce((sum, p) => sum + p.stock, 0);
       const totalValue = catProducts.reduce((sum, p) => sum + (p.price * p.stock), 0);
+      const catEntry = customCategories.find(c => c.name === catName);
       return {
         name: catName,
         count: catProducts.length,
         stock: totalStock,
-        value: totalValue
+        value: totalValue,
+        vatRate: catEntry?.vatRate ?? 0,
+        vatType: catEntry?.vatType ?? 'exclusive',
       };
     });
   }, [products, customCategories]);
@@ -297,7 +314,7 @@ export const ProductsSubFeatures = () => {
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    if (customCategories.includes(newCatName.trim())) {
+    if (customCategories.some(c => c.name === newCatName.trim())) {
       notifications.show({
         title: 'Error',
         message: 'Category already exists',
@@ -306,13 +323,20 @@ export const ProductsSubFeatures = () => {
       });
       return;
     }
-    const updated = [...customCategories, newCatName.trim()];
+    const newEntry: CategoryEntry = {
+      name: newCatName.trim(),
+      vatRate: Number(newCatVatRate) || 0,
+      vatType: newCatVatType,
+    };
+    const updated = [...customCategories, newEntry];
     setCustomCategories(updated);
     localStorage.setItem('customProductCategories', JSON.stringify(updated));
     setNewCatName('');
+    setNewCatVatRate(0);
+    setNewCatVatType('exclusive');
     notifications.show({
       title: 'Success',
-      message: 'Category added successfully',
+      message: `Category "${newEntry.name}" added with ${newEntry.vatRate}% VAT (${newEntry.vatType})`,
       color: 'green',
       icon: <IconCheck size={16} />
     });
@@ -560,6 +584,25 @@ export const ProductsSubFeatures = () => {
                             value={newCatName}
                             onChange={(e) => setNewCatName(e.target.value)}
                           />
+                          <Group grow>
+                            <NumberInput
+                              label="Default VAT Rate (%)"
+                              placeholder="e.g. 15"
+                              min={0}
+                              max={100}
+                              value={newCatVatRate}
+                              onChange={(val) => setNewCatVatRate(val)}
+                            />
+                            <Select
+                              label="VAT Type"
+                              data={[
+                                { value: 'exclusive', label: 'Exclusive (added on top)' },
+                                { value: 'inclusive', label: 'Inclusive (included in price)' },
+                              ]}
+                              value={newCatVatType}
+                              onChange={(val) => setNewCatVatType(val || 'exclusive')}
+                            />
+                          </Group>
                           <Button type="submit" leftSection={<IconPlus size={16} />} color="blue" fullWidth>
                             Add Category
                           </Button>
@@ -573,6 +616,7 @@ export const ProductsSubFeatures = () => {
                         <Table.Thead>
                           <Table.Tr>
                             <Table.Th>Name</Table.Th>
+                            <Table.Th style={{ textAlign: 'center' }}>VAT</Table.Th>
                             <Table.Th style={{ textAlign: 'right' }}>SKUs</Table.Th>
                             <Table.Th style={{ textAlign: 'right' }}>Assets</Table.Th>
                           </Table.Tr>
@@ -581,6 +625,11 @@ export const ProductsSubFeatures = () => {
                           {categoriesWithStats.map((cat, idx) => (
                             <Table.Tr key={idx}>
                               <Table.Td fw={600}>{cat.name}</Table.Td>
+                              <Table.Td style={{ textAlign: 'center' }}>
+                                <Badge size="sm" color={cat.vatRate > 0 ? 'blue' : 'gray'} variant="light">
+                                  {cat.vatRate}% {cat.vatType}
+                                </Badge>
+                              </Table.Td>
                               <Table.Td style={{ textAlign: 'right' }}>{cat.count} SKUs</Table.Td>
                               <Table.Td style={{ textAlign: 'right' }} c="teal" fw={600}>Rs. {cat.value.toLocaleString()}</Table.Td>
                             </Table.Tr>
@@ -979,7 +1028,7 @@ export const ProductsSubFeatures = () => {
               <Select
                 label="Target Category"
                 placeholder="Choose category..."
-                data={Array.from(new Set([...customCategories, ...products.map(p => p.category)])).filter(Boolean)}
+                data={Array.from(new Set([...customCategories.map(c => c.name), ...products.map(p => p.category)])).filter(Boolean)}
                 value={targetCategory}
                 onChange={(val) => setTargetCategory(val || '')}
                 required

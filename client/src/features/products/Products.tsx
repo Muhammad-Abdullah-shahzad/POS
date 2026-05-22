@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Paper, Autocomplete, Stack, Text } from '@mantine/core';
+import { useEffect, useState, useRef } from 'react';
+import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Paper, Stack, Text, Image, FileButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { IconCheck, IconX, IconPlus, IconTags, IconBarcode, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconX, IconPlus, IconTags, IconBarcode, IconTrash, IconPhoto } from '@tabler/icons-react';
 
 interface Product {
   _id: string;
@@ -18,6 +18,7 @@ interface Product {
   vatType: string;
   costPrice: number;
   stock: number;
+  image?: string;
 }
 
 const Products = () => {
@@ -31,10 +32,30 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [addStockQuantity, setAddStockQuantity] = useState(0);
   const [searchBarcode, setSearchBarcode] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const resetImageRef = useRef<() => void>(null);
   const [customCategories, setCustomCategories] = useState<string[]>(() => {
     const saved = localStorage.getItem('customProductCategories');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    // Handle both old string[] and new CategoryEntry[] formats
+    return parsed.map((item: string | { name: string }) =>
+      typeof item === 'string' ? item : item.name
+    );
   });
+
+  // Full category objects with VAT info
+  const categoryEntries: { name: string; vatRate: number; vatType: string }[] = (() => {
+    const saved = localStorage.getItem('customProductCategories');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return parsed.map((item: string | { name: string; vatRate: number; vatType: string }) =>
+      typeof item === 'string'
+        ? { name: item, vatRate: 0, vatType: 'exclusive' }
+        : item
+    );
+  })();
 
   const fetchProducts = async () => {
     try {
@@ -56,10 +77,18 @@ const Products = () => {
       barcode: '',
       category: '',
       price: 0,
-      vatRate: 20,
+      vatRate: 0,
       vatType: 'exclusive',
       costPrice: 0,
       stock: 0,
+    },
+    validate: {
+      name: (v) => v.trim() ? null : 'Name is required',
+      sku: (v) => v.trim() ? null : 'SKU is required',
+      barcode: (v) => v.trim() ? null : 'Barcode is required',
+      category: (v) => v.trim() ? null : 'Category is required',
+      price: (v) => v > 0 ? null : 'Price must be greater than 0',
+      costPrice: (v) => v >= 0 ? null : 'Cost price is required',
     },
   });
 
@@ -67,7 +96,25 @@ const Products = () => {
     if (loading) return;
     try {
       setLoading(true);
-      await api.post('/products', values);
+
+      if (imageFile) {
+        // With image: use FormData (multer handles it)
+        const formData = new FormData();
+        formData.append('name', values.name);
+        formData.append('sku', values.sku);
+        formData.append('barcode', values.barcode);
+        formData.append('category', values.category);
+        formData.append('price', String(values.price));
+        formData.append('costPrice', String(values.costPrice));
+        formData.append('vatRate', String(values.vatRate));
+        formData.append('vatType', values.vatType);
+        formData.append('stock', String(values.stock));
+        formData.append('image', imageFile);
+        await api.post('/products', formData);
+      } else {
+        // No image: plain JSON to the same endpoint
+        await api.post('/products', values);
+      }
       notifications.show({
         title: 'Success',
         message: 'Product saved successfully',
@@ -76,10 +123,13 @@ const Products = () => {
       });
       close();
       form.reset();
+      setImageFile(null);
+      setImagePreview(null);
+      resetImageRef.current?.();
       fetchProducts();
     } catch (error: any) {
       console.error('Submit Error:', error);
-      const message = error.response?.data?.message || error.message;
+      const message = error.response?.data?.message || error.message || 'Unknown error';
       notifications.show({
         title: 'Error Saving Product',
         message: message,
@@ -201,13 +251,6 @@ const Products = () => {
             Search & Add Stock
           </Button>
           <Button 
-            variant="outline" 
-            leftSection={<IconTags size={16} />} 
-            onClick={openCategory}
-          >
-            Manage Categories
-          </Button>
-          <Button 
             leftSection={<IconPlus size={16} />} 
             onClick={open}
           >
@@ -220,6 +263,7 @@ const Products = () => {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
+              <Table.Th>Image</Table.Th>
               <Table.Th>Name</Table.Th>
               <Table.Th>SKU / Barcode</Table.Th>
               <Table.Th>Category</Table.Th>
@@ -232,6 +276,19 @@ const Products = () => {
           <Table.Tbody>
             {products.map((p) => (
               <Table.Tr key={p._id}>
+                <Table.Td>
+                  {p.image ? (
+                    <Image
+                      src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${p.image}`}
+                      h={40} w={40} radius="sm" fit="cover"
+                      fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23eee'/%3E%3C/svg%3E"
+                    />
+                  ) : (
+                    <div style={{ width: 40, height: 40, background: '#f1f3f5', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconPhoto size={18} color="#adb5bd" />
+                    </div>
+                  )}
+                </Table.Td>
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td>{p.sku} / {p.barcode}</Table.Td>
                 <Table.Td>{p.category}</Table.Td>
@@ -266,15 +323,59 @@ const Products = () => {
         </Table>
       </Table.ScrollContainer>
 
-      <Modal opened={opened} onClose={close} title="Add New Product" size="lg">
+      <Modal opened={opened} onClose={() => { close(); setImageFile(null); setImagePreview(null); resetImageRef.current?.(); }} title="Add New Product" size="lg">
         <form onSubmit={form.onSubmit(handleSubmit)}>
+          {/* Image Upload */}
+          <Group mb="md" align="flex-end">
+            <div style={{ flex: 1 }}>
+              <Text size="sm" fw={500} mb={4}>Product Image (optional)</Text>
+              <FileButton
+                resetRef={resetImageRef}
+                onChange={(file) => {
+                  setImageFile(file);
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setImagePreview(url);
+                  } else {
+                    setImagePreview(null);
+                  }
+                }}
+                accept="image/png,image/jpeg,image/webp"
+              >
+                {(props) => (
+                  <Button variant="outline" leftSection={<IconPhoto size={16} />} {...props}>
+                    {imageFile ? imageFile.name : 'Choose Image'}
+                  </Button>
+                )}
+              </FileButton>
+            </div>
+            {imagePreview && (
+              <Image src={imagePreview} h={80} w={80} radius="md" fit="cover" />
+            )}
+          </Group>
+
           <Group grow mb="md">
             <TextInput label="Name" required {...form.getInputProps('name')} />
-            <Autocomplete 
-              label="Category" 
-              data={uniqueCategories} 
-              required 
-              {...form.getInputProps('category')} 
+            <Select
+              label="Category"
+              placeholder="Select or type category"
+              data={uniqueCategories}
+              required
+              searchable
+              value={form.values.category}
+              error={form.errors.category}
+              onChange={(val) => {
+                const selected = val || '';
+                form.setFieldValue('category', selected);
+                // Auto-fill VAT from category definition
+                const match = categoryEntries.find(
+                  c => c.name.toLowerCase() === selected.toLowerCase()
+                );
+                if (match) {
+                  form.setFieldValue('vatRate', match.vatRate);
+                  form.setFieldValue('vatType', match.vatType);
+                }
+              }}
             />
           </Group>
           <Group grow mb="md">

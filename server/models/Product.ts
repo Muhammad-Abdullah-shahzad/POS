@@ -10,6 +10,7 @@ export interface IProduct extends Document {
   vatType: 'inclusive' | 'exclusive';
   costPrice: number;
   stock: number;
+  image?: string;
 }
 
 const ProductSchema: Schema = new Schema({
@@ -22,6 +23,7 @@ const ProductSchema: Schema = new Schema({
   vatType: { type: String, enum: ['inclusive', 'exclusive'], required: true },
   costPrice: { type: Number, required: true },
   stock: { type: Number, required: true, default: 0 },
+  image: { type: String, default: null },
 }, { timestamps: true });
 
 export default mongoose.model<IProduct>('Product', ProductSchema);
