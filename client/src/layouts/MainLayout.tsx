@@ -29,7 +29,6 @@ const MainLayout = () => {
 
   const navItems: NavItem[] = [
     { label: 'Counter', icon: IconDashboard, path: '/' },
-    { label: 'POS Terminal', icon: IconReceipt2, path: '/pos' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
     {
       label: 'Product',
