@@ -225,45 +225,82 @@ export const ProductsSubFeatures = () => {
     notifications.show({ title: 'Success', message: 'Brand Manufacturer Company deleted', color: 'red' });
   };
 
-  const handleApplyDiscount = () => {
+  const handleApplyDiscount = async () => {
     const pct = Number(discountPercent) || 0;
-    // Update persisted discounts for selected products
-    const updatedDiscounts = { ...productDiscounts };
-    selectedProdIds.forEach(id => {
-      if (pct > 0) {
-        updatedDiscounts[id] = pct;
-      } else {
-        delete updatedDiscounts[id];
+    try {
+      setLoading(true);
+      // Update persisted discounts for selected products
+      const updatedDiscounts = { ...productDiscounts };
+      
+      // Update each product's price in the database
+      for (const prodId of selectedProdIds) {
+        const product = products.find(p => p._id === prodId);
+        if (product) {
+          const newPrice = parseFloat((product.price * (1 - pct / 100)).toFixed(2));
+          await api.patch(`/products/${prodId}`, { price: newPrice });
+          
+          if (pct > 0) {
+            updatedDiscounts[prodId] = pct;
+          } else {
+            delete updatedDiscounts[prodId];
+          }
+        }
       }
-    });
-    setProductDiscounts(updatedDiscounts);
-    localStorage.setItem('productDiscounts', JSON.stringify(updatedDiscounts));
-    setDiscountModalOpen(false);
-    notifications.show({
-      title: 'Discount Applied',
-      message: `Successfully applied a ${pct}% promotional discount to ${selectedProdIds.length} selected retail items.`,
-      color: 'teal',
-      icon: <IconCheck size={16} />
-    });
-    setSelectedProdIds([]);
+      
+      setProductDiscounts(updatedDiscounts);
+      localStorage.setItem('productDiscounts', JSON.stringify(updatedDiscounts));
+      setDiscountModalOpen(false);
+      notifications.show({
+        title: 'Discount Applied',
+        message: `Successfully applied a ${pct}% promotional discount to ${selectedProdIds.length} selected retail items.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />
+      });
+      setSelectedProdIds([]);
+      fetchProducts(); // Refresh products from database
+    } catch (error: any) {
+      notifications.show({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to apply discount',
+        color: 'red'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleIncreasePrice = () => {
+  const handleIncreasePrice = async () => {
     const pct = Number(increasePercent) || 0;
-    setProducts(products.map(p => {
-      if (selectedProdIds.includes(p._id)) {
-        return { ...p, price: parseFloat((p.price * (1 + pct / 100)).toFixed(2)) };
+    try {
+      setLoading(true);
+      
+      // Update each product's price in the database
+      for (const prodId of selectedProdIds) {
+        const product = products.find(p => p._id === prodId);
+        if (product) {
+          const newPrice = parseFloat((product.price * (1 + pct / 100)).toFixed(2));
+          await api.patch(`/products/${prodId}`, { price: newPrice });
+        }
       }
-      return p;
-    }));
-    setIncreasePriceModalOpen(false);
-    notifications.show({
-      title: 'Prices Calibrated',
-      message: `Successfully increased selling prices for ${selectedProdIds.length} items by ${pct}%.`,
-      color: 'teal',
-      icon: <IconCheck size={16} />
-    });
-    setSelectedProdIds([]);
+      
+      setIncreasePriceModalOpen(false);
+      notifications.show({
+        title: 'Prices Calibrated',
+        message: `Successfully increased selling prices for ${selectedProdIds.length} items by ${pct}%.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />
+      });
+      setSelectedProdIds([]);
+      fetchProducts(); // Refresh products from database
+    } catch (error: any) {
+      notifications.show({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to increase prices',
+        color: 'red'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleMoveProducts = () => {

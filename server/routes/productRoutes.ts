@@ -23,6 +23,7 @@ const smartUpload = (req: Request, res: Response, next: NextFunction) => {
 router.get('/', protect, getProducts);
 router.post('/', protect, authorize('admin', 'manager'), smartUpload, createProduct);
 router.get('/barcode/:barcode', protect, getProductByBarcode);
+router.patch('/:id', protect, authorize('admin', 'manager'), updateProduct);
 router.patch('/:id/stock', protect, authorize('admin', 'manager'), updateStock);
 router.delete('/:id', protect, authorize('admin', 'manager'), deleteProduct);
 

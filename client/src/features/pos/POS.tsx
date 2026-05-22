@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon, Badge } from '@mantine/core';
-import { IconTrash, IconBarcode, IconPlus, IconMinus } from '@tabler/icons-react';
+import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon, Badge, SimpleGrid } from '@mantine/core';
+import { IconTrash, IconBarcode, IconPlus, IconMinus, IconCash, IconGift, IconCashRegister, IconReceipt } from '@tabler/icons-react';
 import { usePosStore } from '../../store/posStore';
 import api from '../../services/api';
 import { useReactToPrint } from 'react-to-print';
@@ -79,9 +79,110 @@ const POS = () => {
     addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction,
   } = usePosStore();
 
-
-
   const handlePrint = useReactToPrint({ contentRef: componentRef });
+
+  // Handler for PAY DUES button
+  const handlePayDues = () => {
+    modals.open({
+      title: 'Pay Customer Dues',
+      centered: true,
+      children: (
+        <Text size="sm">
+          This feature allows customers to pay their outstanding credit/dues.
+          <br /><br />
+          <strong>Coming Soon:</strong> Customer dues ledger and payment tracking.
+        </Text>
+      ),
+    });
+  };
+
+  // Handler for SHOW ALL OFFERS button
+  const handleShowOffers = () => {
+    const offers = getActiveOffers();
+    modals.open({
+      title: 'Active Promotional Offers',
+      centered: true,
+      size: 'lg',
+      children: (
+        <div>
+          {offers.length > 0 ? (
+            <Table striped>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Promo Code</Table.Th>
+                  <Table.Th>Type</Table.Th>
+                  <Table.Th>Target</Table.Th>
+                  <Table.Th>Discount</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {offers.map((offer) => (
+                  <Table.Tr key={offer.id}>
+                    <Table.Td><Badge color="pink">{offer.code}</Badge></Table.Td>
+                    <Table.Td>{offer.type}</Table.Td>
+                    <Table.Td>{offer.target}</Table.Td>
+                    <Table.Td><Text fw={700} c="green">{offer.value}% OFF</Text></Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          ) : (
+            <Text c="dimmed" ta="center">No active offers at the moment.</Text>
+          )}
+        </div>
+      ),
+    });
+  };
+
+  // Handler for OPEN TILL button
+  const handleOpenTill = () => {
+    modals.open({
+      title: 'Cash Drawer Management',
+      centered: true,
+      children: (
+        <Text size="sm">
+          <strong>Open Till:</strong> Opens the cash drawer for cash management.
+          <br /><br />
+          This feature is typically used for:
+          <ul>
+            <li>Starting shift with opening balance</li>
+            <li>Manual cash drawer opening</li>
+            <li>Cash counting and reconciliation</li>
+          </ul>
+          <strong>Status:</strong> Feature coming soon.
+        </Text>
+      ),
+    });
+  };
+
+  // Handler for PAYBILL button
+  const handlePayBill = () => {
+    if (cart.length === 0) {
+      notifications.show({
+        title: 'Empty Cart',
+        message: 'Please add items to cart before processing payment',
+        color: 'yellow',
+        icon: <IconAlertCircle size={16} />
+      });
+      return;
+    }
+    
+    modals.openConfirmModal({
+      title: 'Alternative Payment Method',
+      centered: true,
+      children: (
+        <Text size="sm">
+          Process payment of <strong>Rs {total.toFixed(2)}</strong> using alternative payment method?
+          {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes Rs {totalDiscount.toFixed(2)} discount</Text></>}
+          <br /><br />
+          <Text size="xs" c="dimmed">This can be used for card payments, mobile wallets, or credit transactions.</Text>
+        </Text>
+      ),
+      labels: { confirm: 'Process Payment', cancel: 'Cancel' },
+      confirmProps: { color: 'blue' },
+      onConfirm: handleCheckout,
+    });
+  };
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -347,6 +448,47 @@ const POS = () => {
             <Button fullWidth mt="md" variant="light" color="red" onClick={() => { clearCart(); inputRef.current?.focus(); }} disabled={cart.length === 0}>
               Clear Cart
             </Button>
+
+            <Divider my="md" label="Quick Actions" labelPosition="center" />
+
+            <SimpleGrid cols={2} spacing="xs">
+              <Button
+                variant="light"
+                color="blue"
+                leftSection={<IconCash size={16} />}
+                onClick={handlePayDues}
+                size="sm"
+              >
+                PAY DUES
+              </Button>
+              <Button
+                variant="light"
+                color="pink"
+                leftSection={<IconGift size={16} />}
+                onClick={handleShowOffers}
+                size="sm"
+              >
+                SHOW ALL OFFERS
+              </Button>
+              <Button
+                variant="light"
+                color="orange"
+                leftSection={<IconCashRegister size={16} />}
+                onClick={handleOpenTill}
+                size="sm"
+              >
+                OPEN TILL
+              </Button>
+              <Button
+                variant="light"
+                color="violet"
+                leftSection={<IconReceipt size={16} />}
+                onClick={handlePayBill}
+                size="sm"
+              >
+                PAYBILL
+              </Button>
+            </SimpleGrid>
           </Paper>
         </Grid.Col>
       </Grid>

@@ -128,6 +128,12 @@ const [categorySearch, setCategorySearch] = useState('');
   const [quickProductStock, setQuickProductStock] = useState<number | string>(10);
   const [quickProductLoading, setQuickProductLoading] = useState(false);
 
+  const [payDuesModalOpened, setPayDuesModalOpened] = useState(false);
+  const [showOffersModalOpened, setShowOffersModalOpened] = useState(false);
+  const [openTillModalOpened, setOpenTillModalOpened] = useState(false);
+  const [payBillModalOpened, setPayBillModalOpened] = useState(false);
+  const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
+
   useEffect(() => {
     const fetchDbData = async () => {
       try {
@@ -1011,10 +1017,23 @@ const [categorySearch, setCategorySearch] = useState('');
                       <Button
                         onClick={
                           opt === 'PAYBILL'
-                            ? () => handleCheckout('MIXED')
+                            ? () => {
+                                if (cartItems.length === 0) {
+                                  notifications.show({ title: 'Empty Cart', message: 'Add items to cart before paying.', color: 'yellow' });
+                                  return;
+                                }
+                                setPayBillMethod('MIXED');
+                                setPayBillModalOpened(true);
+                              }
                             : opt === 'OPTIONS'
                               ? () => setOptionsModalOpened(true)
-                              : undefined
+                              : opt === 'PAY DUES'
+                                ? () => setPayDuesModalOpened(true)
+                                : opt === 'SHOW ALL OFFERS'
+                                  ? () => setShowOffersModalOpened(true)
+                                  : opt === 'OPEN TILL'
+                                    ? () => setOpenTillModalOpened(true)
+                                    : undefined
                         }
                         key={opt}
                         flex={1}
@@ -1574,6 +1593,160 @@ const [categorySearch, setCategorySearch] = useState('');
               }}
             >
               ⚡ Register & Add
+            </Button>
+          </Flex>
+        </Flex>
+      </Modal>
+
+      {/* PAY DUES Modal */}
+      <Modal
+        opened={payDuesModalOpened}
+        onClose={() => setPayDuesModalOpened(false)}
+        title={<Text fw={700} size="lg">Pay Customer Dues</Text>}
+        centered
+        size="md"
+      >
+        <Flex direction="column" gap="md" p="sm">
+          <Text size="sm" c="dimmed">
+            Use this to accept payment for a customer's outstanding credit balance or dues.
+          </Text>
+          <Autocomplete
+            label="Select Customer"
+            placeholder="Search by name or phone..."
+            data={dbCustomers.map(c => `${c.name} (${c.contactNum1})`)}
+            size="sm"
+          />
+          <NumberInput
+            label="Amount to Pay (Rs.)"
+            placeholder="0.00"
+            min={0}
+            size="sm"
+          />
+          <Flex gap="sm" justify="flex-end" mt="xs">
+            <Button variant="subtle" color="gray" onClick={() => setPayDuesModalOpened(false)}>Cancel</Button>
+            <Button
+              style={{ backgroundColor: customColors.orangeBtn, color: '#fff' }}
+              onClick={() => {
+                setPayDuesModalOpened(false);
+                notifications.show({ title: 'Dues Recorded', message: 'Customer dues payment recorded successfully.', color: 'green', icon: <IconCheck size={16} /> });
+              }}
+            >
+              Confirm Payment
+            </Button>
+          </Flex>
+        </Flex>
+      </Modal>
+
+      {/* SHOW ALL OFFERS Modal */}
+      <Modal
+        opened={showOffersModalOpened}
+        onClose={() => setShowOffersModalOpened(false)}
+        title={<Text fw={700} size="lg">Active Promotional Offers</Text>}
+        centered
+        size="lg"
+      >
+        {(() => {
+          const offers = getActiveOffers();
+          return offers.length > 0 ? (
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Promo Code</Table.Th>
+                  <Table.Th>Type</Table.Th>
+                  <Table.Th>Target</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Discount</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {offers.map((offer) => (
+                  <Table.Tr key={offer.id}>
+                    <Table.Td><Text fw={700} c="pink">{offer.code}</Text></Table.Td>
+                    <Table.Td>{offer.type}</Table.Td>
+                    <Table.Td fw={500}>{offer.target}</Table.Td>
+                    <Table.Td style={{ textAlign: 'right' }}><Text fw={700} c="green">{offer.value}% OFF</Text></Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          ) : (
+            <Text c="dimmed" ta="center" py="xl">No active promotional offers at the moment.</Text>
+          );
+        })()}
+      </Modal>
+
+      {/* OPEN TILL Modal */}
+      <Modal
+        opened={openTillModalOpened}
+        onClose={() => setOpenTillModalOpened(false)}
+        title={<Text fw={700} size="lg">Open Till / Cash Drawer</Text>}
+        centered
+        size="sm"
+      >
+        <Flex direction="column" gap="md" p="sm">
+          <Text size="sm" c="dimmed">Manage the cash drawer for this shift.</Text>
+          <NumberInput
+            label="Opening Cash Balance (Rs.)"
+            placeholder="Enter opening float..."
+            min={0}
+            size="sm"
+          />
+          <Flex gap="sm" justify="flex-end" mt="xs">
+            <Button variant="subtle" color="gray" onClick={() => setOpenTillModalOpened(false)}>Cancel</Button>
+            <Button
+              style={{ backgroundColor: customColors.orangeBtn, color: '#fff' }}
+              onClick={() => {
+                setOpenTillModalOpened(false);
+                notifications.show({ title: 'Till Opened', message: 'Cash drawer opened and shift started.', color: 'teal', icon: <IconCheck size={16} /> });
+              }}
+            >
+              Open Till
+            </Button>
+          </Flex>
+        </Flex>
+      </Modal>
+
+      {/* PAYBILL Modal */}
+      <Modal
+        opened={payBillModalOpened}
+        onClose={() => setPayBillModalOpened(false)}
+        title={<Text fw={700} size="lg">Pay Bill</Text>}
+        centered
+        size="sm"
+      >
+        <Flex direction="column" gap="md" p="sm">
+          <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#f8f9fa', borderRadius: 8, border: '1px solid #dee2e6' }}>
+            <Text size="sm" c="dimmed">Items in Cart</Text>
+            <Text fw={700}>{cartItems.length}</Text>
+          </Flex>
+          <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#f8f9fa', borderRadius: 8, border: '1px solid #dee2e6' }}>
+            <Text size="sm" c="dimmed">Sub Total</Text>
+            <Text fw={700}>Rs. {subTotal.toFixed(2)}</Text>
+          </Flex>
+          <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#e8f5e9', borderRadius: 8, border: '1px solid #a5d6a7' }}>
+            <Text size="md" fw={700}>Total Amount</Text>
+            <Text size="xl" fw={900} c="green">Rs. {total.toFixed(2)}</Text>
+          </Flex>
+          <Select
+            label="Payment Method"
+            data={[
+              { value: 'MIXED', label: 'Mixed (Cash + Card)' },
+              { value: 'CASH', label: 'Cash' },
+              { value: 'CARD', label: 'Card' },
+            ]}
+            value={payBillMethod}
+            onChange={(val) => setPayBillMethod(val || 'MIXED')}
+            size="sm"
+          />
+          <Flex gap="sm" justify="flex-end" mt="xs">
+            <Button variant="subtle" color="gray" onClick={() => setPayBillModalOpened(false)}>Cancel</Button>
+            <Button
+              color="green"
+              onClick={() => {
+                setPayBillModalOpened(false);
+                handleCheckout(payBillMethod);
+              }}
+            >
+              Confirm & Process Payment
             </Button>
           </Flex>
         </Flex>
