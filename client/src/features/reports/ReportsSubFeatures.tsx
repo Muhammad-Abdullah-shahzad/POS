@@ -732,7 +732,7 @@ export const ReportsSubFeatures = () => {
   }
 
   return (
-    <Stack gap="md" style={{ height: 'calc(100vh - 100px)', overflow: 'hidden' }}>
+    <Stack gap="md" style={{ height: 'calc(100vh - 100px)', overflowY: 'auto' }}>
       
       {/* 1. HEADER SECTION */}
       <Group justify="space-between" className="no-print">
@@ -855,7 +855,7 @@ export const ReportsSubFeatures = () => {
       )}
 
       {/* 4. DATA TABLE SECTION */}
-      <Paper withBorder radius="md" p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Paper withBorder radius="md" p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 400 }}>
         
         {/* Table Search Filters */}
         <Group justify="space-between" mb="sm" className="no-print">
