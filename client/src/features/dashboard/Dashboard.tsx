@@ -1,5 +1,5 @@
-import { 
-  Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button, 
+import {
+  Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
   Box, Checkbox, Modal, Autocomplete, SimpleGrid
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
@@ -157,7 +157,7 @@ const Dashboard = () => {
     try {
       const { data } = await api.get(`/products?search=${barcodeSearch}`);
       const product = (data.data || []).find((p: any) => p.barcode === barcodeSearch.trim());
-      
+
       if (product) {
         // Read latest catalog discount percentages directly from localStorage
         const savedDiscounts = localStorage.getItem('productDiscounts');
@@ -166,10 +166,10 @@ const Dashboard = () => {
 
         // Retrieve offer discount
         const offerDiscount = getDiscountForProduct(product.name, product.category || '');
-        
+
         // Find max discount percentage
         const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
-        
+
         // Calculate discounted price
         const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
 
@@ -221,7 +221,7 @@ const Dashboard = () => {
     "VEG": ["POTATO", "ONION", "TOMATO", "CARROT", "BROCCOLI", "SPINACH", "CABBAGE", "BELL PEPPER", "GARLIC", "GINGER"],
     "BAKERY AND DAIRY": ["MILK", "BREAD", "EGGS", "BUTTER", "CHEESE", "YOGURT", "CROISSANT", "BAGUETTE", "CAKE", "MUFFIN"]
   };
-  
+
   const currentCategoryItems = categoryItemsMap[openedCategoryName] || [];
 
   const componentRef = useRef<HTMLDivElement>(null);
@@ -280,7 +280,7 @@ const Dashboard = () => {
 
   const handleUpdateItem = () => {
     if (!stagingItem.id) return;
-    updateCartItems(prev => prev.map(item => 
+    updateCartItems(prev => prev.map(item =>
       item.id === stagingItem.id ? { ...item, name: stagingItem.name, barcode: stagingItem.barcode, qty: Number(stagingItem.qty) || 1, price: Number(stagingItem.price) || 0 } : item
     ));
   };
@@ -311,11 +311,11 @@ const Dashboard = () => {
 
   const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
   const depositVal = Number(depositInput) || 0;
-  const total = subTotal; 
+  const total = subTotal;
 
   const handleCheckout = async (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
-    
+
     if (method === 'CASH') {
       const retAmt = depositVal - total;
       setReturnAmount(retAmt);
@@ -369,7 +369,7 @@ const Dashboard = () => {
       date: new Date().toLocaleString(),
       paymentMethod: method
     };
-    
+
     // Add customer data fields for printing
     (newTransaction as any).customerName = activeCart.customerId ? activeCart.name : 'Walk-in';
     (newTransaction as any).customerPhone = activeCart.customerPhone || '';
@@ -379,7 +379,7 @@ const Dashboard = () => {
     updateCartItems([]);
     updateSelectedItemId('');
     setStagingItem({ name: '', barcode: '', qty: '', price: '' });
-    
+
     // Reset selected customer for this cart tab
     setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
   };
@@ -455,11 +455,11 @@ const Dashboard = () => {
 
   return (
     <>
-      <Box p="xs" bg={customColors.bg} h="100vh" style={{ border: `2px solid ${customColors.border}`, overflow: 'hidden' }}>
+      <Box p="sm" bg={customColors.bg} h="100vh" style={{ border: `2px solid ${customColors.border}`, overflow: 'hidden' }}>
         <Grid>
           {/* LEFT COLUMN */}
           <Grid.Col span={3.5}>
-            <Flex direction="column" h="calc(100vh - 24px)">
+            <Flex direction="column" h="calc(100vh - 104px)">
               <Tabs value={activeCartId} onChange={(val) => {
                 if (val) {
                   setActiveCartId(val);
@@ -484,20 +484,20 @@ const Dashboard = () => {
                   </Button>
                 </Tabs.List>
               </Tabs>
-              
+
               <Paper withBorder mt={0} bg="white" style={{ flexGrow: 1, borderTop: 0, borderRadius: 0, border: `2px solid ${customColors.border}`, overflowY: 'auto' }}>
                 <Table stickyHeader>
                   <Table.Thead bg={customColors.tableHeaderRow}>
                     <Table.Tr>
-                      <Table.Th style={{fontSize:'12px', padding:'4px 8px'}}>Product Name</Table.Th>
-                      <Table.Th style={{fontSize:'12px', padding:'4px 8px'}}>Qty/Wt</Table.Th>
-                      <Table.Th style={{fontSize:'12px', padding:'4px 8px'}}>Total</Table.Th>
+                      <Table.Th style={{ fontSize: '12px', padding: '4px 8px' }}>Product Name</Table.Th>
+                      <Table.Th style={{ fontSize: '12px', padding: '4px 8px' }}>Qty/Wt</Table.Th>
+                      <Table.Th style={{ fontSize: '12px', padding: '4px 8px' }}>Total</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {cartItems.map((item) => (
-                      <Table.Tr 
-                        key={item.id} 
+                      <Table.Tr
+                        key={item.id}
                         bg={selectedItemId === item.id ? customColors.selectedRow : undefined}
                         onClick={() => {
                           updateSelectedItemId(item.id);
@@ -505,9 +505,9 @@ const Dashboard = () => {
                         }}
                         style={{ cursor: 'pointer' }}
                       >
-                        <Table.Td style={{fontSize:'12px', padding:'4px 8px'}} fw={selectedItemId === item.id ? "bold" : "normal"}>{item.name}</Table.Td>
-                        <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>{item.qty} X 1</Table.Td>
-                        <Table.Td style={{fontSize:'12px', padding:'4px 8px'}}>{(item.qty * item.price).toFixed(2)}</Table.Td>
+                        <Table.Td style={{ fontSize: '12px', padding: '4px 8px' }} fw={selectedItemId === item.id ? "bold" : "normal"}>{item.name}</Table.Td>
+                        <Table.Td style={{ fontSize: '12px', padding: '4px 8px' }}>{item.qty} X 1</Table.Td>
+                        <Table.Td style={{ fontSize: '12px', padding: '4px 8px' }}>{(item.qty * item.price).toFixed(2)}</Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
@@ -515,316 +515,316 @@ const Dashboard = () => {
               </Paper>
 
               <Paper withBorder mt="xs" p="xs" style={{ border: `2px solid ${customColors.border}`, borderRadius: 0, position: 'relative' }} bg={customColors.bg}>
-                 <Text size="10px" fw="bold" style={{ position: 'absolute', top: '-8px', left: '10px', backgroundColor: customColors.bg, padding: '0 5px' }}>Last Transaction Details</Text>
-                 <Grid mt={5}>
-                   <Grid.Col span={6}>
-                     <Flex justify="space-between"><Text size="11px">Trans No</Text><Text size="11px" fw="bold">{transactionNo}</Text></Flex>
-                     <Flex justify="space-between"><Text size="11px">Trans Amt</Text><Text size="11px" fw="bold">{lastTransaction ? lastTransaction.total.toFixed(2) : '0.00'}</Text></Flex>
-                     <Flex justify="space-between"><Text size="11px">Due Amt</Text><Text size="11px" fw="bold">0.00</Text></Flex>
-                   </Grid.Col>
-                   <Grid.Col span={6}>
-                     <Flex justify="space-between"><Text size="11px">Paid Amt</Text><Text size="11px" fw="bold">{lastTransaction ? lastTransaction.total.toFixed(2) : '0.00'}</Text></Flex>
-                     <Flex justify="space-between"><Text size="11px">Return Amt</Text><Text size="11px" fw="bold">0.00</Text></Flex>
-                     <Button size="xs" style={btnStyle} fullWidth mt={5} h={24} onClick={handleRePrint}>Re Print</Button>
-                   </Grid.Col>
-                  </Grid>
-               </Paper>
+                <Text size="10px" fw="bold" style={{ position: 'absolute', top: '-8px', left: '10px', backgroundColor: customColors.bg, padding: '0 5px' }}>Last Transaction Details</Text>
+                <Grid mt={5}>
+                  <Grid.Col span={6}>
+                    <Flex justify="space-between"><Text size="11px">Trans No</Text><Text size="11px" fw="bold">{transactionNo}</Text></Flex>
+                    <Flex justify="space-between"><Text size="11px">Trans Amt</Text><Text size="11px" fw="bold">{lastTransaction ? lastTransaction.total.toFixed(2) : '0.00'}</Text></Flex>
+                    <Flex justify="space-between"><Text size="11px">Due Amt</Text><Text size="11px" fw="bold">0.00</Text></Flex>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Flex justify="space-between"><Text size="11px">Paid Amt</Text><Text size="11px" fw="bold">{lastTransaction ? lastTransaction.total.toFixed(2) : '0.00'}</Text></Flex>
+                    <Flex justify="space-between"><Text size="11px">Return Amt</Text><Text size="11px" fw="bold">0.00</Text></Flex>
+                    <Button size="xs" style={btnStyle} fullWidth mt={5} h={24} onClick={handleRePrint}>Re Print</Button>
+                  </Grid.Col>
+                </Grid>
+              </Paper>
             </Flex>
           </Grid.Col>
 
           {/* RIGHT PANEL (Middle + Right Columns combined) */}
           <Grid.Col span={8.5}>
-            <Flex direction="column" h="calc(100vh - 24px)">
-               <Grid style={{ flexGrow: 1, alignContent: 'flex-start' }}>
-                  {/* MIDDLE COLUMN CONTENT */}
-                  <Grid.Col span={5.5}>
-                    <Flex align="center" gap="xs" mb="xs">
-                      <Text size="sm">Employee</Text>
-                      <Select data={['admin']} defaultValue="admin" size="xs" flex={1} styles={{ input: { borderRadius: 0 } }} />
-                      <Button style={btnStyle} size="xs" px="lg">LOCK</Button>
+            <Flex direction="column" h="calc(100vh - 104px)">
+              <Grid style={{ flexGrow: 1, alignContent: 'flex-start' }}>
+                {/* MIDDLE COLUMN CONTENT */}
+                <Grid.Col span={5.5}>
+                  <Flex align="center" gap="xs" mb="xs">
+                    <Text size="sm">Employee</Text>
+                    <Select data={['admin']} defaultValue="admin" size="xs" flex={1} styles={{ input: { borderRadius: 0 } }} />
+                    <Button style={btnStyle} size="xs" px="lg">LOCK</Button>
+                  </Flex>
+
+                  <Paper withBorder p={0} style={{ border: `2px solid ${customColors.headerBg}`, borderRadius: 0 }} bg={customColors.bg}>
+                    <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={3} gap="xs">
+                      <Flex align="center" gap="xs" flex={1}>
+                        <Text size="10px" c="white" style={{ whiteSpace: 'nowrap' }}>Customer:</Text>
+                        <Autocomplete
+                          size="xs"
+                          placeholder="Search registered..."
+                          value={activeCart.customerId ? `${activeCart.name} (${activeCart.customerPhone})` : (activeCart.name.startsWith('CUSTOMER ') ? '' : activeCart.name)}
+                          data={dbCustomers.map(c => `${c.name} (${c.contactNum1})`)}
+                          onChange={(val) => {
+                            // Check if it matches a customer in the db
+                            const matched = dbCustomers.find(c => `${c.name} (${c.contactNum1})` === val);
+                            setCarts(prev => prev.map(c => {
+                              if (c.id === activeCartId) {
+                                if (matched) {
+                                  return {
+                                    ...c,
+                                    name: matched.name,
+                                    customerId: matched._id,
+                                    customerPhone: matched.contactNum1
+                                  };
+                                } else {
+                                  return {
+                                    ...c,
+                                    name: val || `CUSTOMER ${c.id.replace('customer', '')}`,
+                                    customerId: undefined,
+                                    customerPhone: undefined
+                                  };
+                                }
+                              }
+                              return c;
+                            }));
+                          }}
+                          styles={{
+                            input: {
+                              height: 20,
+                              minHeight: 20,
+                              fontSize: '11px',
+                              padding: '0 4px',
+                              borderRadius: 2,
+                              border: 'none',
+                              backgroundColor: '#ffffff',
+                              color: 'black'
+                            }
+                          }}
+                          flex={1}
+                        />
+                      </Flex>
+                      <Button size="xs" style={{ ...btnStyle, border: '1px solid #fff' }} h={20} px={5} onClick={() => {
+                        updateCartItems([]);
+                        updateSelectedItemId('');
+                        setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+                        setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
+                      }}>Clear</Button>
                     </Flex>
-                    
-                    <Paper withBorder p={0} style={{ border: `2px solid ${customColors.headerBg}`, borderRadius: 0 }} bg={customColors.bg}>
-                        <Flex justify="space-between" align="center" bg={customColors.headerBg} px="sm" py={3} gap="xs">
-                           <Flex align="center" gap="xs" flex={1}>
-                              <Text size="10px" c="white" style={{whiteSpace:'nowrap'}}>Customer:</Text>
-                              <Autocomplete
-                                size="xs"
-                                placeholder="Search registered..."
-                                value={activeCart.customerId ? `${activeCart.name} (${activeCart.customerPhone})` : (activeCart.name.startsWith('CUSTOMER ') ? '' : activeCart.name)}
-                                data={dbCustomers.map(c => `${c.name} (${c.contactNum1})`)}
-                                onChange={(val) => {
-                                  // Check if it matches a customer in the db
-                                  const matched = dbCustomers.find(c => `${c.name} (${c.contactNum1})` === val);
-                                  setCarts(prev => prev.map(c => {
-                                    if (c.id === activeCartId) {
-                                      if (matched) {
-                                        return { 
-                                          ...c, 
-                                          name: matched.name, 
-                                          customerId: matched._id, 
-                                          customerPhone: matched.contactNum1 
-                                        };
-                                      } else {
-                                        return { 
-                                          ...c, 
-                                          name: val || `CUSTOMER ${c.id.replace('customer', '')}`, 
-                                          customerId: undefined, 
-                                          customerPhone: undefined 
-                                        };
-                                      }
-                                    }
-                                    return c;
-                                  }));
-                                }}
-                                styles={{ 
-                                  input: { 
-                                    height: 20, 
-                                    minHeight: 20, 
-                                    fontSize: '11px', 
-                                    padding: '0 4px', 
-                                    borderRadius: 2, 
-                                    border: 'none', 
-                                    backgroundColor: '#ffffff',
-                                    color: 'black'
-                                  } 
-                                }}
-                                flex={1}
-                              />
-                           </Flex>
-                           <Button size="xs" style={{...btnStyle, border: '1px solid #fff'}} h={20} px={5} onClick={() => { 
-                             updateCartItems([]); 
-                             updateSelectedItemId(''); 
-                             setStagingItem({ name: '', barcode: '', qty: '', price: '' }); 
-                             setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
-                           }}>Clear</Button>
+
+                    <Box p="xs">
+                      <fieldset style={{ border: `1px solid ${customColors.border}`, margin: 0, padding: '5px', position: 'relative' }}>
+                        <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Search</legend>
+                        <Flex gap="xs" mb={5} align="center">
+                          <Button onClick={handleBarcodeSubmit} style={btnStyle} size="xs" w={70} h={24}><Text size="11px">Barcode</Text></Button>
+                          <TextInput
+                            size="xs"
+                            flex={1}
+                            value={barcodeSearch}
+                            onChange={(e) => setBarcodeSearch(e.target.value)}
+                            onKeyDown={handleBarcodeKeyDown}
+                            placeholder="Scan barcode..."
+                            styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }}
+                          />
+                          <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">ENTER</Text></Button>
                         </Flex>
-                       
-                       <Box p="xs">
-                           <fieldset style={{ border: `1px solid ${customColors.border}`, margin: 0, padding: '5px', position: 'relative' }}>
-                              <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Search</legend>
-                              <Flex gap="xs" mb={5} align="center">
-                                 <Button onClick={handleBarcodeSubmit} style={btnStyle} size="xs" w={70} h={24}><Text size="11px">Barcode</Text></Button>
-                                 <TextInput 
-                                   size="xs" 
-                                   flex={1} 
-                                   value={barcodeSearch}
-                                   onChange={(e) => setBarcodeSearch(e.target.value)}
-                                   onKeyDown={handleBarcodeKeyDown}
-                                   placeholder="Scan barcode..."
-                                   styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} 
-                                 />
-                                 <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">ENTER</Text></Button>
-                              </Flex>
-                              <Flex gap="xs" align="center">
-                                 <Text size="11px" w={70}>Product</Text>
-                                 <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                                 <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">BACK</Text></Button>
-                              </Flex>
-                           </fieldset>
+                        <Flex gap="xs" align="center">
+                          <Text size="11px" w={70}>Product</Text>
+                          <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                          <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">BACK</Text></Button>
+                        </Flex>
+                      </fieldset>
 
-                           <fieldset style={{ border: `1px solid ${customColors.border}`, margin: '5px 0 0 0', padding: '5px', position: 'relative' }}>
-                              <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Details</legend>
-                              <Flex gap="xs" align="flex-start" mb={5}>
-                                 <Text size="12px" w={55} mt={5}>Product</Text>
-                                 <TextInput size="md" flex={1} value={stagingItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
-                              </Flex>
-                              <Flex gap="xs" align="center" mb={5}>
-                                 <Text size="12px" w={55}>Barcode</Text>
-                                 <TextInput size="xs" flex={1} value={stagingItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{cursor:'pointer'}}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                              </Flex>
-                              <Flex gap="xs" align="center" mb={5}>
-                                 <Text size="12px" w={55}>Weight</Text>
-                                 <Box flex={1}></Box>
-                                 <Text size="12px">Quantity</Text>
-                                 <TextInput size="xs" w={60} value={stagingItem.qty} onChange={(e) => {
-                                   const val = e.target.value;
-                                   if (val === '') setStagingItem(p => ({ ...p, qty: '' }));
-                                   else {
-                                     const pVal = parseInt(val);
-                                     if (!isNaN(pVal)) setStagingItem(p => ({ ...p, qty: pVal }));
-                                   }
-                                 }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                              </Flex>
-                              <Flex gap="xs" align="center" mb={10}>
-                                 <Select data={['1pc']} defaultValue="1pc" size="xs" w={80} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                                 <Box flex={1} />
-                                 <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(1)}>+</Button>
-                                 <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(-1)}>-</Button>
-                              </Flex>
-                              <Flex gap="xs" align="center" mb={5}>
-                                 <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={typeof stagingItem.price === 'number' ? stagingItem.price.toFixed(2) : stagingItem.price} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
-                                 <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{((Number(stagingItem.qty) || 0) * (Number(stagingItem.price) || 0)).toFixed(2)}</Text></Box>
-                              </Flex>
+                      <fieldset style={{ border: `1px solid ${customColors.border}`, margin: '5px 0 0 0', padding: '5px', position: 'relative' }}>
+                        <legend style={{ fontSize: '10px', marginLeft: '5px', padding: '0 5px' }}>Details</legend>
+                        <Flex gap="xs" align="flex-start" mb={5}>
+                          <Text size="12px" w={55} mt={5}>Product</Text>
+                          <TextInput size="md" flex={1} value={stagingItem.name} readOnly styles={{ input: { borderRadius: 0, height: 40 } }} />
+                        </Flex>
+                        <Flex gap="xs" align="center" mb={5}>
+                          <Text size="12px" w={55}>Barcode</Text>
+                          <TextInput size="xs" flex={1} value={stagingItem.barcode} readOnly rightSection={<Text size="11px" td="underline" c="blue" style={{ cursor: 'pointer' }}>Edit</Text>} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                        </Flex>
+                        <Flex gap="xs" align="center" mb={5}>
+                          <Text size="12px" w={55}>Weight</Text>
+                          <Box flex={1}></Box>
+                          <Text size="12px">Quantity</Text>
+                          <TextInput size="xs" w={60} value={stagingItem.qty} onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') setStagingItem(p => ({ ...p, qty: '' }));
+                            else {
+                              const pVal = parseInt(val);
+                              if (!isNaN(pVal)) setStagingItem(p => ({ ...p, qty: pVal }));
+                            }
+                          }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                        </Flex>
+                        <Flex gap="xs" align="center" mb={10}>
+                          <Select data={['1pc']} defaultValue="1pc" size="xs" w={80} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
+                          <Box flex={1} />
+                          <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(1)}>+</Button>
+                          <Button style={btnStyle} size="xs" w={40} h={24} onClick={() => handleQuantityChange(-1)}>-</Button>
+                        </Flex>
+                        <Flex gap="xs" align="center" mb={5}>
+                          <Box flex={1}><Text size="12px" mb={2}>Unit Price</Text><TextInput size="xs" value={typeof stagingItem.price === 'number' ? stagingItem.price.toFixed(2) : stagingItem.price} onChange={(e) => handlePriceChange(e.target.value)} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24, backgroundColor: '#3388ff', color: 'white' } }} /></Box>
+                          <Box flex={1}><Text size="12px" mb={2}>Total Price</Text><Text size="sm">{((Number(stagingItem.qty) || 0) * (Number(stagingItem.price) || 0)).toFixed(2)}</Text></Box>
+                        </Flex>
 
-                              <Flex gap={5} mt="sm">
-                                 <Button onClick={handleAddItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
-                                 <Button onClick={handleUpdateItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
-                                 <Button onClick={handleRemoveItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
-                                 <Button onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="9px" fw="bold" ta="center" style={{whiteSpace:'normal'}}>REMOVE ALL</Text></Button>
-                              </Flex>
-                           </fieldset>
-                       </Box>
-                    </Paper>
-                  </Grid.Col>
+                        <Flex gap={5} mt="sm">
+                          <Button onClick={handleAddItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">ADD</Text></Button>
+                          <Button onClick={handleUpdateItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">UPDATE</Text></Button>
+                          <Button onClick={handleRemoveItem} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="10px" fw="bold">REMOVE</Text></Button>
+                          <Button onClick={() => { updateCartItems([]); updateSelectedItemId(''); setStagingItem({ name: '', barcode: '', qty: '', price: '' }); }} style={btnStyle} size="xs" flex={1} h={30} px={0}><Text size="9px" fw="bold" ta="center" style={{ whiteSpace: 'normal' }}>REMOVE ALL</Text></Button>
+                        </Flex>
+                      </fieldset>
+                    </Box>
+                  </Paper>
+                </Grid.Col>
 
-                  {/* RIGHT COLUMN CONTENT */}
-                  <Grid.Col span={6.5}>
-                     <Grid mb="sm">
-                        {[
-                          {name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('OPEN ITEM', 'open1234')}, 
-                          {name: 'HOUSE HOLD', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('HOUSE HOLD', 'hh1234')}, 
-                          {name: 'SWEETS', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('SWEETS', 'sw1234')}, 
-                          {name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234')}, 
-                          {name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234')}, 
-                          {name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234')}, 
-                          {name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategoryModalOpened(true); }}, 
-                          {name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategoryModalOpened(true); }}, 
-                          {name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategoryModalOpened(true); }}, 
-                          {name: 'FRUITS', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FRUITS'); setCategoryModalOpened(true); }}, 
-                          {name: 'VEG', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('VEG'); setCategoryModalOpened(true); }}, 
-                          {name: 'BAKERY AND DAIRY', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('BAKERY AND DAIRY'); setCategoryModalOpened(true); }}
-                        ].map(cat => (
-                           <Grid.Col span={4} key={cat.name}>
-                              <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '32px' }}>
-                                 <Text size="10px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1.1}}>{cat.name}</Text>
-                              </Button>
-                           </Grid.Col>
-                        ))}
-                     </Grid>
+                {/* RIGHT COLUMN CONTENT */}
+                <Grid.Col span={6.5}>
+                  <Grid >
+                    {[
+                      { name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('OPEN ITEM', 'open1234') },
+                      { name: 'HOUSE HOLD', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('HOUSE HOLD', 'hh1234') },
+                      { name: 'SWEETS', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('SWEETS', 'sw1234') },
+                      { name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234') },
+                      { name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234') },
+                      { name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234') },
+                      { name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategoryModalOpened(true); } },
+                      { name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategoryModalOpened(true); } },
+                      { name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategoryModalOpened(true); } },
+                      { name: 'FRUITS', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FRUITS'); setCategoryModalOpened(true); } },
+                      { name: 'VEG', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('VEG'); setCategoryModalOpened(true); } },
+                      { name: 'BAKERY AND DAIRY', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('BAKERY AND DAIRY'); setCategoryModalOpened(true); } }
+                    ].map(cat => (
+                      <Grid.Col span={4} key={cat.name}>
+                        <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '32px' }}>
+                          <Text size="10px" fw="bold" ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.1 }}>{cat.name}</Text>
+                        </Button>
+                      </Grid.Col>
+                    ))}
+                  </Grid>
 
-                     <Grid>
-                        {[1,2,3,4,5,6,7,8,9,0,'00','X'].map(num => (
-                           <Grid.Col span={4} key={num}>
-                              <Button fullWidth style={{...btnStyle, height: '35px'}}><Text size="xl" fw="normal">{num}</Text></Button>
-                           </Grid.Col>
-                        ))}
-                        <Grid.Col span={6}>
-                           <Button fullWidth style={{...btnStyle, height: '28px'}}><Text size="11px">Clear All</Text></Button>
-                        </Grid.Col>
-                        <Grid.Col span={3}>
-                           <Button fullWidth style={{...btnStyle, height: '28px'}}><Text size="11px">C</Text></Button>
-                        </Grid.Col>
-                        <Grid.Col span={3} p={0}>
-                           <Box style={{ border: `1px solid ${customColors.border}`, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
-                              <Checkbox label={<Text size="9px" style={{lineHeight:1, whiteSpace: 'nowrap'}}>ENABLE<br/>PRINTING</Text>} size="xs" defaultChecked />
-                           </Box>
-                        </Grid.Col>
-                     </Grid>
-                  </Grid.Col>
-               </Grid>
+                  <Grid>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, '00', 'X'].map(num => (
+                      <Grid.Col span={4} key={num}>
+                        <Button fullWidth style={{ ...btnStyle, height: '35px' }}><Text size="xl" fw="normal">{num}</Text></Button>
+                      </Grid.Col>
+                    ))}
+                    <Grid.Col span={6}>
+                      <Button fullWidth style={{ ...btnStyle, height: '28px' }}><Text size="11px">Clear All</Text></Button>
+                    </Grid.Col>
+                    <Grid.Col span={3}>
+                      <Button fullWidth style={{ ...btnStyle, height: '28px' }}><Text size="11px">C</Text></Button>
+                    </Grid.Col>
+                    <Grid.Col span={3} p={0}>
+                      <Box style={{ border: `1px solid ${customColors.border}`, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
+                        <Checkbox label={<Text size="9px" style={{ lineHeight: 1, whiteSpace: 'nowrap' }}>ENABLE<br />PRINTING</Text>} size="xs" defaultChecked />
+                      </Box>
+                    </Grid.Col>
+                  </Grid>
+                </Grid.Col>
+              </Grid>
 
-               {/* BOTTOM PAYMENT SECTION */}
-               <Flex gap={8} mt="xs">
-                  <Box flex={1}>
-                     <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
-                       <Flex h={85}>
-                         {/* CASH PAY BUTTON */}
-                         <Box w="18%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
-                           <Flex align="center" justify="center" h="100%">
-                             <Text fw="bold" size="16px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br/>PAY</Text>
-                           </Flex>
-                         </Box>
+              {/* BOTTOM PAYMENT SECTION */}
+              <Flex gap={8} mt="xs">
+                <Box flex={1}>
+                  <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
+                    <Flex h={85}>
+                      {/* CASH PAY BUTTON */}
+                      <Box w="18%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
+                        <Flex align="center" justify="center" h="100%">
+                          <Text fw="bold" size="16px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br />PAY</Text>
+                        </Flex>
+                      </Box>
 
-                         {/* TOTALS GRID */}
-                         <Box w="38%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
-                            <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
-                               <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
-                                  <Text size="13px" c="black">Sub Total</Text>
-                               </Flex>
-                               <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
-                                  <Text size="14px" c="black">{subTotal.toFixed(2)}</Text>
-                               </Flex>
-                            </Flex>
-                            <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
-                               <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
-                                  <Text size="13px" c="black">Deposit</Text>
-                               </Flex>
-                               <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
-                                  <TextInput 
-                                    value={depositInput}
-                                    onChange={(e) => setDepositInput(e.target.value)}
-                                    placeholder="0.00"
-                                    styles={{ input: { textAlign: 'right', border: 'none', background: 'transparent', height: 20, minHeight: 20, padding: 0, fontSize: '14px', color: 'black', fontWeight: 'bold' } }}
-                                  />
-                               </Flex>
-                            </Flex>
-                            <Flex style={{ flex: 1 }}>
-                               <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
-                                  <Text size="15px" c="black">TOTAL</Text>
-                               </Flex>
-                               <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
-                                  <Text size="16px" c="black">{total.toFixed(2)}</Text>
-                               </Flex>
-                            </Flex>
-                         </Box>
+                      {/* TOTALS GRID */}
+                      <Box w="38%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
+                        <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                          <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                            <Text size="13px" c="black">Sub Total</Text>
+                          </Flex>
+                          <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
+                            <Text size="14px" c="black">{subTotal.toFixed(2)}</Text>
+                          </Flex>
+                        </Flex>
+                        <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                          <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                            <Text size="13px" c="black">Deposit</Text>
+                          </Flex>
+                          <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
+                            <TextInput
+                              value={depositInput}
+                              onChange={(e) => setDepositInput(e.target.value)}
+                              placeholder="0.00"
+                              styles={{ input: { textAlign: 'right', border: 'none', background: 'transparent', height: 20, minHeight: 20, padding: 0, fontSize: '14px', color: 'black', fontWeight: 'bold' } }}
+                            />
+                          </Flex>
+                        </Flex>
+                        <Flex style={{ flex: 1 }}>
+                          <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                            <Text size="15px" c="black">TOTAL</Text>
+                          </Flex>
+                          <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
+                            <Text size="16px" c="black">{total.toFixed(2)}</Text>
+                          </Flex>
+                        </Flex>
+                      </Box>
 
-                         {/* INPUTS */}
-                         <Box w="26%" style={{ borderRight: `1px solid ${customColors.border}` }} p="6px 8px">
-                           <Flex align="center" justify="space-between" h="50%" pb="3px">
-                             <Text size="12px" c="black">CASH</Text>
-                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
-                           </Flex>
-                           <Flex align="center" justify="space-between" h="50%" pt="3px">
-                             <Text size="12px" c="black">CARD</Text>
-                             <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
-                           </Flex>
-                         </Box>
+                      {/* INPUTS */}
+                      <Box w="26%" style={{ borderRight: `1px solid ${customColors.border}` }} p="6px 8px">
+                        <Flex align="center" justify="space-between" h="50%" pb="3px">
+                          <Text size="12px" c="black">CASH</Text>
+                          <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
+                        </Flex>
+                        <Flex align="center" justify="space-between" h="50%" pt="3px">
+                          <Text size="12px" c="black">CARD</Text>
+                          <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
+                        </Flex>
+                      </Box>
 
-                         {/* CARD PAY BUTTON */}
-                         <Box w="18%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
-                           <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
-                           <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
-                             <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br/>PAY</Text>
-                           </Flex>
-                         </Box>
-                       </Flex>
-                     </Box>
-
-                     <Flex gap={4} mt="xs">
-                        {[
-                          { label: '2', bg: '#7a8954' },
-                          { label: '5', bg: '#687a71' },
-                          { label: '10', bg: '#cc7b7b' },
-                          { label: '20', bg: '#7ba2b8' },
-                          { label: '50', bg: '#dcb882' }
-                        ].map((btn) => (
-                           <Button key={btn.label} flex={1} style={{ backgroundColor: btn.bg, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}>
-                              <Text size="18px" fw="bold" c="black">{btn.label}</Text>
-                           </Button>
-                        ))}
-                     </Flex>
-
-                     <Flex gap={4} mt="4px">
-                        {['PAY DUES', 'SHOW ALL OFFERS', 'OPEN TILL', 'PAYBILL', 'OPTIONS'].map((opt) => (
-                           <Button 
-                             onClick={
-                               opt === 'PAYBILL' 
-                                 ? () => handleCheckout('MIXED') 
-                                 : opt === 'OPTIONS' 
-                                 ? () => setOptionsModalOpened(true) 
-                                 : undefined
-                             } 
-                             key={opt} 
-                             flex={1} 
-                             style={{ backgroundColor: customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}
-                           >
-                              <Text size="11px" fw="bold" ta="center" style={{whiteSpace:'normal', lineHeight:1}}>{opt}</Text>
-                           </Button>
-                        ))}
-                     </Flex>
+                      {/* CARD PAY BUTTON */}
+                      <Box w="18%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
+                        <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
+                        <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
+                          <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br />PAY</Text>
+                        </Flex>
+                      </Box>
+                    </Flex>
                   </Box>
-                  
-                  {/* EDIT BUTTONS BLOCK */}
-                  <Box w="15%">
-                     <Flex direction="column" gap={4} h="100%">
-                        <Button style={btnStyle} flex={1.5}><Text size="xl" fw="normal">+</Text></Button>
-                        <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>EDIT DETAILS</Text></Button>
-                        <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>EDIT PRICE</Text></Button>
-                        <Button style={{...btnStyle, backgroundColor: '#c96263'}} flex={1} px={2}><Text size="12px" fw="bold" style={{whiteSpace:'normal', lineHeight:1}}>CLOSE<br/>(Ctrl + X)</Text></Button>
-                     </Flex>
-                  </Box>
-               </Flex>
+
+                  <Flex gap={4} mt="xs">
+                    {[
+                      { label: '2', bg: '#7a8954' },
+                      { label: '5', bg: '#687a71' },
+                      { label: '10', bg: '#cc7b7b' },
+                      { label: '20', bg: '#7ba2b8' },
+                      { label: '50', bg: '#dcb882' }
+                    ].map((btn) => (
+                      <Button key={btn.label} flex={1} style={{ backgroundColor: btn.bg, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}>
+                        <Text size="18px" fw="bold" c="black">{btn.label}</Text>
+                      </Button>
+                    ))}
+                  </Flex>
+
+                  <Flex gap={4} mt="4px">
+                    {['PAY DUES', 'SHOW ALL OFFERS', 'OPEN TILL', 'PAYBILL', 'OPTIONS'].map((opt) => (
+                      <Button
+                        onClick={
+                          opt === 'PAYBILL'
+                            ? () => handleCheckout('MIXED')
+                            : opt === 'OPTIONS'
+                              ? () => setOptionsModalOpened(true)
+                              : undefined
+                        }
+                        key={opt}
+                        flex={1}
+                        style={{ backgroundColor: customColors.orangeBtn, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}
+                      >
+                        <Text size="11px" fw="bold" ta="center" style={{ whiteSpace: 'normal', lineHeight: 1 }}>{opt}</Text>
+                      </Button>
+                    ))}
+                  </Flex>
+                </Box>
+
+                {/* EDIT BUTTONS BLOCK */}
+                <Box w="15%">
+                  <Flex direction="column" gap={4} h="100%">
+                    <Button style={btnStyle} flex={1.5}><Text size="xl" fw="normal">+</Text></Button>
+                    <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>EDIT DETAILS</Text></Button>
+                    <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>EDIT PRICE</Text></Button>
+                    <Button style={{ ...btnStyle, backgroundColor: '#c96263' }} flex={1} px={2}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>CLOSE<br />(Ctrl + X)</Text></Button>
+                  </Flex>
+                </Box>
+              </Flex>
             </Flex>
           </Grid.Col>
         </Grid>
@@ -839,7 +839,7 @@ const Dashboard = () => {
                 <h1 style={{ margin: '0', fontSize: '28px', textTransform: 'uppercase' }}>STORE POS</h1>
                 <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold' }}>123 Business Road, Commerce City</p>
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px' }}>
                 <div>
                   <p><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
@@ -851,7 +851,7 @@ const Dashboard = () => {
                   <p><strong>STATUS:</strong> PAID</p>
                 </div>
               </div>
-              
+
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #000' }}>
@@ -890,8 +890,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <Modal 
-        opened={categoryModalOpened} 
+      <Modal
+        opened={categoryModalOpened}
         onClose={() => setCategoryModalOpened(false)}
         size="100%"
         fullScreen
@@ -905,12 +905,12 @@ const Dashboard = () => {
           <Flex align="center" ml="auto" gap="xl">
             <Flex align="center" gap="sm">
               <Text size="sm" fw={600} c="dimmed">Search Product</Text>
-              <TextInput 
-                size="md" 
+              <TextInput
+                size="md"
                 placeholder="Type here..."
-                value={categorySearch} 
-                onChange={(e) => setCategorySearch(e.target.value)} 
-                styles={{ input: { borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#f8f9fa' } }} 
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                styles={{ input: { borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#f8f9fa' } }}
               />
             </Flex>
             <Flex align="center" gap="sm" bg="#fff5f5" p="8px 12px" style={{ borderRadius: '8px', border: '1px solid #ffc9c9' }}>
@@ -919,16 +919,16 @@ const Dashboard = () => {
             </Flex>
           </Flex>
         </Flex>
-        
+
         {/* GRID AREA */}
         <Box flex={1} p="xl" style={{ overflowY: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
             {currentCategoryItems.filter(item => item !== "").map((item, index) => (
-              <Paper 
-                key={index} 
-                shadow="sm" 
-                radius="lg" 
-                withBorder 
+              <Paper
+                key={index}
+                shadow="sm"
+                radius="lg"
+                withBorder
                 style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '180px' }}
                 onClick={() => {
                   handleCategoryItem(item, 'cat123');
@@ -937,7 +937,7 @@ const Dashboard = () => {
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
               >
                 <Box flex={1} bg="#e9ecef" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
+                  <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
                 </Box>
                 <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886' }}>
                   <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{item}</Text>
@@ -982,8 +982,8 @@ const Dashboard = () => {
         centered
         withCloseButton={false}
         padding={0}
-        styles={{ 
-          content: { 
+        styles={{
+          content: {
             backgroundColor: '#405c6b', // Authentic slate blue background from POS screenshot
             border: '4px solid #ffffff',
             borderRadius: '4px',
@@ -1014,12 +1014,12 @@ const Dashboard = () => {
               onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
               onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              <Text 
-                size="11px" 
-                fw="bold" 
-                ta="center" 
-                style={{ 
-                  whiteSpace: 'normal', 
+              <Text
+                size="11px"
+                fw="bold"
+                ta="center"
+                style={{
+                  whiteSpace: 'normal',
                   lineHeight: 1.2,
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase'

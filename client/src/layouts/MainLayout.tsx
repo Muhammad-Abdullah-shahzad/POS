@@ -31,9 +31,9 @@ const MainLayout = () => {
     { label: 'Counter', icon: IconDashboard, path: '/' },
     { label: 'POS Terminal', icon: IconReceipt2, path: '/pos' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
-    { 
-      label: 'Product', 
-      icon: IconPackage, 
+    {
+      label: 'Product',
+      icon: IconPackage,
       children: [
         { label: 'Manage Category', path: '/products/category' },
         { label: 'Manage Products', path: '/products' },
@@ -44,9 +44,9 @@ const MainLayout = () => {
         { label: 'Stock Reconciliation', path: '/products/reconciliation' },
       ]
     },
-    { 
-      label: 'Stock', 
-      icon: IconPackage, 
+    {
+      label: 'Stock',
+      icon: IconPackage,
       children: [
         { label: 'View Stock', path: '/products' },
         { label: 'Manage Suppliers', path: '/suppliers' },
@@ -56,9 +56,9 @@ const MainLayout = () => {
     },
     { label: 'Expenses', icon: IconCash, path: '/expenses' },
     { label: 'Analysis', icon: IconChartBar, path: '/analysis' },
-    { 
-      label: 'Reports', 
-      icon: IconClipboardText, 
+    {
+      label: 'Reports',
+      icon: IconClipboardText,
       children: [
         { label: 'Sales Summary Report', path: '/reports/sales-summary' },
         { label: 'Transaction Sales Report', path: '/reports/transaction-sales' },
@@ -86,9 +86,9 @@ const MainLayout = () => {
         { label: 'Stock Value', path: '/reports/stock-value' },
       ]
     },
-    { 
-      label: 'Employees', 
-      icon: IconUsers, 
+    {
+      label: 'Employees',
+      icon: IconUsers,
       children: [
         { label: 'Manage Employees', path: '/employees' },
         { label: 'Salary Management', path: '/employees/salary' },
@@ -111,10 +111,10 @@ const MainLayout = () => {
   return (
     <AppShell
       header={{ height: 60 }}
-      navbar={{ 
-        width: { base: 250, sm: desktopOpened ? 250 : 80 }, 
-        breakpoint: 'sm', 
-        collapsed: { mobile: !opened } 
+      navbar={{
+        width: { base: 250, sm: desktopOpened ? 250 : 80 },
+        breakpoint: 'sm',
+        collapsed: { mobile: !opened }
       }}
       transitionDuration={400}
       transitionTimingFunction="ease"
@@ -173,7 +173,7 @@ const MainLayout = () => {
                       if (isMobile && opened) toggle();
                     }}
                     py="xs"
-                    style={{ 
+                    style={{
                       borderRadius: '6px',
                       marginRight: '8px',
                       marginLeft: '8px',
@@ -246,12 +246,12 @@ const MainLayout = () => {
         <div style={{ flex: 1, padding: 'var(--mantine-spacing-md)' }}>
           <Outlet />
         </div>
-        
+
         <Center className="no-print" py="xs">
           <Text size="xs" c="dimmed">
             Developed and maintained by{' '}
             <Anchor href="https://deviction.tech" target="_blank" size="xs" fw={500}>
-              Deviction Technologies
+              Deviction Technologies .
             </Anchor>
           </Text>
         </Center>
