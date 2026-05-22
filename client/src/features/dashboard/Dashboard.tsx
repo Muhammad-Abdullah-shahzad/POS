@@ -1,6 +1,6 @@
 import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
-  Box, Checkbox, Modal, Autocomplete, SimpleGrid
+  Box, Checkbox, Modal, Autocomplete, SimpleGrid, NumberInput
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -116,6 +116,18 @@ const [categorySearch, setCategorySearch] = useState('');
   const [quickSavePhone, setQuickSavePhone] = useState('');
   const [quickSaveLoading, setQuickSaveLoading] = useState(false);
 
+  const [quickProductModalOpened, setQuickProductModalOpened] = useState(false);
+  const [quickProductName, setQuickProductName] = useState('');
+  const [quickProductSku, setQuickProductSku] = useState('');
+  const [quickProductBarcode, setQuickProductBarcode] = useState('');
+  const [quickProductCategory, setQuickProductCategory] = useState('FISH AND SEAFOOD');
+  const [quickProductPrice, setQuickProductPrice] = useState<number | string>(0);
+  const [quickProductCostPrice, setQuickProductCostPrice] = useState<number | string>(0);
+  const [quickProductVatRate, setQuickProductVatRate] = useState<number | string>(0);
+  const [quickProductVatType, setQuickProductVatType] = useState<'inclusive' | 'exclusive'>('inclusive');
+  const [quickProductStock, setQuickProductStock] = useState<number | string>(10);
+  const [quickProductLoading, setQuickProductLoading] = useState(false);
+
   useEffect(() => {
     const fetchDbData = async () => {
       try {
@@ -206,7 +218,23 @@ const [categorySearch, setCategorySearch] = useState('');
           });
         }
       } else {
-        notifications.show({ title: 'Not Found', message: `No product found with barcode ${barcodeSearch}`, color: 'red' });
+        // Open quick product save modal
+        const targetBarcode = barcodeSearch.trim();
+        setQuickProductBarcode(targetBarcode);
+        setQuickProductSku(`SKU-${targetBarcode.slice(-6) || Date.now().toString().slice(-6)}`);
+        setQuickProductName('');
+        setQuickProductCategory('FISH AND SEAFOOD');
+        setQuickProductPrice(0);
+        setQuickProductCostPrice(0);
+        setQuickProductVatRate(0);
+        setQuickProductVatType('inclusive');
+        setQuickProductStock(10);
+        setQuickProductModalOpened(true);
+        notifications.show({
+          title: 'Product Not Found',
+          message: `No product found with barcode ${targetBarcode}. Opening quick-add modal.`,
+          color: 'orange'
+        });
       }
     } catch (err) {
       console.error("Barcode search failed", err);
@@ -497,6 +525,109 @@ const [categorySearch, setCategorySearch] = useState('');
       });
     } finally {
       setQuickSaveLoading(false);
+    }
+  };
+
+  const productCategoriesList = (() => {
+    const saved = localStorage.getItem('customProductCategories');
+    let custom: string[] = [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        custom = parsed.map((item: string | { name: string }) =>
+          typeof item === 'string' ? item : item.name
+        );
+      } catch (e) {
+        console.error("Failed to parse customProductCategories", e);
+      }
+    }
+    const defaults = ["FISH AND SEAFOOD", "LAMB BEEF", "CHICKEN", "FRUITS", "VEG", "BAKERY AND DAIRY"];
+    return Array.from(new Set([...defaults, ...custom]));
+  })();
+
+  const handleQuickSaveProduct = async () => {
+    if (!quickProductName.trim()) {
+      notifications.show({ title: 'Validation Error', message: 'Product Name is required.', color: 'red' });
+      return;
+    }
+    if (!quickProductSku.trim()) {
+      notifications.show({ title: 'Validation Error', message: 'SKU is required.', color: 'red' });
+      return;
+    }
+    if (!quickProductBarcode.trim()) {
+      notifications.show({ title: 'Validation Error', message: 'Barcode is required.', color: 'red' });
+      return;
+    }
+    if (!quickProductCategory) {
+      notifications.show({ title: 'Validation Error', message: 'Category is required.', color: 'red' });
+      return;
+    }
+
+    try {
+      setQuickProductLoading(true);
+      const payload = {
+        name: quickProductName.trim(),
+        sku: quickProductSku.trim(),
+        barcode: quickProductBarcode.trim(),
+        category: quickProductCategory,
+        price: Number(quickProductPrice) || 0,
+        costPrice: Number(quickProductCostPrice) || 0,
+        vatRate: Number(quickProductVatRate) || 0,
+        vatType: quickProductVatType,
+        stock: Number(quickProductStock) || 0,
+      };
+
+      const { data } = await api.post('/products', payload);
+      const product = data.data;
+
+      if (product && product._id) {
+        const savedDiscounts = localStorage.getItem('productDiscounts');
+        const productDiscounts = savedDiscounts ? JSON.parse(savedDiscounts) : {};
+        const catalogDiscountPct = productDiscounts[product._id] || 0;
+        const offerDiscount = getDiscountForProduct(product.name, product.category || '');
+        const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
+        const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
+
+        const newItem: CartItem = {
+          id: Date.now().toString(),
+          name: product.name,
+          barcode: product.barcode,
+          qty: 1,
+          price: discountedPrice
+        };
+
+        updateCartItems([...cartItems, newItem]);
+        updateSelectedItemId(newItem.id);
+        setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
+
+        notifications.show({
+          title: 'Success',
+          message: 'Product registered and added to cart!',
+          color: 'green',
+          icon: <IconCheck size={16} />,
+        });
+
+        setQuickProductModalOpened(false);
+        setQuickProductName('');
+        setQuickProductSku('');
+        setQuickProductBarcode('');
+        setQuickProductCategory('FISH AND SEAFOOD');
+        setQuickProductPrice(0);
+        setQuickProductCostPrice(0);
+        setQuickProductVatRate(0);
+        setQuickProductVatType('inclusive');
+        setQuickProductStock(10);
+        setBarcodeSearch('');
+      }
+    } catch (err: any) {
+      console.error(err);
+      notifications.show({
+        title: 'Error Saving Product',
+        message: err.response?.data?.message || err.message,
+        color: 'red'
+      });
+    } finally {
+      setQuickProductLoading(false);
     }
   };
 
@@ -1209,6 +1340,149 @@ const [categorySearch, setCategorySearch] = useState('');
               }}
             >
               Save & Link
+            </Button>
+          </Flex>
+        </Flex>
+      </Modal>
+
+      {/* QUICK ADD PRODUCT MODAL */}
+      <Modal
+        opened={quickProductModalOpened}
+        onClose={() => setQuickProductModalOpened(false)}
+        title={<Text size="lg" fw="bold" c="white">Quick Register Product</Text>}
+        centered
+        size="md"
+        styles={{
+          content: {
+            backgroundColor: '#405c6b',
+            border: '4px solid #ffffff',
+            borderRadius: '4px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            color: '#ffffff'
+          },
+          header: {
+            backgroundColor: '#405c6b',
+            color: '#ffffff'
+          },
+          body: {
+            padding: '20px'
+          },
+          close: {
+            color: '#ffffff'
+          }
+        }}
+      >
+        <Flex direction="column" gap="sm">
+          <SimpleGrid cols={2} spacing="xs">
+            <TextInput
+              label={<Text size="xs" fw="bold" c="white">Product Name</Text>}
+              placeholder="e.g. Sufi Cooking Oil (5L)"
+              value={quickProductName}
+              onChange={(e) => setQuickProductName(e.target.value)}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+            <Select
+              label={<Text size="xs" fw="bold" c="white">Category</Text>}
+              data={productCategoriesList}
+              value={quickProductCategory}
+              onChange={(val) => setQuickProductCategory(val || 'FISH AND SEAFOOD')}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+          </SimpleGrid>
+
+          <SimpleGrid cols={2} spacing="xs">
+            <TextInput
+              label={<Text size="xs" fw="bold" c="white">Barcode</Text>}
+              value={quickProductBarcode}
+              disabled
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+            <TextInput
+              label={<Text size="xs" fw="bold" c="white">SKU</Text>}
+              placeholder="e.g. SKU-12345"
+              value={quickProductSku}
+              onChange={(e) => setQuickProductSku(e.target.value)}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+          </SimpleGrid>
+
+          <SimpleGrid cols={2} spacing="xs">
+            <NumberInput
+              label={<Text size="xs" fw="bold" c="white">Selling Price (Rs.)</Text>}
+              value={quickProductPrice}
+              onChange={(val) => setQuickProductPrice(val)}
+              min={0}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+            <NumberInput
+              label={<Text size="xs" fw="bold" c="white">Cost Price (Rs.)</Text>}
+              value={quickProductCostPrice}
+              onChange={(val) => setQuickProductCostPrice(val)}
+              min={0}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+          </SimpleGrid>
+
+          <SimpleGrid cols={3} spacing="xs">
+            <NumberInput
+              label={<Text size="xs" fw="bold" c="white">VAT Rate (%)</Text>}
+              value={quickProductVatRate}
+              onChange={(val) => setQuickProductVatRate(val)}
+              min={0}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+            <Select
+              label={<Text size="xs" fw="bold" c="white">VAT Type</Text>}
+              data={[
+                { label: 'Inclusive', value: 'inclusive' },
+                { label: 'Exclusive', value: 'exclusive' }
+              ]}
+              value={quickProductVatType}
+              onChange={(val) => setQuickProductVatType((val as 'inclusive' | 'exclusive') || 'inclusive')}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+            <NumberInput
+              label={<Text size="xs" fw="bold" c="white">Initial Stock</Text>}
+              value={quickProductStock}
+              onChange={(val) => setQuickProductStock(val)}
+              min={0}
+              required
+              styles={{ input: { borderRadius: '2px', height: '36px' } }}
+            />
+          </SimpleGrid>
+
+          <Flex gap="sm" mt="md" justify="flex-end">
+            <Button
+              variant="outline"
+              styles={{
+                root: {
+                  borderColor: '#ffffff',
+                  color: '#ffffff',
+                  borderRadius: '2px'
+                }
+              }}
+              onClick={() => setQuickProductModalOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={quickProductLoading}
+              onClick={handleQuickSaveProduct}
+              style={{
+                backgroundColor: customColors.orangeBtn,
+                color: '#ffffff',
+                border: '2px solid #ffffff',
+                borderRadius: '2px'
+              }}
+            >
+              Register & Add
             </Button>
           </Flex>
         </Flex>
