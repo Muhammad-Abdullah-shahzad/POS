@@ -68,6 +68,38 @@ const Dashboard = () => {
     fetchDbCustomers();
   }, []);
 
+  // Load last transaction and transaction count from the database on mount
+  useEffect(() => {
+    const loadLastOrder = async () => {
+      try {
+        const { data } = await api.get('/orders');
+        const orders = data.data || [];
+        if (orders.length > 0) {
+          const lastOrder = orders[0]; // Most recent (sorted by createdAt desc)
+          setLastTransaction({
+            transactionNo: orders.length,
+            items: (lastOrder.items || []).map((item: any) => ({
+              id: item._id || Date.now().toString(),
+              name: item.name,
+              barcode: '',
+              qty: item.quantity,
+              price: item.price,
+            })),
+            subTotal: lastOrder.subtotal,
+            deposit: 0,
+            total: lastOrder.total,
+            date: new Date(lastOrder.createdAt).toLocaleString(),
+            paymentMethod: lastOrder.paymentMethod || 'MIXED',
+          });
+          setTransactionNo(orders.length + 1);
+        }
+      } catch (err) {
+        console.error('Failed to load last order from database', err);
+      }
+    };
+    loadLastOrder();
+  }, []);
+
   const categoryItemsMap: Record<string, string[]> = {
     "FISH AND SEAFOOD": [
       "SEA BASS", "SEA BREAM", "PINK BREAM", "SARADINE", "KING FISH", "TUNA BONITO", "TUNA FILLETS",
@@ -192,6 +224,32 @@ const Dashboard = () => {
       } catch (err) {
         console.error("Failed to update customer stats in database", err);
       }
+    }
+
+    // Save order to the database
+    try {
+      await api.post('/orders', {
+        items: cartItems.map(item => ({
+          name: item.name,
+          quantity: item.qty,
+          price: item.price,
+          vatRate: 0,
+          vatAmount: 0,
+          totalPrice: item.qty * item.price,
+        })),
+        subtotal: subTotal,
+        totalVAT: 0,
+        discount: 0,
+        total,
+        paymentMethod: method.toLowerCase(),
+      });
+    } catch (err) {
+      console.error('Failed to save order to database', err);
+      notifications.show({
+        title: 'Order Save Failed',
+        message: 'Could not save order to database. Please check your connection.',
+        color: 'red',
+      });
     }
 
     const newTransaction: Transaction = {

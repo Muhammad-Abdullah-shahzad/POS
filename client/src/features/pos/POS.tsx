@@ -95,9 +95,15 @@ const POS = () => {
       });
 
       setBarcode('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Product not found or error:', error);
-      // Optional: Add toast notification here
+      const message = error.response?.data?.message || 'Product not found or connection error';
+      notifications.show({
+        title: 'Scan Error',
+        message: message,
+        color: 'red',
+        icon: <IconX size={16} />,
+      });
     } finally {
       setLoading(false);
       // Small timeout to ensure the input is enabled before focusing

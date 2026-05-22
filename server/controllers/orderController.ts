@@ -7,8 +7,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
   try {
     const { items, subtotal, totalVAT, discount, total, paymentMethod } = req.body;
     
-    // Check stock availability for all items first
+    // Check stock availability only for items with a product reference
     for (const item of items) {
+      if (!item.product) continue; // Skip manual/counter items
       const product = await Product.findById(item.product);
       if (!product) {
         res.status(404).json(errorResponse(`Product ${item.name} not found`));
@@ -20,8 +21,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       }
     }
 
-    // Auto deduct stock
+    // Auto deduct stock only for items with a product reference
     for (const item of items) {
+      if (!item.product) continue;
       await Product.findByIdAndUpdate(item.product, {
         $inc: { stock: -item.quantity }
       });

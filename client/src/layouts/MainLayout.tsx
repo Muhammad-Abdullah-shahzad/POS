@@ -3,6 +3,7 @@ import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconUsers, IconBuildingBank, IconAddressBook, IconClipboardText } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
+import { usePosStore } from '../store/posStore';
 
 const MainLayout = () => {
   const [opened, { toggle }] = useDisclosure();
@@ -11,8 +12,10 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuthStore();
+  const clearCart = usePosStore((state) => state.clearCart);
 
   const handleLogout = () => {
+    clearCart();
     logout();
     navigate('/login');
   };
