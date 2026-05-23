@@ -1081,7 +1081,7 @@ const Dashboard = () => {
                       { name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234') },
                       { name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234') },
                       { name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234') },
-                      { name: 'FISH AND SEAFOOD', color: customColors.greenBtnTop, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('FISH AND SEAFOOD'); } },
+                      { name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('FISH AND SEAFOOD'); } },
                       { name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('LAMB BEEF'); } },
                       { name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('CHICKEN'); } },
                       { name: 'FRUITS', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FRUITS'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('FRUITS'); } },
