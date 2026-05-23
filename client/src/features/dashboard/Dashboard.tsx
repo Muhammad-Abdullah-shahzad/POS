@@ -113,6 +113,7 @@ const [categorySearch, setCategorySearch] = useState('');
   const [productNameSearch, setProductNameSearch] = useState('');
   const [productNameResults, setProductNameResults] = useState<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
   const productNameResultsRef = useRef<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
+  const [activeProductIndex, setActiveProductIndex] = useState<number>(-1);
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
   const [quickSaveModalOpened, setQuickSaveModalOpened] = useState(false);
   const [quickSaveName, setQuickSaveName] = useState('');
@@ -292,6 +293,7 @@ const [categorySearch, setCategorySearch] = useState('');
     if (!val.trim() || val.trim().length < 2) {
       setProductNameResults([]);
       productNameResultsRef.current = [];
+      setActiveProductIndex(-1);
       return;
     }
     // If the typed value exactly matches an item already in results,
@@ -313,8 +315,35 @@ const [categorySearch, setCategorySearch] = useState('');
       }));
       setProductNameResults(results);
       productNameResultsRef.current = results;
+      setActiveProductIndex(-1);
     } catch (err) {
       console.error('Product name search failed', err);
+    }
+  };
+
+  const handleProductNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (productNameResults.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveProductIndex(prev => (prev + 1) % productNameResults.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveProductIndex(prev => (prev - 1 + productNameResults.length) % productNameResults.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeProductIndex >= 0 && activeProductIndex < productNameResults.length) {
+        const selectedProduct = productNameResults[activeProductIndex];
+        addProductToCart(selectedProduct);
+        setProductNameSearch('');
+        setProductNameResults([]);
+        productNameResultsRef.current = [];
+        setActiveProductIndex(-1);
+      }
+    } else if (e.key === 'Escape') {
+      setProductNameResults([]);
+      productNameResultsRef.current = [];
+      setActiveProductIndex(-1);
     }
   };
 
@@ -920,7 +949,8 @@ const [categorySearch, setCategorySearch] = useState('');
                               size="xs"
                               value={productNameSearch}
                               onChange={(e) => handleProductNameChange(e.target.value)}
-                              onBlur={() => setTimeout(() => { setProductNameResults([]); productNameResultsRef.current = []; }, 150)}
+                              onBlur={() => setTimeout(() => { setProductNameResults([]); productNameResultsRef.current = []; setActiveProductIndex(-1); }, 150)}
+                              onKeyDown={handleProductNameKeyDown}
                               placeholder="Type product name..."
                               styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }}
                             />
@@ -938,7 +968,7 @@ const [categorySearch, setCategorySearch] = useState('');
                                   border: '1px solid #ccc',
                                 }}
                               >
-                                {productNameResults.map((p) => (
+                                {productNameResults.map((p, index) => (
                                   <Box
                                     key={p._id}
                                     onMouseDown={(e) => {
@@ -947,15 +977,17 @@ const [categorySearch, setCategorySearch] = useState('');
                                       setProductNameSearch('');
                                       setProductNameResults([]);
                                       productNameResultsRef.current = [];
+                                      setActiveProductIndex(-1);
                                     }}
                                     style={{
                                       padding: '6px 10px',
                                       cursor: 'pointer',
                                       fontSize: '12px',
                                       borderBottom: '1px solid #eee',
+                                      backgroundColor: index === activeProductIndex ? '#e8f4fd' : '',
+                                      fontWeight: index === activeProductIndex ? 'bold' : 'normal'
                                     }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e8f4fd')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
+                                    onMouseEnter={() => setActiveProductIndex(index)}
                                   >
                                     {p.value}
                                   </Box>
