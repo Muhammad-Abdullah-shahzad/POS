@@ -31,6 +31,18 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const SERVER_URL = 'http://localhost:5001';
+const MAX_IMAGE_SIZE_MB = 15;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// Helper: resolve image URL — supports both Google Drive URLs and legacy local paths
+const resolveImageUrl = (image: string | undefined): string | null => {
+  if (!image) return null;
+  const driveId = image.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || image.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
+  if (image.startsWith('http')) return image; // Drive URL or any absolute URL
+  return `${SERVER_URL}${image}`; // legacy local path
+};
 
 interface Product {
   _id: string;
@@ -117,12 +129,22 @@ export const GeneralProducts = () => {
       vatType: p.vatType,
     });
     setImageFile(null);
-    setImagePreview(p.image ? `${SERVER_URL}/uploads/products/${p.image}` : null);
+    setImagePreview(p.image ? resolveImageUrl(p.image) : null);
     setModalOpen(true);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      notifications.show({ title: 'Invalid image', message: 'Please choose a JPG, PNG or WEBP image.', color: 'red' });
+      clearImage();
+      return;
+    }
+    if (file && file.size > MAX_IMAGE_SIZE_BYTES) {
+      notifications.show({ title: 'Image too large', message: `Please choose an image under ${MAX_IMAGE_SIZE_MB}MB.`, color: 'red' });
+      clearImage();
+      return;
+    }
     setImageFile(file);
     if (file) {
       setImagePreview(URL.createObjectURL(file));
@@ -145,6 +167,7 @@ export const GeneralProducts = () => {
 
       if (imageFile) {
         // Use FormData for multipart upload
+        console.log('📤 Preparing FormData with image:', imageFile.name, imageFile.type, imageFile.size);
         const fd = new FormData();
         fd.append('name', form.name.trim());
         fd.append('sku', form.sku.trim());
@@ -157,10 +180,13 @@ export const GeneralProducts = () => {
         fd.append('vatType', form.vatType);
         fd.append('image', imageFile);
 
+        console.log('📤 Sending FormData to:', editingId ? `PATCH /products/${editingId}` : 'POST /products');
         if (editingId) {
-          await api.patch(`/products/${editingId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+          const response = await api.patch(`/products/${editingId}`, fd);
+          console.log('✅ Response:', response.data);
         } else {
-          await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+          const response = await api.post('/products', fd);
+          console.log('✅ Response:', response.data);
         }
       } else {
         // Plain JSON — no image
@@ -192,7 +218,12 @@ export const GeneralProducts = () => {
       setModalOpen(false);
       fetchProducts();
     } catch (err: any) {
-      notifications.show({ title: 'Error', message: err.response?.data?.message || 'Save failed', color: 'red' });
+      const responseData = err.response?.data;
+      const message = responseData?.message || responseData?.data || err.message || 'Save failed';
+      console.error('Save error:', err);
+      console.error('Response status:', err.response?.status);
+      console.error('Response data:', responseData ? JSON.stringify(responseData, null, 2) : responseData);
+      notifications.show({ title: 'Error', message, color: 'red' });
     } finally {
       setSaving(false);
     }
@@ -323,7 +354,7 @@ export const GeneralProducts = () => {
                   <Table.Td>
                     {p.image ? (
                       <Image
-                        src={`${SERVER_URL}/uploads/products/${p.image}`}
+                        src={resolveImageUrl(p.image) || ''}
                         w={40} h={40} radius="sm" fit="cover"
                         fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23e9ecef'/%3E%3C/svg%3E"
                       />
@@ -480,7 +511,7 @@ export const GeneralProducts = () => {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   style={{ display: 'none' }}
                   onChange={handleImageChange}
                 />
@@ -504,7 +535,7 @@ export const GeneralProducts = () => {
                     Remove Image
                   </Button>
                 )}
-                <Text size="xs" c="dimmed">JPG, PNG or WEBP. Max 5MB.</Text>
+                <Text size="xs" c="dimmed">JPG, PNG or WEBP. Max {MAX_IMAGE_SIZE_MB}MB.</Text>
               </Stack>
             </Group>
           </Box>

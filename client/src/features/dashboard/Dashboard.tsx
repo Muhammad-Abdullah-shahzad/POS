@@ -9,6 +9,17 @@ import { IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../../services/api';
 
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
+
+const resolveProductImageUrl = (image?: string | null): string | null => {
+  if (!image) return null;
+  const driveId = image.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || image.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
+  if (image.startsWith('http')) return image;
+  if (image.startsWith('/')) return `${API_ORIGIN}${image}`;
+  return `${API_ORIGIN}/uploads/products/${image}`;
+};
+
 interface CartItem {
   id: string;
   name: string;
@@ -1337,33 +1348,43 @@ const Dashboard = () => {
             );
             return filtered.length > 0 ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
-                {filtered.map((product: any) => (
-                  <Paper
-                    key={product._id}
-                    shadow="sm"
-                    radius="lg"
-                    withBorder
-                    style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '180px' }}
-                    onClick={() => {
-                      addProductToCart(product);
-                      setCategoryModalOpened(false);
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
-                  >
-                    <Box flex={1} bg="#e9ecef" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4 }}>
-                      {product.image ? (
-                        <img src={`http://localhost:5001/uploads/products/${product.image}`} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
-                      )}
-                    </Box>
-                    <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886' }}>
-                      <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{product.name}</Text>
-                      <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>Rs. {product.price.toFixed(2)}</Text>
-                    </Box>
-                  </Paper>
-                ))}
+                {filtered.map((product: any) => {
+                  const imageUrl = resolveProductImageUrl(product.image);
+                  return (
+                    <Paper
+                      key={product._id}
+                      shadow="sm"
+                      radius="lg"
+                      withBorder
+                      style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '190px' }}
+                      onClick={() => {
+                        addProductToCart(product);
+                        setCategoryModalOpened(false);
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
+                    >
+                      <Box bg="#e9ecef" style={{ height: 128, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={product.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
+                        )}
+                      </Box>
+                      <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886', minHeight: 62, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <Text c="white" size="sm" fw={700} ta="center" lineClamp={2} style={{ lineHeight: 1.15 }}>{product.name}</Text>
+                        <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>Rs. {product.price.toFixed(2)}</Text>
+                      </Box>
+                    </Paper>
+                  );
+                })}
               </div>
             ) : (
               <Flex direction="column" align="center" justify="center" h={300} gap="md">

@@ -11,6 +11,16 @@ const app = express();
 
 // Middleware
 app.use(cors());
+
+// Request logger for debugging
+app.use((req, res, next) => {
+  if (req.path.includes('/products')) {
+    console.log(`\n📨 Incoming ${req.method} ${req.path}`);
+    console.log('   Content-Type:', req.headers['content-type']);
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Serve uploaded product images
@@ -21,7 +31,7 @@ connectDB();
 
 // Routes Placeholder
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Server is running' });
+  res.json({ success: true, message: 'Server is running', version: '2.0-with-logging' });
 });
 
 import authRoutes from './routes/authRoutes';
