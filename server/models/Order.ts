@@ -18,6 +18,10 @@ export interface IOrder extends Document {
   discount: number;
   total: number;
   paymentMethod: string;
+  status: 'completed' | 'voided';
+  voidReason?: string;
+  voidedAt?: Date;
+  voidedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
 }
 
@@ -39,6 +43,10 @@ const OrderSchema = new Schema<IOrder>({
   discount: { type: Number, required: true, default: 0 },
   total: { type: Number, required: true },
   paymentMethod: { type: String, required: true },
+  status: { type: String, enum: ['completed', 'voided'], default: 'completed', index: true },
+  voidReason: { type: String, default: null },
+  voidedAt: { type: Date, default: null },
+  voidedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
 }, { timestamps: true });
 
 export default mongoose.model<IOrder>('Order', OrderSchema);

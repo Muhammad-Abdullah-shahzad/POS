@@ -26,6 +26,7 @@ import { ReportsSubFeatures } from './features/reports/ReportsSubFeatures';
 import GeneralProducts from './features/products/GeneralProducts';
 import BankManagement from './features/bank/BankManagement';
 import Customers from './features/customers/Customers';
+import VoidTransactions from './features/voidTransactions/VoidTransactions';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -62,6 +63,7 @@ function App() {
         <Route path="employees/overtime" element={<OverTimeDetails />} />
         <Route path="bank" element={<BankManagement />} />
         <Route path="customers" element={<Customers />} />
+        <Route path="void-transactions" element={<VoidTransactions />} />
       </Route>
     </Routes>
   );

@@ -374,33 +374,6 @@ const Dashboard = () => {
     }
   };
 
-  // Handle selection from the product-name autocomplete
-  const handleProductNameSelect = (value: string) => {
-    // Use the ref so we always have the latest results regardless of render timing
-    const found = productNameResultsRef.current.find(p => p.value === value);
-    if (!found) return;
-    addProductToCart(found);
-    setProductNameSearch('');
-    setProductNameResults([]);
-    productNameResultsRef.current = [];
-  };
-
-  const categoryItemsMap: Record<string, string[]> = {
-    "FISH AND SEAFOOD": [
-      "SEA BASS", "SEA BREAM", "PINK BREAM", "SARADINE", "KING FISH", "TUNA BONITO", "TUNA FILLETS",
-      "SALMON", "SHARK FILLETS", "PRAWNS", "RED MULLETS", "SPANISH POMPANO", "GREY MULLETS", "RAHU FISH",
-      "BOAL FISH", "MIRGAL", "HAKE FISH", "HILSHA FISH", "SALT FISH", "RED SNAPER FISH", "SMOKE TURKEY WINGS",
-      "Salted dry Fish"
-    ],
-    "LAMB BEEF": ["LAMB CHOPS", "BEEF STEAK", "MINCED BEEF", "LAMB SHANK", "BEEF RIBS", "ROAST BEEF", "BEEF BRISKET", "LAMB LEG"],
-    "CHICKEN": ["WHOLE CHICKEN", "CHICKEN BREAST", "CHICKEN WINGS", "CHICKEN THIGHS", "DRUMSTICKS", "CHICKEN MINCE", "CHICKEN LIVER"],
-    "FRUITS": ["APPLE", "BANANA", "ORANGE", "MANGO", "GRAPES", "PINEAPPLE", "WATERMELON", "STRAWBERRY", "PEACH", "PEAR"],
-    "VEG": ["POTATO", "ONION", "TOMATO", "CARROT", "BROCCOLI", "SPINACH", "CABBAGE", "BELL PEPPER", "GARLIC", "GINGER"],
-    "BAKERY AND DAIRY": ["MILK", "BREAD", "EGGS", "BUTTER", "CHEESE", "YOGURT", "CROISSANT", "BAGUETTE", "CAKE", "MUFFIN"]
-  };
-
-  const currentCategoryItems = categoryItemsMap[openedCategoryName] || [];
-
   const componentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -512,7 +485,7 @@ const Dashboard = () => {
 
     // Save order to the database
     try {
-      await api.post('/orders', {
+      const { data } = await api.post('/orders', {
         items: cartItems.map(item => ({
           name: item.name,
           quantity: item.qty,
@@ -527,6 +500,7 @@ const Dashboard = () => {
         total,
         paymentMethod: method.toLowerCase(),
       });
+      if (data?.data) setOrders(prev => [data.data, ...prev]);
     } catch (err) {
       console.error('Failed to save order to database', err);
       notifications.show({
@@ -585,12 +559,39 @@ const Dashboard = () => {
     navigate(path);
   };
 
+  const openVoidModal = () => {
+    setOptionsModalOpened(false);
+    setVoidModalOpened(true);
+  };
+
+  const handleVoidTransaction = async () => {
+    if (!selectedOrderId) {
+      notifications.show({ title: 'Select Order', message: 'Please select an order to void.', color: 'orange' });
+      return;
+    }
+
+    try {
+      await api.delete(`/orders/${selectedOrderId}?reason=${encodeURIComponent(voidReason.trim())}`);
+      setOrders(prev => prev.filter(order => order._id !== selectedOrderId));
+      setSelectedOrderId('');
+      setVoidReason('');
+      setVoidModalOpened(false);
+      notifications.show({ title: 'Success', message: 'Order voided', color: 'green' });
+    } catch (err: any) {
+      notifications.show({
+        title: 'Error',
+        message: err.response?.data?.message || err.response?.data?.data || 'Void failed',
+        color: 'red'
+      });
+    }
+  };
+
   const optionButtons = [
     { label: 'Z REPORT', action: () => handleOptionAction('Z REPORT', '/reports/z-report-print') },
     { label: 'TILL REPORT', action: () => handleOptionAction('TILL REPORT', '/reports/sales-summary') },
     { label: 'Post Amount', action: () => handleOptionAction('Post Amount', '/reports/posting'), isSpecial: true },
     { label: 'EXCH / REF', action: () => handleOptionAction('EXCH / REF', '/reports/exchange-refund') },
-    { label: 'VOID TRANS', action: () => setVoidModalOpened(true) },
+    { label: 'VOID TRANS', action: openVoidModal },
     { label: 'RE PRINT BILL', action: () => handleOptionAction('RE PRINT BILL', '/receipts') },
     { label: 'CATEGORY PRIORITY', action: () => handleOptionAction('CATEGORY PRIORITY', '/products/category') },
     { label: 'MANAGE CUSTOMER', action: () => handleOptionAction('MANAGE CUSTOMER', '/customers') },
@@ -1484,17 +1485,12 @@ const Dashboard = () => {
       <Modal opened={voidModalOpened} onClose={() => setVoidModalOpened(false)} title="Void Transaction">
         <Select 
           label="Select Order" 
-          data={orders.map(o => ({ value: o._id, label: `Order #${o._id.slice(-6)} - $${o.total.toFixed(2)}` }))} 
+          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - Rs. ${o.total.toFixed(2)}` }))} 
+          value={selectedOrderId}
           onChange={(val) => setSelectedOrderId(val || '')}
         />
         <TextInput label="Reason for void" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
-        <Button mt="md" fullWidth color="red" onClick={async () => {
-           try {
-             await api.delete(`/orders/${selectedOrderId}?reason=${voidReason}`);
-             notifications.show({ title: 'Success', message: 'Order voided', color: 'green' });
-             setVoidModalOpened(false);
-           } catch(e) { notifications.show({ title: 'Error', message: 'Void failed', color: 'red' }); }
-        }}>Confirm Void</Button>
+        <Button mt="md" fullWidth color="red" onClick={handleVoidTransaction}>Confirm Void</Button>
       </Modal>
 
       {/* QUICK SAVE CUSTOMER MODAL */}

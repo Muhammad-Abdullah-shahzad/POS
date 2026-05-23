@@ -1,7 +1,7 @@
 import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconUsers, IconBuildingBank, IconAddressBook, IconClipboardText } from '@tabler/icons-react';
+import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconUsers, IconBuildingBank, IconAddressBook, IconClipboardText, IconBan } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 import { usePosStore } from '../store/posStore';
 
@@ -30,6 +30,7 @@ const MainLayout = () => {
   const navItems: NavItem[] = [
     { label: 'Counter', icon: IconDashboard, path: '/' },
     { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
+    { label: 'Void Transactions', icon: IconBan, path: '/void-transactions' },
     {
       label: 'Product',
       icon: IconPackage,
