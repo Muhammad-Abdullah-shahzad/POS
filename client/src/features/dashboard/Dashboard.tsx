@@ -108,7 +108,9 @@ const Dashboard = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [voidReason, setVoidReason] = useState<string>('');
   const [openedCategoryName, setOpenedCategoryName] = useState('');
-const [categorySearch, setCategorySearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+  const [categoryDbProducts, setCategoryDbProducts] = useState<any[]>([]);
+  const [categoryDbLoading, setCategoryDbLoading] = useState(false);
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productNameSearch, setProductNameSearch] = useState('');
   const [productNameResults, setProductNameResults] = useState<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
@@ -256,6 +258,20 @@ const [categorySearch, setCategorySearch] = useState('');
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleBarcodeSubmit();
+    }
+  };
+
+  // Fetch products from DB for a given general category
+  const fetchCategoryProducts = async (catName: string) => {
+    try {
+      setCategoryDbLoading(true);
+      const { data } = await api.get('/products');
+      const all = data.data || [];
+      setCategoryDbProducts(all.filter((p: any) => p.category.toUpperCase() === catName.toUpperCase()));
+    } catch {
+      notifications.show({ title: 'Error', message: 'Failed to load category products', color: 'red' });
+    } finally {
+      setCategoryDbLoading(false);
     }
   };
 
@@ -1054,12 +1070,12 @@ const [categorySearch, setCategorySearch] = useState('');
                       { name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234') },
                       { name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234') },
                       { name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234') },
-                      { name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategoryModalOpened(true); } },
-                      { name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategoryModalOpened(true); } },
-                      { name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategoryModalOpened(true); } },
-                      { name: 'FRUITS', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FRUITS'); setCategoryModalOpened(true); } },
-                      { name: 'VEG', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('VEG'); setCategoryModalOpened(true); } },
-                      { name: 'BAKERY AND DAIRY', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('BAKERY AND DAIRY'); setCategoryModalOpened(true); } }
+                      { name: 'FISH AND SEAFOOD', color: customColors.greenBtnTop, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('FISH AND SEAFOOD'); } },
+                      { name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('LAMB BEEF'); } },
+                      { name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('CHICKEN'); } },
+                      { name: 'FRUITS', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FRUITS'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('FRUITS'); } },
+                      { name: 'VEG', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('VEG'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('VEG'); } },
+                      { name: 'BAKERY AND DAIRY', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('BAKERY AND DAIRY'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('BAKERY AND DAIRY'); } }
                     ].map(cat => (
                       <Grid.Col span={4} key={cat.name}>
                         <Button onClick={cat.onClick} fullWidth style={{ backgroundColor: cat.color, border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '32px' }}>
@@ -1311,29 +1327,51 @@ const [categorySearch, setCategorySearch] = useState('');
 
         {/* GRID AREA */}
         <Box flex={1} p="xl" style={{ overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
-            {currentCategoryItems.filter(item => item !== "").map((item, index) => (
-              <Paper
-                key={index}
-                shadow="sm"
-                radius="lg"
-                withBorder
-                style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '180px' }}
-                onClick={() => {
-                  handleCategoryItem(item, 'cat123');
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
-              >
-                <Box flex={1} bg="#e9ecef" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
-                </Box>
-                <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886' }}>
-                  <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{item}</Text>
-                </Box>
-              </Paper>
-            ))}
-          </div>
+          {categoryDbLoading ? (
+            <Flex justify="center" align="center" h={200}>
+              <Text size="lg" c="dimmed">Loading products...</Text>
+            </Flex>
+          ) : (() => {
+            const filtered = categoryDbProducts.filter(p =>
+              !categorySearch || p.name.toLowerCase().includes(categorySearch.toLowerCase())
+            );
+            return filtered.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
+                {filtered.map((product: any) => (
+                  <Paper
+                    key={product._id}
+                    shadow="sm"
+                    radius="lg"
+                    withBorder
+                    style={{ overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease', display: 'flex', flexDirection: 'column', height: '180px' }}
+                    onClick={() => {
+                      addProductToCart(product);
+                      setCategoryModalOpened(false);
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
+                  >
+                    <Box flex={1} bg="#e9ecef" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4 }}>
+                      {product.image ? (
+                        <img src={`http://localhost:5001/uploads/products/${product.image}`} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Text c="#adb5bd" size="sm" fw={500}>No Image</Text>
+                      )}
+                    </Box>
+                    <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886' }}>
+                      <Text c="white" size="sm" fw={700} ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>{product.name}</Text>
+                      <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>Rs. {product.price.toFixed(2)}</Text>
+                    </Box>
+                  </Paper>
+                ))}
+              </div>
+            ) : (
+              <Flex direction="column" align="center" justify="center" h={300} gap="md">
+                <Text size="xl" c="dimmed">No products found in {openedCategoryName}</Text>
+                <Text size="sm" c="dimmed">Go to Product → General Products → {openedCategoryName} to add products.</Text>
+              </Flex>
+            );
+          })()}
         </Box>
 
         {/* BOTTOM ACTION BAR */}

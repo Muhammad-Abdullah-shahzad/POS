@@ -36,6 +36,7 @@ const MainLayout = () => {
       children: [
         { label: 'Manage Category', path: '/products/category' },
         { label: 'Manage Products', path: '/products' },
+        { label: 'Manage General Products', path: '/products/general' },
         { label: 'Edit Price', path: '/products/edit-price' },
         { label: 'Barcodes', path: '/products/codes' },
         { label: 'Wastage Management', path: '/products/wastage' },
