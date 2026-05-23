@@ -127,45 +127,45 @@ const Receipts = () => {
       >
         {selectedReceipt && (
           <Stack gap="md">
-            <div ref={printRef} style={{ padding: '20px', fontFamily: 'Courier, monospace' }}>
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <Title order={3}>STORE POS - RECEIPT</Title>
-                <Text size="xs">123 Business Road, Commerce City</Text>
+            <div ref={printRef} style={{ padding: '24px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', fontSize: '15px', fontWeight: 900, lineHeight: 1.45, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '5px solid #000', paddingBottom: '12px' }}>
+                <Title order={3} style={{ fontFamily: 'Arial Black, Arial, Helvetica, sans-serif', fontWeight: 900, letterSpacing: 0 }}>Castlebar Halal Foods</Title>
+                <Text size="md" fw={900}>123 Business Road, Commerce City</Text>
               </div>
               
-              <Divider mb="sm" />
+              <Divider mb="sm" color="dark" size="md" />
               
               <Group justify="space-between" mb="xs">
-                <Text size="sm"><strong>Receipt #:</strong> {selectedReceipt.invoiceId}</Text>
-                <Text size="sm"><strong>Date:</strong> {new Date(selectedReceipt.createdAt).toLocaleString()}</Text>
+                <Text size="sm" fw={900}><strong>Receipt #:</strong> {selectedReceipt.invoiceId}</Text>
+                <Text size="sm" fw={900}><strong>Date:</strong> {new Date(selectedReceipt.createdAt).toLocaleString()}</Text>
               </Group>
 
-              <Table withTableBorder withColumnBorders mb="md">
+              <Table withTableBorder withColumnBorders mb="md" style={{ fontSize: '15px', fontWeight: 900 }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Item</Table.Th>
-                    <Table.Th style={{ textAlign: 'center' }}>Qty</Table.Th>
-                    <Table.Th style={{ textAlign: 'right' }}>Total</Table.Th>
+                    <Table.Th style={{ fontWeight: 900 }}>Item</Table.Th>
+                    <Table.Th style={{ textAlign: 'center', fontWeight: 900 }}>Qty</Table.Th>
+                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Total</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {selectedReceipt.items.map((item: any, idx: number) => (
                     <Table.Tr key={idx}>
-                      <Table.Td>{item.name}</Table.Td>
-                      <Table.Td style={{ textAlign: 'center' }}>{item.quantity}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }}>Rs {item.totalPrice.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ fontWeight: 900 }}>{item.name}</Table.Td>
+                      <Table.Td style={{ textAlign: 'center', fontWeight: 900 }}>{item.quantity}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>Rs {item.totalPrice.toFixed(2)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
 
               <Stack gap={4} align="flex-end">
-                <Text size="sm">Subtotal: Rs {selectedReceipt.subtotal.toFixed(2)}</Text>
-                <Text size="sm">Tax: Rs {selectedReceipt.totalVAT.toFixed(2)}</Text>
-                <Text size="md" fw={700}>TOTAL: Rs {selectedReceipt.total.toFixed(2)}</Text>
+                <Text size="md" fw={900}>Subtotal: Rs {selectedReceipt.subtotal.toFixed(2)}</Text>
+                <Text size="md" fw={900}>Tax: Rs {selectedReceipt.totalVAT.toFixed(2)}</Text>
+                <Text size="xl" fw={900} style={{ borderTop: '4px solid #000', paddingTop: 8 }}>TOTAL: Rs {selectedReceipt.total.toFixed(2)}</Text>
               </Stack>
               
-              <Text ta="center" mt="xl" size="xs">THANK YOU FOR YOUR BUSINESS!</Text>
+              <Text ta="center" mt="xl" size="sm" fw={900}>THANK YOU FOR YOUR BUSINESS!</Text>
             </div>
 
             <Button fullWidth leftSection={<IconPrinter size={16} />} onClick={() => handlePrint()}>

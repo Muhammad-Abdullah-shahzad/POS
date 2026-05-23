@@ -1251,51 +1251,51 @@ const Dashboard = () => {
       <div style={{ display: 'none' }}>
         <div ref={componentRef}>
           {lastTransaction ? (
-            <div style={{ padding: '30px', fontFamily: 'Courier, monospace', color: '#000', backgroundColor: '#fff' }}>
-              <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
-                <h1 style={{ margin: '0', fontSize: '28px', textTransform: 'uppercase' }}>STORE POS</h1>
-                <p style={{ margin: '5px 0', fontSize: '14px', fontWeight: 'bold' }}>123 Business Road, Commerce City</p>
+            <div style={{ padding: '24px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '15px', fontWeight: 900, lineHeight: 1.45, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <div style={{ textAlign: 'center', marginBottom: '22px', borderBottom: '5px solid #000', paddingBottom: '12px' }}>
+                <h1 style={{ margin: '0', fontSize: '34px', fontFamily: 'Arial Black, Arial, Helvetica, sans-serif', fontWeight: 900, letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
+                <p style={{ margin: '6px 0 2px', fontSize: '17px', fontWeight: 900 }}>123 Business Road, Commerce City</p>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '18px', fontSize: '14px', fontWeight: 900 }}>
                 <div>
-                  <p><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
-                  {(lastTransaction as any).customerPhone && <p><strong>PHONE:</strong> {(lastTransaction as any).customerPhone}</p>}
-                  <p><strong>DATE:</strong> {lastTransaction.date}</p>
+                  <p style={{ margin: '3px 0' }}><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
+                  {(lastTransaction as any).customerPhone && <p style={{ margin: '3px 0' }}><strong>PHONE:</strong> {(lastTransaction as any).customerPhone}</p>}
+                  <p style={{ margin: '3px 0' }}><strong>DATE:</strong> {lastTransaction.date}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p><strong>RECEIPT #:</strong> {lastTransaction.transactionNo}</p>
-                  <p><strong>STATUS:</strong> PAID</p>
+                  <p style={{ margin: '3px 0' }}><strong>RECEIPT #:</strong> {lastTransaction.transactionNo}</p>
+                  <p style={{ margin: '3px 0' }}><strong>STATUS:</strong> PAID</p>
                 </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px', fontSize: '15px', fontWeight: 900 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 5px' }}>DESCRIPTION</th>
-                    <th style={{ textAlign: 'center', padding: '10px 5px' }}>QTY</th>
-                    <th style={{ textAlign: 'right', padding: '10px 5px' }}>UNIT</th>
-                    <th style={{ textAlign: 'right', padding: '10px 5px' }}>TOTAL</th>
+                  <tr style={{ borderTop: '4px solid #000', borderBottom: '4px solid #000' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 5px', fontWeight: 900 }}>DESCRIPTION</th>
+                    <th style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>QTY</th>
+                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>UNIT</th>
+                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>TOTAL</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lastTransaction.items.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '10px 5px' }}>{item.name}</td>
-                      <td style={{ textAlign: 'center', padding: '10px 5px' }}>{item.qty}</td>
-                      <td style={{ textAlign: 'right', padding: '10px 5px' }}>{item.price.toFixed(2)}</td>
-                      <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 'bold' }}>{(item.qty * item.price).toFixed(2)}</td>
+                    <tr key={item.id} style={{ borderBottom: '2px solid #000' }}>
+                      <td style={{ padding: '10px 5px', fontWeight: 900 }}>{item.name}</td>
+                      <td style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>{item.qty}</td>
+                      <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>{item.price.toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>{(item.qty * item.price).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div style={{ width: '250px', marginLeft: 'auto', fontSize: '14px' }}>
+              <div style={{ width: '285px', marginLeft: 'auto', fontSize: '16px', fontWeight: 900 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
                   <span>Subtotal:</span>
                   <span>{lastTransaction.subTotal.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', borderTop: '4px solid #000', fontWeight: 900, fontSize: '24px' }}>
                   <span>TOTAL:</span>
                   <span>{lastTransaction.total.toFixed(2)}</span>
                 </div>
