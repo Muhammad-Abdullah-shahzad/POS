@@ -66,6 +66,63 @@ body {
   margin: 0;
 }
 
+.main-navbar {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-right: 1px solid #e2e8f0;
+}
+
+.main-navbar .mantine-NavLink-root {
+  color: #334155;
+  font-weight: 600;
+  letter-spacing: 0;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.main-navbar .mantine-NavLink-root:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.main-navbar .mantine-NavLink-root[data-active] {
+  background-color: #e8f3ff;
+  color: #0f5cad;
+  box-shadow: inset 3px 0 0 #228be6;
+}
+
+.nav-icon-badge {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #dbe5f0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.main-navbar .mantine-NavLink-root:hover .nav-icon-badge {
+  border-color: #bfdbfe;
+  color: #1864ab;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.nav-icon-badge[data-active] {
+  color: #ffffff;
+  border-color: #1c7ed6;
+  background: linear-gradient(135deg, #1c7ed6 0%, #15aabf 100%);
+  box-shadow: 0 8px 18px rgba(28, 126, 214, 0.24);
+}
+
 h1,
 h2 {
   font-family: var(--heading);

@@ -1,7 +1,21 @@
-import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea } from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea, Box } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { IconDashboard, IconReceipt2, IconCash, IconPackage, IconLogout, IconChartBar, IconUsers, IconBuildingBank, IconAddressBook, IconClipboardText, IconBan } from '@tabler/icons-react';
+import {
+  IconAddressBook,
+  IconBan,
+  IconBuildingBank,
+  IconCash,
+  IconChartDonut3,
+  IconLayoutDashboard,
+  IconLogout,
+  IconPackage,
+  IconPackages,
+  IconReceipt,
+  IconReportAnalytics,
+  IconUsersGroup,
+} from '@tabler/icons-react';
+import type { TablerIcon } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 import { usePosStore } from '../store/posStore';
 
@@ -22,14 +36,14 @@ const MainLayout = () => {
 
   interface NavItem {
     label: string;
-    icon: React.ComponentType<any>;
+    icon: TablerIcon;
     path?: string;
     children?: { label: string; path: string }[];
   }
 
   const navItems: NavItem[] = [
-    { label: 'Counter', icon: IconDashboard, path: '/' },
-    { label: 'Receipts', icon: IconReceipt2, path: '/receipts' },
+    { label: 'Counter', icon: IconLayoutDashboard, path: '/' },
+    { label: 'Receipts', icon: IconReceipt, path: '/receipts' },
     { label: 'Void Transactions', icon: IconBan, path: '/void-transactions' },
     {
       label: 'Product',
@@ -47,7 +61,7 @@ const MainLayout = () => {
     },
     {
       label: 'Stock',
-      icon: IconPackage,
+      icon: IconPackages,
       children: [
         { label: 'View Stock', path: '/products' },
         { label: 'Manage Suppliers', path: '/suppliers' },
@@ -56,10 +70,10 @@ const MainLayout = () => {
       ]
     },
     { label: 'Expenses', icon: IconCash, path: '/expenses' },
-    { label: 'Analysis', icon: IconChartBar, path: '/analysis' },
+    { label: 'Analysis', icon: IconChartDonut3, path: '/analysis' },
     {
       label: 'Reports',
-      icon: IconClipboardText,
+      icon: IconReportAnalytics,
       children: [
         { label: 'Sales Summary Report', path: '/reports/sales-summary' },
         { label: 'Transaction Sales Report', path: '/reports/transaction-sales' },
@@ -89,7 +103,7 @@ const MainLayout = () => {
     },
     {
       label: 'Employees',
-      icon: IconUsers,
+      icon: IconUsersGroup,
       children: [
         { label: 'Manage Employees', path: '/employees' },
         { label: 'Salary Management', path: '/employees/salary' },
@@ -108,6 +122,16 @@ const MainLayout = () => {
   if (!user) return null;
 
   const showLabel = isMobile || desktopOpened;
+
+  const renderNavIcon = (Icon: TablerIcon, active: boolean) => (
+    <Box
+      className="nav-icon-badge"
+      data-active={active || undefined}
+      aria-hidden="true"
+    >
+      <Icon size={21} stroke={1.9} />
+    </Box>
+  );
 
   return (
     <AppShell
@@ -136,10 +160,11 @@ const MainLayout = () => {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar className="no-print">
+      <AppShell.Navbar className="no-print main-navbar">
         <ScrollArea h="100%" p={showLabel ? "md" : "xs"} scrollbarSize={6} type="hover">
           {navItems.map((item) => {
             const isChildActive = item.children ? item.children.some(c => location.pathname === c.path) : false;
+            const isActive = item.children ? isChildActive : (item.path ? location.pathname === item.path : false);
 
             const navLink = (
               <NavLink
@@ -147,16 +172,16 @@ const MainLayout = () => {
                 label={showLabel ? item.label : undefined}
                 leftSection={
                   <Center w={showLabel ? "auto" : "100%"}>
-                    <item.icon size={24} stroke={1.5} />
+                    {renderNavIcon(item.icon, isActive)}
                   </Center>
                 }
-                active={item.children ? isChildActive : (item.path ? location.pathname === item.path : false)}
+                active={isActive}
                 defaultOpened={isChildActive}
                 onClick={item.path ? () => {
                   navigate(item.path as string);
                   if (isMobile && opened) toggle();
                 } : undefined}
-                variant={item.children && isChildActive ? "light" : "filled"}
+                variant="subtle"
                 mb={8}
                 py={showLabel ? "sm" : "md"}
                 style={{
@@ -196,7 +221,7 @@ const MainLayout = () => {
                         label={undefined}
                         leftSection={
                           <Center w="100%">
-                            <item.icon size={24} stroke={1.5} />
+                            {renderNavIcon(item.icon, isChildActive)}
                           </Center>
                         }
                         active={isChildActive}
