@@ -1,6 +1,6 @@
 import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
-  Box, Checkbox, Modal, Autocomplete, SimpleGrid, NumberInput, Divider
+  Box, Checkbox, Modal, SimpleGrid, NumberInput, Divider, Autocomplete
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -110,6 +110,9 @@ const Dashboard = () => {
   const [openedCategoryName, setOpenedCategoryName] = useState('');
 const [categorySearch, setCategorySearch] = useState('');
   const [barcodeSearch, setBarcodeSearch] = useState('');
+  const [productNameSearch, setProductNameSearch] = useState('');
+  const [productNameResults, setProductNameResults] = useState<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
+  const productNameResultsRef = useRef<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
   const [quickSaveModalOpened, setQuickSaveModalOpened] = useState(false);
   const [quickSaveName, setQuickSaveName] = useState('');
@@ -253,6 +256,77 @@ const [categorySearch, setCategorySearch] = useState('');
     if (e.key === 'Enter') {
       handleBarcodeSubmit();
     }
+  };
+
+  // Shared helper: add a product object (from API) to the active cart
+  const addProductToCart = (product: any) => {
+    const savedDiscounts = localStorage.getItem('productDiscounts');
+    const productDiscounts = savedDiscounts ? JSON.parse(savedDiscounts) : {};
+    const catalogDiscountPct = productDiscounts[product._id] || 0;
+    const offerDiscount = getDiscountForProduct(product.name, product.category || '');
+    const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
+    const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
+    const newItem: CartItem = {
+      id: Date.now().toString(),
+      name: product.name,
+      barcode: product.barcode,
+      qty: 1,
+      price: discountedPrice
+    };
+    updateCartItems([...cartItems, newItem]);
+    updateSelectedItemId(newItem.id);
+    setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
+    if (discountPct > 0) {
+      notifications.show({
+        title: 'Discount Applied!',
+        message: `${discountPct}% discount applied to ${product.name}. Price: Rs ${discountedPrice.toFixed(2)}`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      });
+    }
+  };
+
+  // Handle product-name search: fetch matching products from the API
+  const handleProductNameChange = async (val: string) => {
+    setProductNameSearch(val);
+    if (!val.trim() || val.trim().length < 2) {
+      setProductNameResults([]);
+      productNameResultsRef.current = [];
+      return;
+    }
+    // If the typed value exactly matches an item already in results,
+    // the user just picked from the dropdown — don't re-fetch
+    const exactMatch = productNameResultsRef.current.find(p => p.value === val);
+    if (exactMatch) return;
+    try {
+      const { data } = await api.get(`/products?search=${encodeURIComponent(val.trim())}`);
+      const results = (data.data || []).slice(0, 10).map((p: any) => ({
+        value: p.name,
+        name: p.name,
+        _id: p._id,
+        barcode: p.barcode,
+        price: p.price,
+        category: p.category || '',
+        vatRate: p.vatRate,
+        vatType: p.vatType,
+        stock: p.stock,
+      }));
+      setProductNameResults(results);
+      productNameResultsRef.current = results;
+    } catch (err) {
+      console.error('Product name search failed', err);
+    }
+  };
+
+  // Handle selection from the product-name autocomplete
+  const handleProductNameSelect = (value: string) => {
+    // Use the ref so we always have the latest results regardless of render timing
+    const found = productNameResultsRef.current.find(p => p.value === value);
+    if (!found) return;
+    addProductToCart(found);
+    setProductNameSearch('');
+    setProductNameResults([]);
+    productNameResultsRef.current = [];
   };
 
   const categoryItemsMap: Record<string, string[]> = {
@@ -841,8 +915,55 @@ const [categorySearch, setCategorySearch] = useState('');
                         </Flex>
                         <Flex gap="xs" align="center">
                           <Text size="11px" w={70}>Product</Text>
-                          <TextInput size="xs" flex={1} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
-                          <Button style={btnStyle} size="xs" w={60} h={24}><Text size="11px">BACK</Text></Button>
+                          <Box flex={1} style={{ position: 'relative' }}>
+                            <TextInput
+                              size="xs"
+                              value={productNameSearch}
+                              onChange={(e) => handleProductNameChange(e.target.value)}
+                              onBlur={() => setTimeout(() => { setProductNameResults([]); productNameResultsRef.current = []; }, 150)}
+                              placeholder="Type product name..."
+                              styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }}
+                            />
+                            {productNameResults.length > 0 && (
+                              <Paper
+                                shadow="md"
+                                style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  left: 0,
+                                  right: 0,
+                                  zIndex: 9999,
+                                  maxHeight: 200,
+                                  overflowY: 'auto',
+                                  border: '1px solid #ccc',
+                                }}
+                              >
+                                {productNameResults.map((p) => (
+                                  <Box
+                                    key={p._id}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      addProductToCart(p);
+                                      setProductNameSearch('');
+                                      setProductNameResults([]);
+                                      productNameResultsRef.current = [];
+                                    }}
+                                    style={{
+                                      padding: '6px 10px',
+                                      cursor: 'pointer',
+                                      fontSize: '12px',
+                                      borderBottom: '1px solid #eee',
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e8f4fd')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
+                                  >
+                                    {p.value}
+                                  </Box>
+                                ))}
+                              </Paper>
+                            )}
+                          </Box>
+                          <Button style={btnStyle} size="xs" w={60} h={24} onMouseDown={(e) => { e.preventDefault(); setProductNameSearch(''); setProductNameResults([]); productNameResultsRef.current = []; }}><Text size="11px">CLEAR</Text></Button>
                         </Flex>
                       </fieldset>
 
