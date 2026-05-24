@@ -1,11 +1,11 @@
 import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
-  Box, Checkbox, Modal, SimpleGrid, NumberInput, Divider, Autocomplete
+  Box, Checkbox, Modal, SimpleGrid, NumberInput, Divider, Autocomplete, ActionIcon
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
-import { IconCheck } from '@tabler/icons-react';
+import { IconCalculator, IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../../services/api';
 
@@ -163,6 +163,8 @@ const Dashboard = () => {
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
   const [enablePrinting] = useState(true);
+  const [calculatorOpened, setCalculatorOpened] = useState(false);
+  const [calculatorValue, setCalculatorValue] = useState('0');
 
   // Split payment state
   const [splitModalOpened, setSplitModalOpened] = useState(false);
@@ -487,6 +489,26 @@ const Dashboard = () => {
     }
     const parsedPrice = parseFloat(val);
     setStagingItem(prev => ({ ...prev, price: isNaN(parsedPrice) ? '' : parsedPrice }));
+  };
+
+  const handleCalculatorInput = (input: string) => {
+    setCalculatorValue(prev => {
+      if (input === 'C') return '0';
+      if (input === 'Back') return prev.length > 1 ? prev.slice(0, -1) : '0';
+      if (input === '=') {
+        try {
+          const expression = prev.replace(/x/g, '*');
+          if (!/^[0-9+\-*/.() ]+$/.test(expression)) return 'Error';
+          const result = Function(`"use strict"; return (${expression})`)();
+          return Number.isFinite(result) ? String(parseFloat(result.toFixed(8))) : 'Error';
+        } catch {
+          return 'Error';
+        }
+      }
+
+      if (prev === '0' || prev === 'Error') return input;
+      return `${prev}${input}`;
+    });
   };
 
   const [depositInput, setDepositInput] = useState<string>('');
@@ -1229,6 +1251,18 @@ const Dashboard = () => {
 
                 {/* RIGHT COLUMN CONTENT */}
                 <Grid.Col span={6.5}>
+                  <Flex justify="flex-end" mb="xs">
+                    <ActionIcon
+                      aria-label="Open calculator"
+                      title="Calculator"
+                      variant="filled"
+                      color="orange"
+                      size="lg"
+                      onClick={() => setCalculatorOpened(true)}
+                    >
+                      <IconCalculator size={22} />
+                    </ActionIcon>
+                  </Flex>
                   <Grid >
                     {[
                       { name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('OPEN ITEM', 'open1234') },
@@ -1593,6 +1627,36 @@ const Dashboard = () => {
             </Button>
           </Flex>
         </Flex>
+      </Modal>
+
+      <Modal
+        opened={calculatorOpened}
+        onClose={() => setCalculatorOpened(false)}
+        title={<Text fw={800}>Calculator</Text>}
+        centered
+        size="xs"
+      >
+        <Paper withBorder p="sm" mb="sm" bg="#f8f9fa">
+          <Text size="28px" fw={800} ta="right" style={{ minHeight: 42, wordBreak: 'break-all' }}>
+            {calculatorValue}
+          </Text>
+        </Paper>
+        <SimpleGrid cols={4} spacing="xs">
+          {['C', 'Back', '/', 'x', '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '=', '0', '.', '(', ')'].map(key => (
+            <Button
+              key={key}
+              h={46}
+              variant={key === '=' ? 'filled' : 'light'}
+              color={key === '=' ? 'green' : key === 'C' ? 'red' : 'orange'}
+              onClick={() => handleCalculatorInput(key)}
+            >
+              {key}
+            </Button>
+          ))}
+        </SimpleGrid>
+        <Button fullWidth variant="subtle" color="gray" mt="md" onClick={() => setCalculatorOpened(false)}>
+          Close
+        </Button>
       </Modal>
 
       <Modal opened={returnPopupOpened} onClose={() => { setReturnPopupOpened(false); setDepositInput(''); }} title={<Text size="xl" fw="bold" c="dark">Change / Return Amount</Text>} centered>
