@@ -172,8 +172,8 @@ const POS = () => {
       centered: true,
       children: (
         <Text size="sm">
-          Process payment of <strong>Rs {total.toFixed(2)}</strong> using alternative payment method?
-          {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes Rs {totalDiscount.toFixed(2)} discount</Text></>}
+          Process payment of <strong>€ {total.toFixed(2)}</strong> using alternative payment method?
+          {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes € {totalDiscount.toFixed(2)} discount</Text></>}
           <br /><br />
           <Text size="xs" c="dimmed">This can be used for card payments, mobile wallets, or credit transactions.</Text>
         </Text>
@@ -352,12 +352,12 @@ const POS = () => {
                       <Table.Td>
                         {item.discountPct > 0 ? (
                           <div>
-                            <Text size="xs" td="line-through" c="dimmed">Rs {item.totalPrice.toFixed(2)}</Text>
-                            <Text size="sm" fw={700} c="teal">Rs {item.finalPrice.toFixed(2)}</Text>
+                            <Text size="xs" td="line-through" c="dimmed">€ {item.totalPrice.toFixed(2)}</Text>
+                            <Text size="sm" fw={700} c="teal">€ {item.finalPrice.toFixed(2)}</Text>
                             <Badge size="xs" color="teal" variant="light">-{item.discountPct}%</Badge>
                           </div>
                         ) : (
-                          <Text size="sm">Rs {item.totalPrice.toFixed(2)}</Text>
+                          <Text size="sm">€ {item.totalPrice.toFixed(2)}</Text>
                         )}
                       </Table.Td>
                       <Table.Td>
@@ -381,9 +381,9 @@ const POS = () => {
                           </ActionIcon>
                         </Group>
                       </Table.Td>
-                      <Table.Td>Rs {item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
+                      <Table.Td>€ {item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
                       <Table.Td fw={700}>
-                        Rs {(item.finalPrice * item.quantity / item.quantity).toFixed(2)}
+                        € {(item.finalPrice * item.quantity / item.quantity).toFixed(2)}
                       </Table.Td>
                       <Table.Td>
                         <ActionIcon color="red" variant="subtle" onClick={() => removeFromCart(item.product)}>
@@ -404,16 +404,16 @@ const POS = () => {
 
             <Group justify="space-between" mb="xs">
               <Text>Subtotal</Text>
-              <Text>Rs {subtotal.toFixed(2)}</Text>
+              <Text>€ {subtotal.toFixed(2)}</Text>
             </Group>
             <Group justify="space-between" mb="xs">
               <Text>Total VAT</Text>
-              <Text>Rs {totalVAT.toFixed(2)}</Text>
+              <Text>€ {totalVAT.toFixed(2)}</Text>
             </Group>
             {totalDiscount > 0 && (
               <Group justify="space-between" mb="xs">
                 <Text c="teal" fw={600}>Discount</Text>
-                <Text c="teal" fw={600}>- Rs {totalDiscount.toFixed(2)}</Text>
+                <Text c="teal" fw={600}>- € {totalDiscount.toFixed(2)}</Text>
               </Group>
             )}
 
@@ -421,7 +421,7 @@ const POS = () => {
 
             <Group justify="space-between" mb="xl">
               <Title order={4}>Grand Total</Title>
-              <Title order={4} c="blue">Rs {total.toFixed(2)}</Title>
+              <Title order={4} c="blue">€ {total.toFixed(2)}</Title>
             </Group>
 
             <Button
@@ -432,8 +432,8 @@ const POS = () => {
                   centered: true,
                   children: (
                     <Text size="sm">
-                      Process payment of <strong>Rs {total.toFixed(2)}</strong>?
-                      {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes Rs {totalDiscount.toFixed(2)} discount</Text></>}
+                      Process payment of <strong>€ {total.toFixed(2)}</strong>?
+                      {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes € {totalDiscount.toFixed(2)} discount</Text></>}
                     </Text>
                   ),
                   labels: { confirm: 'Confirm Payment', cancel: 'No, Wait' },
@@ -443,7 +443,7 @@ const POS = () => {
               }}
               disabled={cart.length === 0}
             >
-              Pay Rs {total.toFixed(2)}
+              Pay € {total.toFixed(2)}
             </Button>
             <Button fullWidth mt="md" variant="light" color="red" onClick={() => { clearCart(); inputRef.current?.focus(); }} disabled={cart.length === 0}>
               Clear Cart
@@ -499,10 +499,10 @@ const POS = () => {
           <Text size="xs" fw={700} c="dimmed" mb="xs" tt="uppercase">Last Transaction Details</Text>
           <Group gap="xl">
             <div><Text size="xs" c="dimmed">Trans No</Text><Text size="sm" fw={700}>{lastTransaction.transNo}</Text></div>
-            <div><Text size="xs" c="dimmed">Trans Amt</Text><Text size="sm" fw={700}>Rs {lastTransaction.transAmt.toFixed(2)}</Text></div>
-            <div><Text size="xs" c="dimmed">Paid Amt</Text><Text size="sm" fw={700} c="green">Rs {lastTransaction.paidAmt.toFixed(2)}</Text></div>
-            <div><Text size="xs" c="dimmed">Return Amt</Text><Text size="sm" fw={700} c="blue">Rs {lastTransaction.returnAmt.toFixed(2)}</Text></div>
-            <div><Text size="xs" c="dimmed">Due Amt</Text><Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>Rs {lastTransaction.dueAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Trans Amt</Text><Text size="sm" fw={700}>€ {lastTransaction.transAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Paid Amt</Text><Text size="sm" fw={700} c="green">€ {lastTransaction.paidAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Return Amt</Text><Text size="sm" fw={700} c="blue">€ {lastTransaction.returnAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Due Amt</Text><Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>€ {lastTransaction.dueAmt.toFixed(2)}</Text></div>
             <div><Text size="xs" c="dimmed">Date</Text><Text size="sm" fw={500}>{lastTransaction.date}</Text></div>
           </Group>
         </Paper>
@@ -542,29 +542,29 @@ const POS = () => {
                   <tr key={`print-${item.product}`} style={{ borderBottom: '2px solid #000' }}>
                     <td style={{ padding: '10px 5px', fontWeight: 900 }}>{item.name}</td>
                     <td style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>{item.quantity}</td>
-                    <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>Rs {item.price.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {item.price.toFixed(2)}</td>
                     <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900, color: '#000' }}>
-                      {item.discountPct > 0 ? `-${item.discountPct}%` : '—'}
+                      {item.discountPct > 0 ? `-${item.discountPct}%` : '-'}
                     </td>
-                    <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>Rs {item.finalPrice.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {item.finalPrice.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div style={{ width: '285px', marginLeft: 'auto', fontSize: '16px', fontWeight: 900 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
-                <span>Subtotal:</span><span>Rs {subtotal.toFixed(2)}</span>
+                <span>Subtotal:</span><span>€ {subtotal.toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
-                <span>Tax:</span><span>Rs {totalVAT.toFixed(2)}</span>
+                <span>Tax:</span><span>€ {totalVAT.toFixed(2)}</span>
               </div>
               {totalDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', color: '#000' }}>
-                  <span>Discount:</span><span>- Rs {totalDiscount.toFixed(2)}</span>
+                  <span>Discount:</span><span>- € {totalDiscount.toFixed(2)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', borderTop: '4px solid #000', fontWeight: 900, fontSize: '24px' }}>
-                <span>TOTAL:</span><span>Rs {total.toFixed(2)}</span>
+                <span>TOTAL:</span><span>€ {total.toFixed(2)}</span>
               </div>
             </div>
             <div style={{ marginTop: '42px', textAlign: 'center', borderTop: '3px dashed #000', paddingTop: '16px' }}>

@@ -22,10 +22,12 @@ const resolveProductImageUrl = (image?: string | null): string | null => {
 
 interface CartItem {
   id: string;
+  product?: string;
   name: string;
   barcode: string;
   qty: number;
   price: number;
+  stock?: number;
 }
 
 interface Transaction {
@@ -45,6 +47,16 @@ interface CustomerCart {
   selectedItemId: string;
   customerId?: string;
   customerPhone?: string;
+}
+
+interface StagingItem {
+  id?: string;
+  product?: string;
+  name: string;
+  barcode: string;
+  qty: number | string;
+  price: number | string;
+  stock?: number;
 }
 
 // Read active offers from localStorage
@@ -110,7 +122,7 @@ const Dashboard = () => {
   const [transactionNo, setTransactionNo] = useState<number>(1);
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
 
-  const [stagingItem, setStagingItem] = useState<{ id?: string; name: string; barcode: string; qty: number | string; price: number | string }>({ name: '', barcode: '', qty: '', price: '' });
+  const [stagingItem, setStagingItem] = useState<StagingItem>({ name: '', barcode: '', qty: '', price: '' });
 
   const [categoryModalOpened, setCategoryModalOpened] = useState(false);
   const [optionsModalOpened, setOptionsModalOpened] = useState(false);
@@ -239,20 +251,22 @@ const Dashboard = () => {
 
         const newItem: CartItem = {
           id: Date.now().toString(),
+          product: product._id,
           name: product.name,
           barcode: product.barcode,
           qty: 1,
-          price: discountedPrice
+          price: discountedPrice,
+          stock: product.stock,
         };
         updateCartItems([...cartItems, newItem]);
         updateSelectedItemId(newItem.id);
-        setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
+        setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock });
         setBarcodeSearch('');
 
         if (discountPct > 0) {
           notifications.show({
             title: 'Discount Applied!',
-            message: `${discountPct}% discount applied to ${product.name}. Price: Rs ${discountedPrice.toFixed(2)}`,
+            message: `${discountPct}% discount applied to ${product.name}. Price: € ${discountedPrice.toFixed(2)}`,
             color: 'teal',
             icon: <IconCheck size={16} />,
           });
@@ -312,18 +326,20 @@ const Dashboard = () => {
     const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
     const newItem: CartItem = {
       id: Date.now().toString(),
+      product: product._id,
       name: product.name,
       barcode: product.barcode,
       qty: 1,
-      price: discountedPrice
+      price: discountedPrice,
+      stock: product.stock,
     };
     updateCartItems([...cartItems, newItem]);
     updateSelectedItemId(newItem.id);
-    setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
+    setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock });
     if (discountPct > 0) {
       notifications.show({
         title: 'Discount Applied!',
-        message: `${discountPct}% discount applied to ${product.name}. Price: Rs ${discountedPrice.toFixed(2)}`,
+        message: `${discountPct}% discount applied to ${product.name}. Price: € ${discountedPrice.toFixed(2)}`,
         color: 'teal',
         icon: <IconCheck size={16} />,
       });
@@ -340,7 +356,7 @@ const Dashboard = () => {
       return;
     }
     // If the typed value exactly matches an item already in results,
-    // the user just picked from the dropdown — don't re-fetch
+    // the user just picked from the dropdown - don't re-fetch
     const exactMatch = productNameResultsRef.current.find(p => p.value === val);
     if (exactMatch) return;
     try {
@@ -434,10 +450,12 @@ const Dashboard = () => {
     if (!stagingItem.name) return;
     const newItem = {
       id: Date.now().toString(),
+      product: stagingItem.product,
       name: stagingItem.name,
       barcode: stagingItem.barcode,
       qty: Number(stagingItem.qty) || 1,
-      price: Number(stagingItem.price) || 0
+      price: Number(stagingItem.price) || 0,
+      stock: stagingItem.stock,
     };
     updateCartItems(prev => [...prev, newItem]);
     updateSelectedItemId('');
@@ -447,7 +465,7 @@ const Dashboard = () => {
   const handleUpdateItem = () => {
     if (!stagingItem.id) return;
     updateCartItems(prev => prev.map(item =>
-      item.id === stagingItem.id ? { ...item, name: stagingItem.name, barcode: stagingItem.barcode, qty: Number(stagingItem.qty) || 1, price: Number(stagingItem.price) || 0 } : item
+      item.id === stagingItem.id ? { ...item, product: stagingItem.product, name: stagingItem.name, barcode: stagingItem.barcode, qty: Number(stagingItem.qty) || 1, price: Number(stagingItem.price) || 0, stock: stagingItem.stock } : item
     ));
   };
 
@@ -503,6 +521,7 @@ const Dashboard = () => {
     try {
       const { data } = await api.post('/orders', {
         items: cartItems.map(item => ({
+          product: item.product,
           name: item.name,
           quantity: item.qty,
           price: item.price,
@@ -524,6 +543,7 @@ const Dashboard = () => {
         message: 'Could not save order to database. Please check your connection.',
         color: 'red',
       });
+      return;
     }
 
     const newTransaction: Transaction = {
@@ -569,7 +589,7 @@ const Dashboard = () => {
     if (splitTotal < total) {
       notifications.show({
         title: 'Insufficient Payment',
-        message: `Total entered (Rs. ${splitTotal.toFixed(2)}) is less than the bill (Rs. ${total.toFixed(2)}).`,
+        message: `Total entered (€ ${splitTotal.toFixed(2)}) is less than the bill (€ ${total.toFixed(2)}).`,
         color: 'red'
       });
       return;
@@ -592,6 +612,7 @@ const Dashboard = () => {
     try {
       const { data } = await api.post('/orders', {
         items: cartItems.map(item => ({
+          product: item.product,
           name: item.name,
           quantity: item.qty,
           price: item.price,
@@ -611,6 +632,7 @@ const Dashboard = () => {
     } catch (err) {
       console.error('Failed to save split order', err);
       notifications.show({ title: 'Order Save Failed', message: 'Could not save order to database.', color: 'red' });
+      return;
     }
 
     const change = splitTotal - total;
@@ -621,7 +643,7 @@ const Dashboard = () => {
       deposit: splitTotal,
       total,
       date: new Date().toLocaleString(),
-      paymentMethod: `SPLIT (Cash: Rs.${cashAmt.toFixed(2)} / Card: Rs.${cardAmt.toFixed(2)})`
+      paymentMethod: `SPLIT (Cash: €${cashAmt.toFixed(2)} / Card: €${cardAmt.toFixed(2)})`
     };
     (newTransaction as any).customerName = activeCart.customerId ? activeCart.name : 'Walk-in';
     (newTransaction as any).customerPhone = activeCart.customerPhone || '';
@@ -643,7 +665,7 @@ const Dashboard = () => {
     } else {
       notifications.show({
         title: 'Split Payment Complete',
-        message: `Cash: Rs.${cashAmt.toFixed(2)}  |  Card: Rs.${cardAmt.toFixed(2)}`,
+        message: `Cash: €${cashAmt.toFixed(2)}  |  Card: €${cardAmt.toFixed(2)}`,
         color: 'teal',
         icon: <IconCheck size={16} />,
       });
@@ -687,7 +709,13 @@ const Dashboard = () => {
     }
 
     try {
-      await api.delete(`/orders/${selectedOrderId}?reason=${encodeURIComponent(voidReason.trim())}`);
+      const selectedEmployeeLabel = employees.find((employee) => employee.value === selectedEmployee)?.label || '';
+      const params = new URLSearchParams({
+        reason: voidReason.trim(),
+      });
+      if (selectedEmployee) params.set('employeeId', selectedEmployee);
+      if (selectedEmployeeLabel) params.set('employeeName', selectedEmployeeLabel);
+      await api.delete(`/orders/${selectedOrderId}?${params.toString()}`);
       setOrders(prev => prev.filter(order => order._id !== selectedOrderId));
       setSelectedOrderId('');
       setVoidReason('');
@@ -841,15 +869,17 @@ const Dashboard = () => {
 
         const newItem: CartItem = {
           id: Date.now().toString(),
+          product: product._id,
           name: product.name,
           barcode: product.barcode,
           qty: 1,
-          price: discountedPrice
+          price: discountedPrice,
+          stock: product.stock,
         };
 
         updateCartItems([...cartItems, newItem]);
         updateSelectedItemId(newItem.id);
-        setStagingItem({ id: newItem.id, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price });
+        setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock });
 
         notifications.show({
           title: 'Success',
@@ -924,7 +954,7 @@ const Dashboard = () => {
                   const cart = carts.find(c => c.id === val);
                   if (cart && cart.selectedItemId) {
                     const item = cart.items.find(i => i.id === cart.selectedItemId);
-                    if (item) setStagingItem({ id: item.id, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price });
+                    if (item) setStagingItem({ id: item.id, product: item.product, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price, stock: item.stock });
                     else setStagingItem({ name: '', barcode: '', qty: '', price: '' });
                   } else {
                     setStagingItem({ name: '', barcode: '', qty: '', price: '' });
@@ -959,7 +989,7 @@ const Dashboard = () => {
                         bg={selectedItemId === item.id ? customColors.selectedRow : undefined}
                         onClick={() => {
                           updateSelectedItemId(item.id);
-                          setStagingItem({ id: item.id, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price });
+                          setStagingItem({ id: item.id, product: item.product, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price, stock: item.stock });
                         }}
                         style={{ cursor: 'pointer' }}
                       >
@@ -1004,7 +1034,7 @@ const Dashboard = () => {
                       onChange={setSelectedEmployee}
                       size="xs"
                       flex={1}
-                      placeholder={employees.length === 0 ? 'No employees — add in Admin' : 'Select employee...'}
+                      placeholder={employees.length === 0 ? 'No employees - add in Admin' : 'Select employee...'}
                       disabled={employees.length === 0}
                       styles={{ input: { borderRadius: 0 } }}
                     />
@@ -1553,7 +1583,7 @@ const Dashboard = () => {
                       </Box>
                       <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886', minHeight: 62, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <Text c="white" size="sm" fw={700} ta="center" lineClamp={2} style={{ lineHeight: 1.15 }}>{product.name}</Text>
-                        <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>Rs. {product.price.toFixed(2)}</Text>
+                        <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>€ {product.price.toFixed(2)}</Text>
                       </Box>
                     </Paper>
                   );
@@ -1562,7 +1592,7 @@ const Dashboard = () => {
             ) : (
               <Flex direction="column" align="center" justify="center" h={300} gap="md">
                 <Text size="xl" c="dimmed">No products found in {openedCategoryName}</Text>
-                <Text size="sm" c="dimmed">Go to Product → General Products → {openedCategoryName} to add products.</Text>
+                <Text size="sm" c="dimmed">Go to Product, General Products, {openedCategoryName} to add products.</Text>
               </Flex>
             );
           })()}
@@ -1574,8 +1604,8 @@ const Dashboard = () => {
             <Text c="dimmed" size="sm" style={{ fontStyle: 'italic' }}>Selected items will be staged for addition...</Text>
           </Paper>
           <Flex gap="md">
-            <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬆</Button>
-            <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">⬇</Button>
+            <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">UP</Button>
+            <Button h={80} w={80} radius="md" variant="light" color="gray" size="xl">DOWN</Button>
             <Button h={80} w={160} radius="md" color="orange.6" size="xl" style={{ boxShadow: '0 4px 14px rgba(255, 146, 43, 0.4)' }} onClick={() => setCategoryModalOpened(false)}>
               <Text size="xl" fw={800}>DONE</Text>
             </Button>
@@ -1587,7 +1617,7 @@ const Dashboard = () => {
         <Flex direction="column" align="center" justify="center" p="xl">
           <Text size="md" c="dimmed" mb="sm">Amount to return to customer:</Text>
           <Text size="48px" fw={900} c={returnAmount >= 0 ? 'green.7' : 'red.7'}>
-            {returnAmount >= 0 ? `$${returnAmount.toFixed(2)}` : `-$${Math.abs(returnAmount).toFixed(2)}`}
+            {returnAmount >= 0 ? `€ ${returnAmount.toFixed(2)}` : `-€ ${Math.abs(returnAmount).toFixed(2)}`}
           </Text>
           <Button mt="xl" size="lg" fullWidth color="blue" onClick={() => { setReturnPopupOpened(false); setDepositInput(''); }}>
             OK (Next Customer)
@@ -1657,7 +1687,7 @@ const Dashboard = () => {
       <Modal opened={voidModalOpened} onClose={() => setVoidModalOpened(false)} title="Void Transaction">
         <Select 
           label="Select Order" 
-          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - Rs. ${o.total.toFixed(2)}` }))} 
+          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - € ${o.total.toFixed(2)}` }))} 
           value={selectedOrderId}
           onChange={(val) => setSelectedOrderId(val || '')}
         />
@@ -1749,7 +1779,7 @@ const Dashboard = () => {
         title={
           <Flex align="center" gap="xs">
             <Text size="lg" fw={800} c="white" style={{ letterSpacing: '0.5px' }}>
-              ⚡ Quick Register Product
+              Quick Register Product
             </Text>
           </Flex>
         }
@@ -1779,7 +1809,7 @@ const Dashboard = () => {
       >
         <Flex direction="column" gap="md">
 
-          {/* ── REQUIRED SECTION ── */}
+          {/* -- REQUIRED SECTION -- */}
           <Box
             style={{
               background: 'rgba(126,200,227,0.12)',
@@ -1789,7 +1819,7 @@ const Dashboard = () => {
             }}
           >
             <Text size="xs" fw={700} c="#7ec8e3" mb="xs" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-              ★ Required
+              Required
             </Text>
             <TextInput
               label={
@@ -1820,11 +1850,11 @@ const Dashboard = () => {
             </Text>
           </Box>
 
-          {/* ── OPTIONAL SECTION ── */}
+          {/* -- OPTIONAL SECTION -- */}
           <Divider
             label={
               <Text size="xs" fw={600} c="rgba(255,255,255,0.45)" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Optional — Fill Later in Products Catalog
+                Optional - Fill Later in Products Catalog
               </Text>
             }
             labelPosition="center"
@@ -1899,7 +1929,7 @@ const Dashboard = () => {
 
             <SimpleGrid cols={3} spacing="xs">
               <NumberInput
-                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Selling Price (Rs.)</Text>}
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Selling Price (€)</Text>}
                 value={quickProductPrice}
                 onChange={(val) => setQuickProductPrice(val)}
                 min={0}
@@ -1914,7 +1944,7 @@ const Dashboard = () => {
                 }}
               />
               <NumberInput
-                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Cost Price (Rs.)</Text>}
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Cost Price (€)</Text>}
                 value={quickProductCostPrice}
                 onChange={(val) => setQuickProductCostPrice(val)}
                 min={0}
@@ -1946,7 +1976,7 @@ const Dashboard = () => {
             </SimpleGrid>
           </Box>
 
-          {/* ── ACTION BUTTONS ── */}
+          {/* -- ACTION BUTTONS -- */}
           <Flex gap="sm" mt="sm" justify="flex-end">
             <Button
               variant="outline"
@@ -1978,7 +2008,7 @@ const Dashboard = () => {
                 minWidth: '130px'
               }}
             >
-              ⚡ Register & Add
+              Register & Add
             </Button>
           </Flex>
         </Flex>
@@ -1991,7 +2021,7 @@ const Dashboard = () => {
         title={
           <Flex align="center" gap="xs">
             <Text fw={800} size="lg">Split Payment</Text>
-            <Text size="sm" c="dimmed">— Cash + Card</Text>
+            <Text size="sm" c="dimmed">- Cash + Card</Text>
           </Flex>
         }
         centered
@@ -2006,13 +2036,13 @@ const Dashboard = () => {
           <Box p="sm" style={{ backgroundColor: '#f1f8e9', border: '1px solid #a5d6a7', borderRadius: 6 }}>
             <Flex justify="space-between" align="center">
               <Text size="sm" c="dimmed">Bill Total</Text>
-              <Text size="xl" fw={900} c="dark">Rs. {total.toFixed(2)}</Text>
+              <Text size="xl" fw={900} c="dark">€ {total.toFixed(2)}</Text>
             </Flex>
           </Box>
 
           {/* Cash input */}
           <NumberInput
-            label="Cash Amount (Rs.)"
+            label="Cash Amount (€)"
             placeholder="0.00"
             min={0}
             decimalScale={2}
@@ -2025,7 +2055,7 @@ const Dashboard = () => {
               setSplitCardAmount(parseFloat(remaining.toFixed(2)));
             }}
             size="md"
-            leftSection={<Text size="sm" fw={700} c="dark">Rs.</Text>}
+            leftSection={<Text size="sm" fw={700} c="dark">€</Text>}
             styles={{
               input: { fontSize: '18px', fontWeight: 700, textAlign: 'right', borderColor: '#2e7d32', borderWidth: 2 }
             }}
@@ -2033,7 +2063,7 @@ const Dashboard = () => {
 
           {/* Card input */}
           <NumberInput
-            label="Card Amount (Rs.)"
+            label="Card Amount (€)"
             placeholder="0.00"
             min={0}
             decimalScale={2}
@@ -2046,7 +2076,7 @@ const Dashboard = () => {
               setSplitCashAmount(parseFloat(remaining.toFixed(2)));
             }}
             size="md"
-            leftSection={<Text size="sm" fw={700} c="dark">Rs.</Text>}
+            leftSection={<Text size="sm" fw={700} c="dark">€</Text>}
             styles={{
               input: { fontSize: '18px', fontWeight: 700, textAlign: 'right', borderColor: '#1565c0', borderWidth: 2 }
             }}
@@ -2064,16 +2094,16 @@ const Dashboard = () => {
               <Box p="sm" style={{ backgroundColor: isShort ? '#fff3e0' : '#e8f5e9', border: `1px solid ${isShort ? '#ffb74d' : '#81c784'}`, borderRadius: 6 }}>
                 <Flex justify="space-between" mb={4}>
                   <Text size="sm" c="dimmed">Total Entered</Text>
-                  <Text size="sm" fw={700} c={isShort ? 'orange' : 'green'}>Rs. {entered.toFixed(2)}</Text>
+                  <Text size="sm" fw={700} c={isShort ? 'orange' : 'green'}>€ {entered.toFixed(2)}</Text>
                 </Flex>
                 {isShort && (
-                  <Text size="xs" c="orange.7" fw={600}>⚠ Still short by Rs. {Math.abs(diff).toFixed(2)}</Text>
+                  <Text size="xs" c="orange.7" fw={600}>Warning: Still short by € {Math.abs(diff).toFixed(2)}</Text>
                 )}
                 {isOver && (
-                  <Text size="xs" c="green.7" fw={600}>✓ Change to return: Rs. {diff.toFixed(2)}</Text>
+                  <Text size="xs" c="green.7" fw={600}>Change to return: € {diff.toFixed(2)}</Text>
                 )}
                 {!isShort && !isOver && entered > 0 && (
-                  <Text size="xs" c="green.7" fw={600}>✓ Exact amount</Text>
+                  <Text size="xs" c="green.7" fw={600}>Exact amount</Text>
                 )}
               </Box>
             );
@@ -2112,7 +2142,7 @@ const Dashboard = () => {
             size="sm"
           />
           <NumberInput
-            label="Amount to Pay (Rs.)"
+            label="Amount to Pay (€)"
             placeholder="0.00"
             min={0}
             size="sm"
@@ -2180,7 +2210,7 @@ const Dashboard = () => {
         <Flex direction="column" gap="md" p="sm">
           <Text size="sm" c="dimmed">Manage the cash drawer for this shift.</Text>
           <NumberInput
-            label="Opening Cash Balance (Rs.)"
+            label="Opening Cash Balance (€)"
             placeholder="Enter opening float..."
             min={0}
             size="sm"
@@ -2215,11 +2245,11 @@ const Dashboard = () => {
           </Flex>
           <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#f8f9fa', borderRadius: 8, border: '1px solid #dee2e6' }}>
             <Text size="sm" c="dimmed">Sub Total</Text>
-            <Text fw={700}>Rs. {subTotal.toFixed(2)}</Text>
+            <Text fw={700}>€ {subTotal.toFixed(2)}</Text>
           </Flex>
           <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#e8f5e9', borderRadius: 8, border: '1px solid #a5d6a7' }}>
             <Text size="md" fw={700}>Total Amount</Text>
-            <Text size="xl" fw={900} c="green">Rs. {total.toFixed(2)}</Text>
+            <Text size="xl" fw={900} c="green">€ {total.toFixed(2)}</Text>
           </Flex>
           <Select
             label="Payment Method"

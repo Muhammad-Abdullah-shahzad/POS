@@ -18,10 +18,22 @@ interface VoidOrder {
   voidReason?: string;
   voidedAt?: string;
   voidedBy?: { name?: string; email?: string; role?: string };
+  voidedByEmployee?: { name?: string; emailId?: string; role?: string };
+  voidedByEmployeeName?: string;
 }
 
-const formatCurrency = (value: number) => `Rs. ${(Number(value) || 0).toFixed(2)}`;
+const formatCurrency = (value: number) => `€ ${(Number(value) || 0).toFixed(2)}`;
 const formatDate = (d: string) => new Date(d).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+const formatVoidedBy = (order: VoidOrder) => {
+  const employeeName =
+    order.voidedByEmployee?.name ||
+    order.voidedByEmployeeName ||
+    order.voidedBy?.name ||
+    order.voidedBy?.email ||
+    'Unknown employee';
+  const role = order.voidedByEmployee?.role || order.voidedBy?.role;
+  return role && !employeeName.includes(`(${role})`) ? `${employeeName} (${role})` : employeeName;
+};
 
 const VoidTransactions = () => {
   const [orders, setOrders] = useState<VoidOrder[]>([]);
@@ -61,7 +73,7 @@ const VoidTransactions = () => {
           <Text ta="center" c="dimmed">No void transactions found.</Text>
         </Paper>
       ) : isMobile ? (
-        /* ── MOBILE: card per row ── */
+        /* -- MOBILE: card per row -- */
         <Stack gap="sm">
           {orders.map((order) => (
             <Paper key={order._id} withBorder p="md" radius="md" shadow="xs">
@@ -101,8 +113,8 @@ const VoidTransactions = () => {
               <Group gap="xs" mb="xs" wrap="nowrap">
                 <IconUser size={13} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
                 <Text size="xs" c="dimmed">
-                  By: <Text component="span" fw={500} c="dark">
-                    {order.voidedBy?.name || order.voidedBy?.email || 'Unknown'}
+                  Voided by: <Text component="span" fw={500} c="dark">
+                    {formatVoidedBy(order)}
                   </Text>
                 </Text>
               </Group>
@@ -124,7 +136,7 @@ const VoidTransactions = () => {
                   {order.items.map((item, idx) => (
                     <Group key={idx} justify="space-between" wrap="nowrap">
                       <Text size="xs" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.name} × {item.quantity}
+                        {item.name} x {item.quantity}
                       </Text>
                       <Text size="xs" fw={600} style={{ flexShrink: 0 }}>
                         {formatCurrency(item.price * item.quantity)}
@@ -137,7 +149,7 @@ const VoidTransactions = () => {
           ))}
         </Stack>
       ) : (
-        /* ── DESKTOP: full table ── */
+        /* -- DESKTOP: full table -- */
         <Paper withBorder p="md" radius="md">
           <ScrollArea>
             <Table striped highlightOnHover verticalSpacing="sm" miw={800}>
@@ -148,7 +160,7 @@ const VoidTransactions = () => {
                   <Table.Th>Voided At</Table.Th>
                   <Table.Th>Items</Table.Th>
                   <Table.Th>Reason</Table.Th>
-                  <Table.Th>Voided By</Table.Th>
+                  <Table.Th>Voided By Employee</Table.Th>
                   <Table.Th style={{ textAlign: 'right' }}>Total</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -163,13 +175,13 @@ const VoidTransactions = () => {
                       <Text size="sm">{formatDate(order.createdAt)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{order.voidedAt ? formatDate(order.voidedAt) : '—'}</Text>
+                      <Text size="sm">{order.voidedAt ? formatDate(order.voidedAt) : '-'}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Stack gap={2}>
                         {order.items.map((item, index) => (
                           <Text key={`${order._id}-${index}`} size="xs">
-                            {item.name} × {item.quantity} @ {formatCurrency(item.price)}
+                            {item.name} x {item.quantity} @ {formatCurrency(item.price)}
                           </Text>
                         ))}
                       </Stack>
@@ -180,7 +192,7 @@ const VoidTransactions = () => {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{order.voidedBy?.name || order.voidedBy?.email || 'Unknown'}</Text>
+                      <Text size="sm">{formatVoidedBy(order)}</Text>
                     </Table.Td>
                     <Table.Td style={{ textAlign: 'right' }}>
                       <Text fw={700}>{formatCurrency(order.total)}</Text>

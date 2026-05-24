@@ -35,7 +35,7 @@ const MAX_IMAGE_SIZE_MB = 15;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-// Helper: resolve image URL — supports both Google Drive URLs and legacy local paths
+// Helper: resolve image URL - supports both Google Drive URLs and legacy local paths
 const resolveImageUrl = (image: string | undefined): string | null => {
   if (!image) return null;
   const driveId = image.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || image.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
@@ -167,7 +167,7 @@ export const GeneralProducts = () => {
 
       if (imageFile) {
         // Use FormData for multipart upload
-        console.log('📤 Preparing FormData with image:', imageFile.name, imageFile.type, imageFile.size);
+        console.log('Preparing FormData with image:', imageFile.name, imageFile.type, imageFile.size);
         const fd = new FormData();
         fd.append('name', form.name.trim());
         fd.append('sku', form.sku.trim());
@@ -180,16 +180,16 @@ export const GeneralProducts = () => {
         fd.append('vatType', form.vatType);
         fd.append('image', imageFile);
 
-        console.log('📤 Sending FormData to:', editingId ? `PATCH /products/${editingId}` : 'POST /products');
+        console.log('Sending FormData to:', editingId ? `PATCH /products/${editingId}` : 'POST /products');
         if (editingId) {
           const response = await api.patch(`/products/${editingId}`, fd);
-          console.log('✅ Response:', response.data);
+          console.log('Response:', response.data);
         } else {
           const response = await api.post('/products', fd);
-          console.log('✅ Response:', response.data);
+          console.log('Response:', response.data);
         }
       } else {
-        // Plain JSON — no image
+        // Plain JSON - no image
         const payload = {
           name: form.name.trim(),
           sku: form.sku.trim(),
@@ -367,7 +367,7 @@ export const GeneralProducts = () => {
                   <Table.Td fw={600}>{p.name}</Table.Td>
                   <Table.Td c="dimmed">{p.sku}</Table.Td>
                   <Table.Td c="dimmed">{p.barcode}</Table.Td>
-                  <Table.Td style={{ textAlign: 'right' }}>Rs. {p.price.toFixed(2)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right' }}>€ {p.price.toFixed(2)}</Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Badge color={p.stock > 0 ? 'green' : 'red'} variant="light">{p.stock}</Badge>
                   </Table.Td>
@@ -436,7 +436,7 @@ export const GeneralProducts = () => {
           <Grid>
             <Grid.Col span={6}>
               <NumberInput
-                label="Selling Price (Rs.)"
+                label="Selling Price (€)"
                 min={0}
                 value={form.price}
                 onChange={val => setForm(f => ({ ...f, price: val }))}
@@ -444,7 +444,7 @@ export const GeneralProducts = () => {
             </Grid.Col>
             <Grid.Col span={6}>
               <NumberInput
-                label="Cost Price (Rs.)"
+                label="Cost Price (€)"
                 min={0}
                 value={form.costPrice}
                 onChange={val => setForm(f => ({ ...f, costPrice: val }))}
@@ -482,7 +482,7 @@ export const GeneralProducts = () => {
             </Grid.Col>
           </Grid>
 
-          {/* Image Upload — optional */}
+          {/* Image Upload - optional */}
           <Box>
             <Text size="sm" fw={500} mb={6}>Product Image <Text component="span" size="xs" c="dimmed">(optional)</Text></Text>
             <Group align="flex-start" gap="md">

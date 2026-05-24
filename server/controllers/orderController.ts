@@ -1,39 +1,102 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import { successResponse, errorResponse } from '../utils/response';
 import { AuthRequest } from '../middleware/auth';
 
+type NormalizedOrderItem = {
+  product?: mongoose.Types.ObjectId;
+  name: string;
+  quantity: number;
+  price: number;
+  vatRate: number;
+  vatAmount: number;
+  totalPrice: number;
+};
+
+const normalizeOrderItems = (items: any[]): NormalizedOrderItem[] => {
+  return (items || []).map((item: any) => {
+    const productId = item.product || item.productId;
+    const product = productId && mongoose.Types.ObjectId.isValid(productId)
+      ? new mongoose.Types.ObjectId(productId)
+      : undefined;
+
+    return {
+      ...item,
+      product,
+      quantity: Number(item.quantity),
+      price: Number(item.price),
+      vatRate: Number(item.vatRate) || 0,
+      vatAmount: Number(item.vatAmount) || 0,
+      totalPrice: Number(item.totalPrice),
+    };
+  });
+};
+
+const getProductQuantities = (items: NormalizedOrderItem[]): Map<string, { quantity: number; name: string }> => {
+  return items.reduce((totals, item) => {
+    if (!item.product) return totals;
+    const productId = item.product.toString();
+    const existing = totals.get(productId);
+    totals.set(productId, {
+      quantity: (existing?.quantity || 0) + item.quantity,
+      name: existing?.name || item.name,
+    });
+    return totals;
+  }, new Map<string, { quantity: number; name: string }>());
+};
+
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
+  const deductedStock = new Map<string, number>();
+
   try {
     const { items, subtotal, totalVAT, discount, total, paymentMethod, splitCash, splitCard } = req.body;
-    
-    // Check stock availability only for items with a product reference
-    for (const item of items) {
-      if (!item.product) continue; // Skip manual/counter items
-      const product = await Product.findById(item.product);
-      if (!product) {
-        res.status(404).json(errorResponse(`Product ${item.name} not found`));
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json(errorResponse('Order must contain at least one item'));
+      return;
+    }
+
+    const normalizedItems = normalizeOrderItems(items);
+
+    for (const item of normalizedItems) {
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+        res.status(400).json(errorResponse(`Invalid quantity for ${item.name || 'item'}`));
         return;
       }
-      if (product.stock < item.quantity) {
-        res.status(400).json(errorResponse(`Insufficient stock for ${item.name}. Available: ${product.stock}`));
+
+      if (!Number.isFinite(item.price) || !Number.isFinite(item.totalPrice)) {
+        res.status(400).json(errorResponse(`Invalid price for ${item.name || 'item'}`));
         return;
       }
     }
 
-    // Auto deduct stock only for items with a product reference
-    for (const item of items) {
-      if (!item.product) continue;
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.quantity }
+    const productQuantities = getProductQuantities(normalizedItems);
+
+    for (const [productId, item] of productQuantities) {
+      const updatedProduct = await Product.findOneAndUpdate({
+        _id: productId,
+        stock: { $gte: item.quantity },
+      }, {
+        $inc: { stock: -item.quantity },
+      }, {
+        new: true,
       });
+
+      if (!updatedProduct) {
+        const product = await Product.findById(productId).select('name stock');
+        const available = product?.stock ?? 0;
+        throw new Error(`Insufficient stock for ${product?.name || item.name}. Available: ${available}`);
+      }
+
+      deductedStock.set(productId, item.quantity);
     }
 
     const invoiceId = `REC-${Date.now()}`;
     const order = await Order.create({
       invoiceId,
-      items,
+      items: normalizedItems,
       subtotal,
       totalVAT,
       discount,
@@ -45,7 +108,14 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
 
     res.status(201).json(successResponse(order, 'Order completed'));
   } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
+    if (deductedStock.size > 0) {
+      for (const [productId, quantity] of deductedStock) {
+        await Product.findByIdAndUpdate(productId, { $inc: { stock: quantity } });
+      }
+    }
+
+    const status = error.message?.startsWith('Insufficient stock') ? 400 : 400;
+    res.status(status).json(errorResponse(error.message || 'Bad Request'));
   }
 };
 
@@ -74,30 +144,40 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
 
 export const deleteOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, status: { $ne: 'voided' } },
+      {
+        $set: {
+          status: 'voided',
+          voidReason: String(req.query.reason || req.body?.reason || 'No reason provided').trim() || 'No reason provided',
+          voidedAt: new Date(),
+          ...(req.user?.id && { voidedBy: req.user.id }),
+          ...(String(req.query.employeeId || req.body?.employeeId || '').trim() && {
+            voidedByEmployee: String(req.query.employeeId || req.body?.employeeId || '').trim(),
+          }),
+          ...(String(req.query.employeeName || req.body?.employeeName || '').trim() && {
+            voidedByEmployeeName: String(req.query.employeeName || req.body?.employeeName || '').trim(),
+          }),
+        },
+      },
+      { new: false }
+    );
+
     if (!order) {
-      res.status(404).json(errorResponse('Order not found'));
-      return;
-    }
-    if (order.status === 'voided') {
-      res.status(400).json(errorResponse('Order is already voided'));
+      const existingOrder = await Order.findById(req.params.id).select('status');
+      res.status(existingOrder?.status === 'voided' ? 400 : 404).json(errorResponse(existingOrder?.status === 'voided' ? 'Order is already voided' : 'Order not found'));
       return;
     }
 
-    for (const item of order.items) {
-      if (!item.product) continue;
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: item.quantity }
+    const productQuantities = getProductQuantities(order.items as NormalizedOrderItem[]);
+    for (const [productId, item] of productQuantities) {
+      await Product.findByIdAndUpdate(productId, {
+        $inc: { stock: item.quantity },
       });
     }
 
-    order.status = 'voided';
-    order.voidReason = String(req.query.reason || req.body?.reason || 'No reason provided').trim() || 'No reason provided';
-    order.voidedAt = new Date();
-    if (req.user?.id) order.voidedBy = req.user.id as any;
-    await order.save();
-
-    res.json(successResponse(order, 'Order voided successfully'));
+    const voidedOrder = await Order.findById(req.params.id);
+    res.json(successResponse(voidedOrder, 'Order voided successfully'));
   } catch (error: any) {
     res.status(400).json(errorResponse('Bad Request', error.message));
   }
@@ -107,6 +187,7 @@ export const getVoidOrders = async (_req: Request, res: Response): Promise<void>
   try {
     const orders = await Order.find({ status: 'voided' })
       .populate('voidedBy', 'name email role')
+      .populate('voidedByEmployee', 'name role emailId')
       .sort({ voidedAt: -1, createdAt: -1 })
       .limit(500);
     res.json(successResponse(orders));

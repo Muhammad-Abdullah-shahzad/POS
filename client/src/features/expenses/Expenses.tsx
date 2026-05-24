@@ -103,7 +103,7 @@ const Expenses = () => {
                 <Table.Td>{new Date(e.date).toLocaleDateString()}</Table.Td>
                 <Table.Td>{e.title}</Table.Td>
                 <Table.Td>{e.category}</Table.Td>
-                <Table.Td c="red">Rs -{e.amount.toFixed(2)}</Table.Td>
+                <Table.Td c="red">€ -{e.amount.toFixed(2)}</Table.Td>
                 <Table.Td>{e.paymentMethod}</Table.Td>
               </Table.Tr>
             ))}

@@ -691,7 +691,7 @@ export const ProductsSubFeatures = () => {
                                 </Badge>
                               </Table.Td>
                               <Table.Td style={{ textAlign: 'right' }}>{cat.count} SKUs</Table.Td>
-                              <Table.Td style={{ textAlign: 'right' }} c="teal" fw={600}>Rs. {cat.value.toLocaleString()}</Table.Td>
+                              <Table.Td style={{ textAlign: 'right' }} c="teal" fw={600}>€ {cat.value.toLocaleString()}</Table.Td>
                             </Table.Tr>
                           ))}
                         </Table.Tbody>
@@ -858,7 +858,7 @@ export const ProductsSubFeatures = () => {
                                     <Table.Td>
                                       <Badge variant="light" color="blue">{p.category || 'Unassigned'}</Badge>
                                     </Table.Td>
-                                    <Table.Td style={{ textAlign: 'right' }}>{p.discount > 0 ? (<><span style={{ textDecoration: 'line-through', color: 'gray' }}>Rs. {p.price.toFixed(2)}</span> <span style={{ color: 'red', fontWeight: 600 }}>Rs. {p.displayedPrice.toFixed(2)} ({p.discount}%)</span></>) : (<>Rs. {p.price.toFixed(2)}</>)}</Table.Td>
+                                    <Table.Td style={{ textAlign: 'right' }}>{p.discount > 0 ? (<><span style={{ textDecoration: 'line-through', color: 'gray' }}>€ {p.price.toFixed(2)}</span> <span style={{ color: 'red', fontWeight: 600 }}>€ {p.displayedPrice.toFixed(2)} ({p.discount}%)</span></>) : (<>€ {p.price.toFixed(2)}</>)}</Table.Td>
                                   </Table.Tr>
                                 ))}
                                 {products.length === 0 && (
@@ -895,7 +895,7 @@ export const ProductsSubFeatures = () => {
                         <Table.Th>Product Name</Table.Th>
                         <Table.Th>SKU</Table.Th>
                         <Table.Th style={{ textAlign: 'right' }}>Retail Price</Table.Th>
-                        <Table.Th style={{ width: 160 }}>Online Price (Rs.)</Table.Th>
+                        <Table.Th style={{ width: 160 }}>Online Price (€)</Table.Th>
                         <Table.Th style={{ textAlign: 'center' }}>Channel Status</Table.Th>
                         <Table.Th style={{ textAlign: 'center' }}>Direct Web Link</Table.Th>
                       </Table.Tr>
@@ -907,7 +907,7 @@ export const ProductsSubFeatures = () => {
                           <Table.Tr key={p._id}>
                             <Table.Td fw={600}>{p.name}</Table.Td>
                             <Table.Td>{p.sku}</Table.Td>
-                            <Table.Td style={{ textAlign: 'right' }}>Rs. {p.price.toFixed(2)}</Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>€ {p.price.toFixed(2)}</Table.Td>
                             <Table.Td>
                               <NumberInput
                                 min={0}
@@ -1189,8 +1189,8 @@ export const ProductsSubFeatures = () => {
                   <Table.Tr>
                     <Table.Th>Product Name</Table.Th>
                     <Table.Th>SKU</Table.Th>
-                    <Table.Th style={{ width: 140 }}>Cost Price (Rs.)</Table.Th>
-                    <Table.Th style={{ width: 140 }}>Selling Price (Rs.)</Table.Th>
+                    <Table.Th style={{ width: 140 }}>Cost Price (€)</Table.Th>
+                    <Table.Th style={{ width: 140 }}>Selling Price (€)</Table.Th>
                     <Table.Th style={{ textAlign: 'right' }}>Calculated Margin</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -1367,8 +1367,8 @@ export const ProductsSubFeatures = () => {
                       <Table.Td fw={600}>{row.sku}</Table.Td>
                       <Table.Td>{row.name}</Table.Td>
                       <Table.Td>{row.category}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }}>Rs. {row.costPrice}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }}>Rs. {row.price}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>€ {row.costPrice}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>€ {row.price}</Table.Td>
                       <Table.Td style={{ textAlign: 'right' }}>{row.stock} Units</Table.Td>
                     </Table.Tr>
                   ))}

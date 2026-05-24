@@ -203,7 +203,7 @@ const Customers = () => {
       <Grid mb="xl">
         {[
           { label: 'Total Customers', value: customers.length, color: 'teal' },
-          { label: 'Total Revenue', value: `$${customers.reduce((s, c) => s + c.totalAmount, 0).toLocaleString('en', { minimumFractionDigits: 2 })}`, color: 'blue' },
+          { label: 'Total Revenue', value: `€ ${customers.reduce((s, c) => s + c.totalAmount, 0).toLocaleString('en', { minimumFractionDigits: 2 })}`, color: 'blue' },
           { label: 'Total Visits', value: customers.reduce((s, c) => s + c.timesVisited, 0), color: 'orange' },
         ].map(card => (
           <Grid.Col span={4} key={card.label}>
@@ -256,7 +256,7 @@ const Customers = () => {
                 <Table.Td><Text size="sm" c="dimmed">{c.email || '—'}</Text></Table.Td>
                 <Table.Td><Text size="sm" c="dimmed">{c.eircode || '—'}</Text></Table.Td>
                 <Table.Td><Badge color="blue" variant="light" radius="sm">{c.timesVisited}</Badge></Table.Td>
-                <Table.Td><Badge color="green" variant="light" radius="sm">${c.totalAmount.toFixed(2)}</Badge></Table.Td>
+                <Table.Td><Badge color="green" variant="light" radius="sm">€ {c.totalAmount.toFixed(2)}</Badge></Table.Td>
                 <Table.Td><Text size="sm" c="dimmed">{c.lastVisit || '—'}</Text></Table.Td>
                 <Table.Td>
                   <Group gap="xs">
@@ -287,7 +287,7 @@ const Customers = () => {
               </Grid.Col>
               <Grid.Col span={4}>
                 <Text size="xs" c="dimmed" fw={600} tt="uppercase">Total Amount</Text>
-                <Text size="xl" fw={800} c="green.7">${editingCustomer.totalAmount.toFixed(2)}</Text>
+                <Text size="xl" fw={800} c="green.7">€ {editingCustomer.totalAmount.toFixed(2)}</Text>
               </Grid.Col>
               <Grid.Col span={4}>
                 <Text size="xs" c="dimmed" fw={600} tt="uppercase">Last Visit</Text>

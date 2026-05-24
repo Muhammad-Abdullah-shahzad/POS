@@ -141,7 +141,7 @@ export const SupplierPayments = () => {
             <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total Outstanding Balance</Text>
             <IconAlertCircle size={20} style={{ color: 'var(--mantine-color-red-filled)' }} />
           </Group>
-          <Text size="xl" fw={700} mt="xs">Rs. {totalOutstanding.toLocaleString()}</Text>
+          <Text size="xl" fw={700} mt="xs">€ {totalOutstanding.toLocaleString()}</Text>
           <Text size="xs" c={pendingInvoicesCount > 0 ? 'red' : 'green'} mt="xs" fw={500}>
             {pendingInvoicesCount} Invoice{pendingInvoicesCount !== 1 ? 's' : ''} Pending
           </Text>
@@ -151,7 +151,7 @@ export const SupplierPayments = () => {
             <Text size="xs" c="dimmed" fw={700} tt="uppercase">Paid to Suppliers</Text>
             <IconCash size={20} style={{ color: 'var(--mantine-color-green-filled)' }} />
           </Group>
-          <Text size="xl" fw={700} mt="xs">Rs. {totalPaid.toLocaleString()}</Text>
+          <Text size="xl" fw={700} mt="xs">€ {totalPaid.toLocaleString()}</Text>
           <Text size="xs" c="green" mt="xs" fw={500}>All clear payouts</Text>
         </Paper>
         <Paper withBorder radius="md" p="md">
@@ -183,10 +183,10 @@ export const SupplierPayments = () => {
               <Table.Tr key={row.id}>
                 <Table.Td fw={500}>{row.supplier}</Table.Td>
                 <Table.Td>{row.invoiceNo}</Table.Td>
-                <Table.Td>Rs. {row.amount.toLocaleString()}</Table.Td>
-                <Table.Td c="green">Rs. {row.paid.toLocaleString()}</Table.Td>
+                <Table.Td>€ {row.amount.toLocaleString()}</Table.Td>
+                <Table.Td c="green">€ {row.paid.toLocaleString()}</Table.Td>
                 <Table.Td c={row.balance > 0 ? 'red' : 'dimmed'} fw={row.balance > 0 ? 600 : 400}>
-                  Rs. {row.balance.toLocaleString()}
+                  € {row.balance.toLocaleString()}
                 </Table.Td>
                 <Table.Td>
                   <Badge 
@@ -263,7 +263,7 @@ export const SupplierPayments = () => {
             />
             <SimpleGrid cols={2}>
               <NumberInput
-                label="Total Invoice Amount (Rs.)"
+                label="Total Invoice Amount (€)"
                 placeholder="0"
                 min={0}
                 value={newAmount}
@@ -271,7 +271,7 @@ export const SupplierPayments = () => {
                 required
               />
               <NumberInput
-                label="Amount Paid (Rs.)"
+                label="Amount Paid (€)"
                 placeholder="0"
                 min={0}
                 value={newPaid}
@@ -317,17 +317,17 @@ export const SupplierPayments = () => {
                 <SimpleGrid cols={2} mt="xs">
                   <div>
                     <Text size="xs" c="dimmed">Total Amount</Text>
-                    <Text fw={600} size="sm">Rs. {selectedPayment.amount.toLocaleString()}</Text>
+                    <Text fw={600} size="sm">€ {selectedPayment.amount.toLocaleString()}</Text>
                   </div>
                   <div>
                     <Text size="xs" c="dimmed">Remaining Balance</Text>
-                    <Text fw={600} size="sm" c="red">Rs. {selectedPayment.balance.toLocaleString()}</Text>
+                    <Text fw={600} size="sm" c="red">€ {selectedPayment.balance.toLocaleString()}</Text>
                   </div>
                 </SimpleGrid>
               </Paper>
 
               <NumberInput
-                label="Payout Amount (Rs.)"
+                label="Payout Amount (€)"
                 placeholder="Enter amount to pay"
                 min={1}
                 max={selectedPayment.balance}
@@ -384,11 +384,11 @@ export const SupplierPayments = () => {
               </div>
               <div>
                 <Text size="xs" c="dimmed">Total Invoice Amount</Text>
-                <Text fw={600}>Rs. {selectedPayment.amount.toLocaleString()}</Text>
+                <Text fw={600}>€ {selectedPayment.amount.toLocaleString()}</Text>
               </div>
               <div>
                 <Text size="xs" c="dimmed">Total Paid Amount</Text>
-                <Text fw={600} c="green">Rs. {selectedPayment.paid.toLocaleString()}</Text>
+                <Text fw={600} c="green">€ {selectedPayment.paid.toLocaleString()}</Text>
               </div>
             </SimpleGrid>
 
@@ -522,7 +522,7 @@ export const ManageProductCodes = () => {
 
                   <Group justify="space-between" style={{ width: '100%' }} mt="xs">
                     <Text size="xs" fw={700}>SKU: {productData.find(p => p.name === selectedProduct)?.sku}</Text>
-                    <Text size="xs" fw={700} c="blue">Rs. {productData.find(p => p.name === selectedProduct)?.price.toLocaleString()}</Text>
+                    <Text size="xs" fw={700} c="blue">€ {productData.find(p => p.name === selectedProduct)?.price.toLocaleString()}</Text>
                   </Group>
                 </Stack>
               </Card>

@@ -90,7 +90,7 @@ const Receipts = () => {
               <Table.Tr key={rec._id}>
                 <Table.Td fw={500}>{rec.invoiceId || 'N/A'}</Table.Td>
                 <Table.Td>{new Date(rec.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td fw={700}>Rs {rec.total.toFixed(2)}</Table.Td>
+                <Table.Td fw={700}>€ {rec.total.toFixed(2)}</Table.Td>
                 <Table.Td><Badge color="green" variant="light">PAID</Badge></Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Button 
@@ -153,16 +153,16 @@ const Receipts = () => {
                     <Table.Tr key={idx}>
                       <Table.Td style={{ fontWeight: 900 }}>{item.name}</Table.Td>
                       <Table.Td style={{ textAlign: 'center', fontWeight: 900 }}>{item.quantity}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>Rs {item.totalPrice.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>€ {item.totalPrice.toFixed(2)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
 
               <Stack gap={4} align="flex-end">
-                <Text size="md" fw={900}>Subtotal: Rs {selectedReceipt.subtotal.toFixed(2)}</Text>
-                <Text size="md" fw={900}>Tax: Rs {selectedReceipt.totalVAT.toFixed(2)}</Text>
-                <Text size="xl" fw={900} style={{ borderTop: '4px solid #000', paddingTop: 8 }}>TOTAL: Rs {selectedReceipt.total.toFixed(2)}</Text>
+                <Text size="md" fw={900}>Subtotal: € {selectedReceipt.subtotal.toFixed(2)}</Text>
+                <Text size="md" fw={900}>Tax: € {selectedReceipt.totalVAT.toFixed(2)}</Text>
+                <Text size="xl" fw={900} style={{ borderTop: '4px solid #000', paddingTop: 8 }}>TOTAL: € {selectedReceipt.total.toFixed(2)}</Text>
               </Stack>
               
               <Text ta="center" mt="xl" size="sm" fw={900}>THANK YOU FOR YOUR BUSINESS!</Text>

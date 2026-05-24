@@ -16,11 +16,11 @@ import {
 import api from '../../services/api';
 
 const COLORS = ['#228be6', '#40c057', '#fab005', '#fa5252', '#7950f2', '#15aabf', '#fd7e14'];
-const fmt = (n: number) => `Rs. ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+const fmt = (n: number) => `€ ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const fmtShort = (n: number) => {
-  if (n >= 1_000_000) return `Rs. ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `Rs. ${(n / 1_000).toFixed(1)}K`;
-  return `Rs. ${n.toFixed(2)}`;
+  if (n >= 1_000_000) return `€ ${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `€ ${(n / 1_000).toFixed(1)}K`;
+  return `€ ${n.toFixed(2)}`;
 };
 
 // Responsive stat mini-card used inside modals
@@ -74,7 +74,7 @@ const AdminDashboard = () => {
     );
   }
 
-  // ── Derived stats ──
+  // -- Derived stats --
   const totalSales = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
   const totalOrders = orders.length;
   const cashOrders = orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'cash');
@@ -126,10 +126,10 @@ const AdminDashboard = () => {
     { key: 'profit',      label: 'Net Profit',       value: fmtShort(profit),       sub: profit >= 0 ? 'Profitable' : 'Loss', icon: <IconBuildingStore size={20} />, color: profit >= 0 ? 'teal' : 'red' },
     { key: 'products',    label: 'Products',         value: String(products.length),sub: `${lowStock.length} low stock`,     icon: <IconPackage size={20} />,      color: lowStock.length > 0 ? 'yellow' : 'cyan' },
     { key: 'customers',   label: 'Customers',        value: String(customers.length), sub: 'Registered',                    icon: <IconUsersGroup size={20} />,   color: 'indigo' },
-    { key: 'low-stock',   label: 'Low Stock',        value: String(lowStock.length),  sub: 'Items ≤ 10 units',              icon: <IconAlertCircle size={20} />,  color: lowStock.length > 0 ? 'red' : 'gray' },
+    { key: 'low-stock',   label: 'Low Stock',        value: String(lowStock.length),  sub: 'Items <= 10 units',              icon: <IconAlertCircle size={20} />,  color: lowStock.length > 0 ? 'red' : 'gray' },
   ];
 
-  // Modal props — fullScreen on mobile for all modals
+  // Modal props - fullScreen on mobile for all modals
   const modalProps = { fullScreen: !!isMobile, centered: !isMobile, scrollAreaComponent: ScrollArea.Autosize };
 
   return (
@@ -145,7 +145,7 @@ const AdminDashboard = () => {
         </Text>
       </Group>
 
-      {/* Cards grid — 2 cols on mobile, 4 on desktop */}
+      {/* Cards grid - 2 cols on mobile, 4 on desktop */}
       <SimpleGrid cols={{ base: 2, sm: 2, md: 4 }} spacing="sm">
         {cards.map((card) => (
           <Paper
@@ -177,7 +177,7 @@ const AdminDashboard = () => {
         ))}
       </SimpleGrid>
 
-      {/* ── MODAL: Total Sales ── */}
+      {/* -- MODAL: Total Sales -- */}
       <Modal {...modalProps} size="lg" opened={activeModal === 'total-sales'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Total Sales Analysis</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
@@ -185,7 +185,7 @@ const AdminDashboard = () => {
             <MiniCard label="Total Orders" value={String(totalOrders)} />
             <MiniCard label="Avg Order" value={totalOrders > 0 ? fmt(totalSales / totalOrders) : fmt(0)} />
           </SimpleGrid>
-          <Divider label="Daily Sales — Last 14 days" labelPosition="center" />
+          <Divider label="Daily Sales - Last 14 days" labelPosition="center" />
           {dailyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={dailyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -227,7 +227,7 @@ const AdminDashboard = () => {
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Cash ── */}
+      {/* -- MODAL: Cash -- */}
       <Modal {...modalProps} size="md" opened={activeModal === 'cash'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Cash Collections</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={2} spacing="sm">
@@ -246,7 +246,7 @@ const AdminDashboard = () => {
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie data={payData} cx="50%" cy="50%" outerRadius={70} dataKey="value" nameKey="name"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                     labelLine={false}>
                     {payData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
                   </Pie>
@@ -258,7 +258,7 @@ const AdminDashboard = () => {
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Card ── */}
+      {/* -- MODAL: Card -- */}
       <Modal {...modalProps} size="md" opened={activeModal === 'card'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Card Collections</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={2} spacing="sm">
@@ -302,7 +302,7 @@ const AdminDashboard = () => {
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Expenses ── */}
+      {/* -- MODAL: Expenses -- */}
       <Modal {...modalProps} size="lg" opened={activeModal === 'expenses'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Expenses Breakdown</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
@@ -339,7 +339,7 @@ const AdminDashboard = () => {
               <Table.Tbody>
                 {expenses.slice(0, 20).map((e, i) => (
                   <Table.Tr key={i}>
-                    <Table.Td>{e.description || e.name || '—'}</Table.Td>
+                    <Table.Td>{e.description || e.name || '-'}</Table.Td>
                     <Table.Td><Badge size="xs" variant="light" color="orange">{e.category || 'General'}</Badge></Table.Td>
                     <Table.Td style={{ textAlign: 'right' }} fw={600} c="orange">{fmt(Number(e.amount) || 0)}</Table.Td>
                   </Table.Tr>
@@ -350,7 +350,7 @@ const AdminDashboard = () => {
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Profit ── */}
+      {/* -- MODAL: Profit -- */}
       <Modal {...modalProps} size="md" opened={activeModal === 'profit'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Profit & Loss</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
@@ -383,12 +383,12 @@ const AdminDashboard = () => {
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Products ── */}
+      {/* -- MODAL: Products -- */}
       <Modal {...modalProps} size="lg" opened={activeModal === 'products'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Products Overview</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
             <MiniCard label="Total Products" value={String(products.length)} />
-            <MiniCard label="Low Stock ≤10" value={String(lowStock.length)} color="yellow" />
+            <MiniCard label="Low Stock <=10" value={String(lowStock.length)} color="yellow" />
             <MiniCard label="Out of Stock" value={String(products.filter(p => p.stock === 0).length)} color="red" />
           </SimpleGrid>
           {topProducts.length > 0 && (
@@ -432,11 +432,11 @@ const AdminDashboard = () => {
               </ScrollArea>
             </>
           )}
-          {lowStock.length === 0 && <Text c="green" ta="center" py="sm" size="sm">✓ All products well stocked.</Text>}
+          {lowStock.length === 0 && <Text c="green" ta="center" py="sm" size="sm">All products well stocked.</Text>}
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Customers ── */}
+      {/* -- MODAL: Customers -- */}
       <Modal {...modalProps} size="md" opened={activeModal === 'customers'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg">Customer Overview</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={2} spacing="sm">
@@ -472,7 +472,7 @@ const AdminDashboard = () => {
         </Stack>
       </Modal>
 
-      {/* ── MODAL: Low Stock Alert ── */}
+      {/* -- MODAL: Low Stock Alert -- */}
       <Modal {...modalProps} size="md" opened={activeModal === 'low-stock'} onClose={() => setActiveModal(null)} title={<Text fw={700} size="lg" c="red">Low Stock Alert</Text>}>
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="sm">
@@ -494,7 +494,7 @@ const AdminDashboard = () => {
                   {[...lowStock].sort((a, b) => a.stock - b.stock).map((p, i) => (
                     <Table.Tr key={i}>
                       <Table.Td fw={600}>{p.name}</Table.Td>
-                      <Table.Td><Badge size="xs" variant="light">{p.category || '—'}</Badge></Table.Td>
+                      <Table.Td><Badge size="xs" variant="light">{p.category || '-'}</Badge></Table.Td>
                       <Table.Td style={{ textAlign: 'right' }}>
                         <Badge color={p.stock === 0 ? 'red' : 'yellow'} variant="filled" size="xs">{p.stock}</Badge>
                       </Table.Td>
@@ -503,7 +503,7 @@ const AdminDashboard = () => {
                 </Table.Tbody>
               </Table>
             </ScrollArea>
-          ) : <Text c="green" ta="center" py="xl" fw={600} size="sm">✓ All products are well stocked.</Text>}
+          ) : <Text c="green" ta="center" py="xl" fw={600} size="sm">All products are well stocked.</Text>}
         </Stack>
       </Modal>
 

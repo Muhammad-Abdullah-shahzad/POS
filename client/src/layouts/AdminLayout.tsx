@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, NavLink, Title, Button, Text, Anchor, Menu, ScrollArea, Box, Badge, Center } from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title, Button, Text, Anchor, ScrollArea, Box, Badge, Center } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
