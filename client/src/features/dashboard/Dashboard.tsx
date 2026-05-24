@@ -1382,7 +1382,7 @@ const Dashboard = () => {
 
                       {/* SPLIT PAY BUTTON */}
                       <Box
-                        w="14%"
+                        w="20%"
                         style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px', background: 'linear-gradient(135deg, #2e7d32 0%, #43a047 100%)' }}
                         onClick={() => {
                           if (cartItems.length === 0) {
@@ -1401,7 +1401,7 @@ const Dashboard = () => {
                       </Box>
 
                       {/* CARD PAY BUTTON */}
-                      <Box w="14%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
+                      <Box w="18%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
                         <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
                         <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
                           <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br />PAY</Text>
