@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Customer from '../models/Customer';
+import Settings from '../models/Settings';
 import { successResponse, errorResponse } from '../utils/response';
 
 // Get all customers, with optional search
@@ -64,7 +65,7 @@ export const deleteCustomer = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// Record a transaction for a customer (increment visits, add totalAmount, set lastVisit)
+// Record a transaction — increment visits, add totalAmount, add loyalty points
 export const updateCustomerStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const { amount } = req.body;
@@ -72,24 +73,50 @@ export const updateCustomerStats = async (req: Request, res: Response): Promise<
       res.status(400).json(errorResponse('Amount must be a number'));
       return;
     }
-    
+
+    // Get loyalty settings
+    let pointsPerEuro = 1;
+    try {
+      const settings = await Settings.findOne();
+      if (settings) pointsPerEuro = settings.loyaltyPointsPerEuro ?? 1;
+    } catch { /* use default */ }
+
+    const pointsEarned = Math.floor(amount * pointsPerEuro);
     const today = new Date().toISOString().split('T')[0];
-    
+
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
-      { 
-        $inc: { timesVisited: 1, totalAmount: amount },
+      {
+        $inc: { timesVisited: 1, totalAmount: amount, loyaltyPoints: pointsEarned },
         $set: { lastVisit: today }
       },
       { new: true }
     );
-    
+
     if (!customer) {
       res.status(404).json(errorResponse('Customer not found'));
       return;
     }
-    
-    res.json(successResponse(customer, 'Customer stats updated successfully'));
+
+    res.json(successResponse({ ...customer.toObject(), pointsEarned }, 'Customer stats updated successfully'));
+  } catch (error: any) {
+    res.status(400).json(errorResponse('Bad Request', error.message));
+  }
+};
+
+// Reset loyalty points for a customer
+export const resetLoyaltyPoints = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      { $set: { loyaltyPoints: 0 } },
+      { new: true }
+    );
+    if (!customer) {
+      res.status(404).json(errorResponse('Customer not found'));
+      return;
+    }
+    res.json(successResponse(customer, 'Loyalty points reset successfully'));
   } catch (error: any) {
     res.status(400).json(errorResponse('Bad Request', error.message));
   }

@@ -9,6 +9,9 @@ export interface ISettings extends Document {
   receiptFooter: string;
   defaultVatRate: number;
   isVatInclusiveDefault: boolean;
+  loyaltyPointsPerEuro: number;
+  loyaltyRewardThreshold: number;
+  loyaltyRewardValue: number;
   quickProducts: {
     id: string;
     name: string;
@@ -26,6 +29,9 @@ const SettingsSchema = new Schema<ISettings>({
   receiptFooter: { type: String, default: 'THANK YOU FOR SHOPPING! Please visit us again soon.' },
   defaultVatRate: { type: Number, required: true, default: 20 },
   isVatInclusiveDefault: { type: Boolean, required: true, default: true },
+  loyaltyPointsPerEuro: { type: Number, default: 1 },
+  loyaltyRewardThreshold: { type: Number, default: 100 },
+  loyaltyRewardValue: { type: Number, default: 5 },
   quickProducts: {
     type: [{
       id: { type: String, required: true },

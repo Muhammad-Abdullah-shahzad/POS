@@ -6,7 +6,7 @@ import {
 import { DateInput } from '@mantine/dates';
 import {
   IconUserPlus, IconSearch, IconEdit, IconTrash, IconUser,
-  IconPhone, IconMail, IconAddressBook, IconCheck, IconX
+  IconPhone, IconMail, IconAddressBook, IconCheck, IconX, IconStar
 } from '@tabler/icons-react';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
@@ -27,6 +27,7 @@ interface Customer {
   timesVisited: number;
   totalAmount: number;
   lastVisit: string;
+  loyaltyPoints: number;
 }
 
 const emptyForm = (): Omit<Customer, '_id' | 'timesVisited' | 'totalAmount' | 'lastVisit'> => ({
@@ -167,6 +168,30 @@ const Customers = () => {
     }
   };
 
+  const handleResetPoints = async (customer: Customer) => {
+    if (!customer._id) return;
+    modals.openConfirmModal({
+      title: 'Reset Loyalty Points',
+      centered: true,
+      children: (
+        <Text size="sm">
+          Reset <strong>{customer.loyaltyPoints}</strong> loyalty points for <strong>{customer.name}</strong>? Do this after giving the reward.
+        </Text>
+      ),
+      labels: { confirm: 'Reset Points', cancel: 'Cancel' },
+      confirmProps: { color: 'orange' },
+      onConfirm: async () => {
+        try {
+          await api.post(`/customers/${customer._id}/reset-points`);
+          notifications.show({ title: 'Points Reset', message: `${customer.name}'s points have been reset to 0.`, color: 'orange', icon: <IconStar size={16} /> });
+          fetchCustomers();
+        } catch (err: any) {
+          notifications.show({ title: 'Error', message: err.response?.data?.message || 'Failed to reset points', color: 'red' });
+        }
+      },
+    });
+  };
+
   const openDeleteModal = (customer: Customer) => {
     if (!customer._id) return;
     modals.openConfirmModal({
@@ -228,7 +253,7 @@ const Customers = () => {
         <Table highlightOnHover verticalSpacing="sm" horizontalSpacing="md">
           <Table.Thead bg="gray.1">
             <Table.Tr>
-              {['Name', 'Contact Num1', 'Email', 'Eircode', 'Times Visited', 'Total Amount', 'Last Visit', 'Actions'].map(h => (
+              {['Name', 'Contact Num1', 'Email', 'Eircode', 'Times Visited', 'Total Amount', 'Points', 'Last Visit', 'Actions'].map(h => (
                 <Table.Th key={h}><Text size="xs" fw={700} tt="uppercase" c="dimmed">{h}</Text></Table.Th>
               ))}
             </Table.Tr>
@@ -236,11 +261,11 @@ const Customers = () => {
           <Table.Tbody>
             {loading && customers.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={8}><Text ta="center" c="dimmed" py="xl">Loading customers...</Text></Table.Td>
+                <Table.Td colSpan={9}><Text ta="center" c="dimmed" py="xl">Loading customers...</Text></Table.Td>
               </Table.Tr>
             ) : filtered.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={8}><Text ta="center" c="dimmed" py="xl">No customers found</Text></Table.Td>
+                <Table.Td colSpan={9}><Text ta="center" c="dimmed" py="xl">No customers found</Text></Table.Td>
               </Table.Tr>
             ) : filtered.map(c => (
               <Table.Tr key={c._id}>
@@ -257,6 +282,18 @@ const Customers = () => {
                 <Table.Td><Text size="sm" c="dimmed">{c.eircode || '—'}</Text></Table.Td>
                 <Table.Td><Badge color="blue" variant="light" radius="sm">{c.timesVisited}</Badge></Table.Td>
                 <Table.Td><Badge color="green" variant="light" radius="sm">€ {c.totalAmount.toFixed(2)}</Badge></Table.Td>
+                <Table.Td>
+                  <Group gap={4} wrap="nowrap">
+                    <Badge color={(c.loyaltyPoints || 0) > 0 ? 'yellow' : 'gray'} variant="filled" radius="sm">
+                      ⭐ {c.loyaltyPoints || 0}
+                    </Badge>
+                    {(c.loyaltyPoints || 0) > 0 && (
+                      <ActionIcon size="xs" variant="light" color="orange" title="Reset points after giving reward" onClick={() => handleResetPoints(c)}>
+                        <IconStar size={11} />
+                      </ActionIcon>
+                    )}
+                  </Group>
+                </Table.Td>
                 <Table.Td><Text size="sm" c="dimmed">{c.lastVisit || '—'}</Text></Table.Td>
                 <Table.Td>
                   <Group gap="xs">
@@ -281,15 +318,26 @@ const Customers = () => {
         {editingCustomer && (
           <Paper bg="gray.0" p="md" radius="md" withBorder mb="md">
             <Grid>
-              <Grid.Col span={4}>
-                <Text size="xs" c="dimmed" fw={600} tt="uppercase">No. of Times Visited</Text>
+              <Grid.Col span={3}>
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase">Times Visited</Text>
                 <Text size="xl" fw={800} c="blue.7">{editingCustomer.timesVisited}</Text>
               </Grid.Col>
-              <Grid.Col span={4}>
+              <Grid.Col span={3}>
                 <Text size="xs" c="dimmed" fw={600} tt="uppercase">Total Amount</Text>
                 <Text size="xl" fw={800} c="green.7">€ {editingCustomer.totalAmount.toFixed(2)}</Text>
               </Grid.Col>
-              <Grid.Col span={4}>
+              <Grid.Col span={3}>
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase">Loyalty Points</Text>
+                <Group gap="xs" align="center">
+                  <Text size="xl" fw={800} c="yellow.7">⭐ {editingCustomer.loyaltyPoints || 0}</Text>
+                  {(editingCustomer.loyaltyPoints || 0) > 0 && (
+                    <ActionIcon size="sm" variant="light" color="orange" title="Reset points" onClick={() => { handleResetPoints(editingCustomer); setModalOpened(false); }}>
+                      <IconStar size={13} />
+                    </ActionIcon>
+                  )}
+                </Group>
+              </Grid.Col>
+              <Grid.Col span={3}>
                 <Text size="xs" c="dimmed" fw={600} tt="uppercase">Last Visit</Text>
                 <Text size="xl" fw={800} c="orange.7">{editingCustomer.lastVisit || '—'}</Text>
               </Grid.Col>

@@ -14,6 +14,7 @@ export interface ICustomer extends Document {
   timesVisited: number;
   totalAmount: number;
   lastVisit?: string;
+  loyaltyPoints: number;
 }
 
 const CustomerSchema: Schema = new Schema({
@@ -30,6 +31,7 @@ const CustomerSchema: Schema = new Schema({
   timesVisited: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
   lastVisit: { type: String, default: '' },
+  loyaltyPoints: { type: Number, default: 0 },
 }, { timestamps: true });
 
 export default mongoose.model<ICustomer>('Customer', CustomerSchema);

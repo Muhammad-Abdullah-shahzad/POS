@@ -4,7 +4,8 @@ import {
   createCustomer, 
   updateCustomer, 
   deleteCustomer, 
-  updateCustomerStats 
+  updateCustomerStats,
+  resetLoyaltyPoints
 } from '../controllers/customerController';
 import { protect } from '../middleware/auth';
 
@@ -19,5 +20,6 @@ router.route('/:id')
   .delete(protect, deleteCustomer);
 
 router.post('/:id/transaction', protect, updateCustomerStats);
+router.post('/:id/reset-points', protect, resetLoyaltyPoints);
 
 export default router;

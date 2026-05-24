@@ -549,10 +549,24 @@ const Dashboard = () => {
       setReturnPopupOpened(true);
     }
     // Update customer visits & revenue in MongoDB if a customer is selected
+    let loyaltyPointsEarned = 0;
+    let loyaltyPointsTotal = 0;
+    let loyaltyRewardThreshold = 0;
+    let loyaltyRewardValue = 0;
     if (activeCart.customerId) {
       try {
-        await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total });
-        // Refresh dbCustomers list
+        const txRes = await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total });
+        const updatedCustomer = txRes.data?.data;
+        if (updatedCustomer) {
+          loyaltyPointsEarned = updatedCustomer.pointsEarned || 0;
+          loyaltyPointsTotal = updatedCustomer.loyaltyPoints || 0;
+        }
+        // Get loyalty settings for receipt display
+        try {
+          const settingsRes = await api.get('/settings');
+          loyaltyRewardThreshold = settingsRes.data?.data?.loyaltyRewardThreshold || 0;
+          loyaltyRewardValue = settingsRes.data?.data?.loyaltyRewardValue || 0;
+        } catch { /* ignore */ }
         const { data } = await api.get('/customers');
         setDbCustomers(data.data || []);
       } catch (err) {
@@ -602,6 +616,13 @@ const Dashboard = () => {
     // Add customer data fields for printing
     (newTransaction as any).customerName = activeCart.customerId ? activeCart.name : 'Walk-in';
     (newTransaction as any).customerPhone = activeCart.customerPhone || '';
+    // Loyalty points on receipt (only if customer linked)
+    if (activeCart.customerId && loyaltyPointsEarned > 0) {
+      (newTransaction as any).loyaltyPointsEarned = loyaltyPointsEarned;
+      (newTransaction as any).loyaltyPointsTotal = loyaltyPointsTotal;
+      (newTransaction as any).loyaltyRewardThreshold = loyaltyRewardThreshold;
+      (newTransaction as any).loyaltyRewardValue = loyaltyRewardValue;
+    }
 
     setLastTransaction(newTransaction);
     setTransactionNo(prev => prev + 1);
@@ -1551,6 +1572,22 @@ const Dashboard = () => {
                   <span>Payment:</span>
                   <span>{lastTransaction.paymentMethod}</span>
                 </div>
+                {(lastTransaction as any).loyaltyPointsEarned !== undefined && (
+                  <div style={{ marginTop: '12px', padding: '10px', border: '2px dashed #000', borderRadius: '4px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 900 }}>⭐ LOYALTY POINTS</div>
+                    <div style={{ fontSize: '13px', marginTop: '4px' }}>
+                      Earned this visit: <strong>+{(lastTransaction as any).loyaltyPointsEarned} pts</strong>
+                    </div>
+                    <div style={{ fontSize: '13px' }}>
+                      Total points: <strong>{(lastTransaction as any).loyaltyPointsTotal} pts</strong>
+                    </div>
+                    {(lastTransaction as any).loyaltyRewardThreshold && (
+                      <div style={{ fontSize: '12px', marginTop: '4px', color: '#555' }}>
+                        Reward at {(lastTransaction as any).loyaltyRewardThreshold} pts = €{(lastTransaction as any).loyaltyRewardValue} free shopping
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ) : (

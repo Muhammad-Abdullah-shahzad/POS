@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Title, Paper, TextInput, NumberInput, Switch, Button, Stack, Group, Grid, Tabs, Box } from '@mantine/core';
+import { Title, Paper, TextInput, NumberInput, Switch, Button, Stack, Group, Grid, Tabs, Box, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconReceiptTax } from '@tabler/icons-react';
+import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconReceiptTax, IconStar } from '@tabler/icons-react';
 
 const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,9 @@ const SettingsPage = () => {
       receiptFooter: '',
       defaultVatRate: 20,
       isVatInclusiveDefault: true,
+      loyaltyPointsPerEuro: 1,
+      loyaltyRewardThreshold: 100,
+      loyaltyRewardValue: 5,
     },
     validate: {
       shopName: (value) => (value.length < 2 ? 'Shop name must be at least 2 characters' : null),
@@ -40,6 +43,9 @@ const SettingsPage = () => {
           receiptFooter: data.data.receiptFooter || '',
           defaultVatRate: data.data.defaultVatRate ?? 20,
           isVatInclusiveDefault: data.data.isVatInclusiveDefault ?? true,
+          loyaltyPointsPerEuro: data.data.loyaltyPointsPerEuro ?? 1,
+          loyaltyRewardThreshold: data.data.loyaltyRewardThreshold ?? 100,
+          loyaltyRewardValue: data.data.loyaltyRewardValue ?? 5,
         });
       }
     } catch (error) {
@@ -105,6 +111,7 @@ const SettingsPage = () => {
             <Tabs.Tab value="shop" leftSection={<IconBuildingStore size={16} />}>Shop Details</Tabs.Tab>
             <Tabs.Tab value="receipt" leftSection={<IconReceipt size={16} />}>Receipt Options</Tabs.Tab>
             <Tabs.Tab value="tax" leftSection={<IconReceiptTax size={16} />}>Tax & VAT</Tabs.Tab>
+            <Tabs.Tab value="loyalty" leftSection={<IconStar size={16} />}>Loyalty Points</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="shop" pt="md">
@@ -189,6 +196,52 @@ const SettingsPage = () => {
                     </Box>
                   </Grid.Col>
                 </Grid>
+              </Stack>
+            </Paper>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="loyalty" pt="md">
+            <Paper withBorder p="lg" radius="md">
+              <Stack gap="md">
+                <Text size="sm" c="dimmed">
+                  Customers earn points automatically on every purchase. When they reach the threshold, they qualify for a free shopping reward.
+                </Text>
+                <Grid>
+                  <Grid.Col span={{ base: 12, md: 4 }}>
+                    <NumberInput
+                      label="Points Earned per €1 Spent"
+                      description="e.g. 1 = 1 point per euro"
+                      min={0}
+                      decimalScale={2}
+                      {...form.getInputProps('loyaltyPointsPerEuro')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 4 }}>
+                    <NumberInput
+                      label="Points Needed for Reward"
+                      description="e.g. 100 = reward at 100 points"
+                      min={1}
+                      {...form.getInputProps('loyaltyRewardThreshold')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 4 }}>
+                    <NumberInput
+                      label="Reward Value (€)"
+                      description="Free shopping value when threshold reached"
+                      min={0}
+                      decimalScale={2}
+                      {...form.getInputProps('loyaltyRewardValue')}
+                    />
+                  </Grid.Col>
+                </Grid>
+                <Paper bg="blue.0" p="md" radius="md" withBorder>
+                  <Text size="sm" fw={600}>Example with current settings:</Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    Customer spends €{form.values.loyaltyRewardThreshold / (form.values.loyaltyPointsPerEuro || 1)} total
+                    → earns {form.values.loyaltyRewardThreshold} points
+                    → qualifies for €{form.values.loyaltyRewardValue} free shopping reward.
+                  </Text>
+                </Paper>
               </Stack>
             </Paper>
           </Tabs.Panel>
