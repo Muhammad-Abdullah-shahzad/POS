@@ -1341,7 +1341,7 @@ const Dashboard = () => {
                         </Flex>
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
-                            <Text size="12px" c="red.7" fw={600}>Discount</Text>
+                            <Text size="12px" c="red.7" fw={600}>Flat Disc.</Text>
                           </Flex>
                           <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 4px', backgroundColor: '#fff3f3' }}>
                             <TextInput
