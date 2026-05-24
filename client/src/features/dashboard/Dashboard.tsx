@@ -531,12 +531,14 @@ const Dashboard = () => {
   };
 
   const [depositInput, setDepositInput] = useState<string>('');
+  const [flatDiscount, setFlatDiscount] = useState<string>('');
   const [returnPopupOpened, setReturnPopupOpened] = useState(false);
   const [returnAmount, setReturnAmount] = useState(0);
 
   const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
+  const flatDiscountVal = Math.min(Number(flatDiscount) || 0, subTotal);
   const depositVal = Number(depositInput) || 0;
-  const total = subTotal;
+  const total = Math.max(0, subTotal - flatDiscountVal);
 
   const handleCheckout = async (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
@@ -572,7 +574,7 @@ const Dashboard = () => {
         })),
         subtotal: subTotal,
         totalVAT: 0,
-        discount: 0,
+        discount: flatDiscountVal,
         total,
         paymentMethod: method.toLowerCase(),
       });
@@ -612,6 +614,7 @@ const Dashboard = () => {
     updateCartItems([]);
     updateSelectedItemId('');
     setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+    setFlatDiscount('');
 
     // Reset selected customer for this cart tab
     setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
@@ -663,7 +666,7 @@ const Dashboard = () => {
         })),
         subtotal: subTotal,
         totalVAT: 0,
-        discount: 0,
+        discount: flatDiscountVal,
         total,
         paymentMethod: 'split',
         splitCash: cashAmt,
@@ -718,6 +721,7 @@ const Dashboard = () => {
     setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
     setSplitCashAmount('');
     setSplitCardAmount('');
+    setFlatDiscount('');
   };
 
   const handleRePrint = () => {    if (lastTransaction) {
@@ -1337,6 +1341,22 @@ const Dashboard = () => {
                         </Flex>
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                            <Text size="12px" c="red.7" fw={600}>Discount</Text>
+                          </Flex>
+                          <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 4px', backgroundColor: '#fff3f3' }}>
+                            <TextInput
+                              value={flatDiscount}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === '' || /^\d*\.?\d*$/.test(v)) setFlatDiscount(v);
+                              }}
+                              placeholder="0.00"
+                              styles={{ input: { textAlign: 'right', border: 'none', background: 'transparent', height: 20, minHeight: 20, padding: 0, fontSize: '13px', color: 'red', fontWeight: 'bold' } }}
+                            />
+                          </Flex>
+                        </Flex>
+                        <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                          <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
                             <Text size="13px" c="black">Deposit</Text>
                           </Flex>
                           <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
@@ -1353,7 +1373,7 @@ const Dashboard = () => {
                             <Text size="15px" c="black">TOTAL</Text>
                           </Flex>
                           <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
-                            <Text size="16px" c="black">{total.toFixed(2)}</Text>
+                            <Text size="16px" c="black" fw={700}>{total.toFixed(2)}</Text>
                           </Flex>
                         </Flex>
                       </Box>
