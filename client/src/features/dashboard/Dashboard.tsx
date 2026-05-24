@@ -152,6 +152,11 @@ const Dashboard = () => {
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
   const [enablePrinting, setEnablePrinting] = useState(true);
 
+  // Split payment state
+  const [splitModalOpened, setSplitModalOpened] = useState(false);
+  const [splitCashAmount, setSplitCashAmount] = useState<number | string>('');
+  const [splitCardAmount, setSplitCardAmount] = useState<number | string>('');
+
   useEffect(() => {
     const fetchDbData = async () => {
       try {
@@ -540,8 +545,108 @@ const Dashboard = () => {
     setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
   };
 
-  const handleRePrint = () => {
-    if (lastTransaction) {
+  const handleSplitPayment = async () => {
+    const cashAmt = Number(splitCashAmount) || 0;
+    const cardAmt = Number(splitCardAmount) || 0;
+    const splitTotal = cashAmt + cardAmt;
+
+    if (cartItems.length === 0) return;
+    if (cashAmt < 0 || cardAmt < 0) {
+      notifications.show({ title: 'Invalid Amount', message: 'Amounts cannot be negative.', color: 'red' });
+      return;
+    }
+    if (splitTotal < total) {
+      notifications.show({
+        title: 'Insufficient Payment',
+        message: `Total entered (Rs. ${splitTotal.toFixed(2)}) is less than the bill (Rs. ${total.toFixed(2)}).`,
+        color: 'red'
+      });
+      return;
+    }
+
+    setSplitModalOpened(false);
+
+    // Update customer stats if linked
+    if (activeCart.customerId) {
+      try {
+        await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total });
+        const { data } = await api.get('/customers');
+        setDbCustomers(data.data || []);
+      } catch (err) {
+        console.error('Failed to update customer stats', err);
+      }
+    }
+
+    // Save order to DB with split payment info
+    try {
+      const { data } = await api.post('/orders', {
+        items: cartItems.map(item => ({
+          name: item.name,
+          quantity: item.qty,
+          price: item.price,
+          vatRate: 0,
+          vatAmount: 0,
+          totalPrice: item.qty * item.price,
+        })),
+        subtotal: subTotal,
+        totalVAT: 0,
+        discount: 0,
+        total,
+        paymentMethod: 'split',
+        splitCash: cashAmt,
+        splitCard: cardAmt,
+      });
+      if (data?.data) setOrders(prev => [data.data, ...prev]);
+    } catch (err) {
+      console.error('Failed to save split order', err);
+      notifications.show({ title: 'Order Save Failed', message: 'Could not save order to database.', color: 'red' });
+    }
+
+    const change = splitTotal - total;
+    const newTransaction: Transaction = {
+      transactionNo,
+      items: [...cartItems],
+      subTotal,
+      deposit: splitTotal,
+      total,
+      date: new Date().toLocaleString(),
+      paymentMethod: `SPLIT (Cash: Rs.${cashAmt.toFixed(2)} / Card: Rs.${cardAmt.toFixed(2)})`
+    };
+    (newTransaction as any).customerName = activeCart.customerId ? activeCart.name : 'Walk-in';
+    (newTransaction as any).customerPhone = activeCart.customerPhone || '';
+    (newTransaction as any).splitCash = cashAmt;
+    (newTransaction as any).splitCard = cardAmt;
+    (newTransaction as any).change = change;
+
+    setLastTransaction(newTransaction);
+    setTransactionNo(prev => prev + 1);
+
+    if (enablePrinting) {
+      setTimeout(() => handlePrint(), 100);
+    }
+
+    // Show change if any
+    if (change > 0) {
+      setReturnAmount(change);
+      setReturnPopupOpened(true);
+    } else {
+      notifications.show({
+        title: 'Split Payment Complete',
+        message: `Cash: Rs.${cashAmt.toFixed(2)}  |  Card: Rs.${cardAmt.toFixed(2)}`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      });
+    }
+
+    updateCartItems([]);
+    updateSelectedItemId('');
+    setStagingItem({ name: '', barcode: '', qty: '', price: '' });
+    setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
+    setSplitCashAmount('');
+    setSplitCardAmount('');
+  };
+
+  const handleRePrint = () => {    if (lastTransaction) {
       handlePrint();
     } else {
       alert("No previous transaction to reprint.");
@@ -1124,14 +1229,14 @@ const Dashboard = () => {
                   <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
                     <Flex h={85}>
                       {/* CASH PAY BUTTON */}
-                      <Box w="18%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
+                      <Box w="16%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
                         <Flex align="center" justify="center" h="100%">
                           <Text fw="bold" size="16px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br />PAY</Text>
                         </Flex>
                       </Box>
 
                       {/* TOTALS GRID */}
-                      <Box w="38%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
+                      <Box w="34%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
                             <Text size="13px" c="black">Sub Total</Text>
@@ -1164,7 +1269,7 @@ const Dashboard = () => {
                       </Box>
 
                       {/* INPUTS */}
-                      <Box w="26%" style={{ borderRight: `1px solid ${customColors.border}` }} p="6px 8px">
+                      <Box w="22%" style={{ borderRight: `1px solid ${customColors.border}` }} p="6px 8px">
                         <Flex align="center" justify="space-between" h="50%" pb="3px">
                           <Text size="12px" c="black">CASH</Text>
                           <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
@@ -1175,8 +1280,28 @@ const Dashboard = () => {
                         </Flex>
                       </Box>
 
+                      {/* SPLIT PAY BUTTON */}
+                      <Box
+                        w="14%"
+                        style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px', background: 'linear-gradient(135deg, #2e7d32 0%, #43a047 100%)' }}
+                        onClick={() => {
+                          if (cartItems.length === 0) {
+                            notifications.show({ title: 'Empty Cart', message: 'Add items before paying.', color: 'yellow' });
+                            return;
+                          }
+                          setSplitCashAmount('');
+                          setSplitCardAmount('');
+                          setSplitModalOpened(true);
+                        }}
+                      >
+                        <Flex align="center" justify="center" h="100%" direction="column" gap={2}>
+                          <Text fw="bold" size="11px" ta="center" style={{ lineHeight: 1.2, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>SPLIT<br />PAY</Text>
+                          <Text size="9px" c="rgba(255,255,255,0.8)" ta="center">Cash+Card</Text>
+                        </Flex>
+                      </Box>
+
                       {/* CARD PAY BUTTON */}
-                      <Box w="18%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
+                      <Box w="14%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
                         <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
                         <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
                           <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br />PAY</Text>
@@ -1298,6 +1423,28 @@ const Dashboard = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', borderTop: '4px solid #000', fontWeight: 900, fontSize: '24px' }}>
                   <span>TOTAL:</span>
                   <span>{lastTransaction.total.toFixed(2)}</span>
+                </div>
+                {(lastTransaction as any).splitCash !== undefined && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px', borderTop: '2px solid #000', marginTop: '4px' }}>
+                      <span>Cash Paid:</span>
+                      <span>{Number((lastTransaction as any).splitCash).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px' }}>
+                      <span>Card Paid:</span>
+                      <span>{Number((lastTransaction as any).splitCard).toFixed(2)}</span>
+                    </div>
+                    {Number((lastTransaction as any).change) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px', fontWeight: 900 }}>
+                        <span>Change:</span>
+                        <span>{Number((lastTransaction as any).change).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }}>
+                  <span>Payment:</span>
+                  <span>{lastTransaction.paymentMethod}</span>
                 </div>
               </div>
             </div>
@@ -1807,6 +1954,115 @@ const Dashboard = () => {
               }}
             >
               ⚡ Register & Add
+            </Button>
+          </Flex>
+        </Flex>
+      </Modal>
+
+      {/* SPLIT PAYMENT MODAL */}
+      <Modal
+        opened={splitModalOpened}
+        onClose={() => setSplitModalOpened(false)}
+        title={
+          <Flex align="center" gap="xs">
+            <Text fw={800} size="lg">Split Payment</Text>
+            <Text size="sm" c="dimmed">— Cash + Card</Text>
+          </Flex>
+        }
+        centered
+        size="sm"
+        styles={{
+          content: { border: '3px solid #2e7d32', borderRadius: '6px' },
+          header: { borderBottom: '2px solid #e9ecef' }
+        }}
+      >
+        <Flex direction="column" gap="md" pt="xs">
+          {/* Bill total */}
+          <Box p="sm" style={{ backgroundColor: '#f1f8e9', border: '1px solid #a5d6a7', borderRadius: 6 }}>
+            <Flex justify="space-between" align="center">
+              <Text size="sm" c="dimmed">Bill Total</Text>
+              <Text size="xl" fw={900} c="dark">Rs. {total.toFixed(2)}</Text>
+            </Flex>
+          </Box>
+
+          {/* Cash input */}
+          <NumberInput
+            label="Cash Amount (Rs.)"
+            placeholder="0.00"
+            min={0}
+            decimalScale={2}
+            value={splitCashAmount}
+            onChange={(val) => {
+              setSplitCashAmount(val);
+              // Auto-fill remaining as card
+              const cash = Number(val) || 0;
+              const remaining = Math.max(0, total - cash);
+              setSplitCardAmount(parseFloat(remaining.toFixed(2)));
+            }}
+            size="md"
+            leftSection={<Text size="sm" fw={700} c="dark">Rs.</Text>}
+            styles={{
+              input: { fontSize: '18px', fontWeight: 700, textAlign: 'right', borderColor: '#2e7d32', borderWidth: 2 }
+            }}
+          />
+
+          {/* Card input */}
+          <NumberInput
+            label="Card Amount (Rs.)"
+            placeholder="0.00"
+            min={0}
+            decimalScale={2}
+            value={splitCardAmount}
+            onChange={(val) => {
+              setSplitCardAmount(val);
+              // Auto-fill remaining as cash
+              const card = Number(val) || 0;
+              const remaining = Math.max(0, total - card);
+              setSplitCashAmount(parseFloat(remaining.toFixed(2)));
+            }}
+            size="md"
+            leftSection={<Text size="sm" fw={700} c="dark">Rs.</Text>}
+            styles={{
+              input: { fontSize: '18px', fontWeight: 700, textAlign: 'right', borderColor: '#1565c0', borderWidth: 2 }
+            }}
+          />
+
+          {/* Running total */}
+          {(() => {
+            const cash = Number(splitCashAmount) || 0;
+            const card = Number(splitCardAmount) || 0;
+            const entered = cash + card;
+            const diff = entered - total;
+            const isShort = diff < -0.001;
+            const isOver = diff > 0.001;
+            return (
+              <Box p="sm" style={{ backgroundColor: isShort ? '#fff3e0' : '#e8f5e9', border: `1px solid ${isShort ? '#ffb74d' : '#81c784'}`, borderRadius: 6 }}>
+                <Flex justify="space-between" mb={4}>
+                  <Text size="sm" c="dimmed">Total Entered</Text>
+                  <Text size="sm" fw={700} c={isShort ? 'orange' : 'green'}>Rs. {entered.toFixed(2)}</Text>
+                </Flex>
+                {isShort && (
+                  <Text size="xs" c="orange.7" fw={600}>⚠ Still short by Rs. {Math.abs(diff).toFixed(2)}</Text>
+                )}
+                {isOver && (
+                  <Text size="xs" c="green.7" fw={600}>✓ Change to return: Rs. {diff.toFixed(2)}</Text>
+                )}
+                {!isShort && !isOver && entered > 0 && (
+                  <Text size="xs" c="green.7" fw={600}>✓ Exact amount</Text>
+                )}
+              </Box>
+            );
+          })()}
+
+          <Flex gap="sm" justify="flex-end" mt="xs">
+            <Button variant="subtle" color="gray" onClick={() => setSplitModalOpened(false)}>Cancel</Button>
+            <Button
+              size="md"
+              style={{ backgroundColor: '#2e7d32', color: '#fff', minWidth: 140 }}
+              disabled={(Number(splitCashAmount) || 0) + (Number(splitCardAmount) || 0) < total - 0.001}
+              onClick={handleSplitPayment}
+            >
+              Confirm Split Pay
             </Button>
           </Flex>
         </Flex>
