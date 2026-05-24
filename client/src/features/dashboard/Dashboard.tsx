@@ -157,15 +157,26 @@ const Dashboard = () => {
   const [splitCashAmount, setSplitCashAmount] = useState<number | string>('');
   const [splitCardAmount, setSplitCardAmount] = useState<number | string>('');
 
+  // Employee state
+  const [employees, setEmployees] = useState<{ value: string; label: string }[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchDbData = async () => {
       try {
-        const [custRes, orderRes] = await Promise.all([
+        const [custRes, orderRes, empRes] = await Promise.all([
           api.get('/customers'),
-          api.get('/orders')
+          api.get('/orders'),
+          api.get('/employees'),
         ]);
         setDbCustomers(custRes.data.data || []);
         setOrders(orderRes.data.data || []);
+        const empList = (empRes.data.data || []).map((e: any) => ({
+          value: e._id,
+          label: `${e.name}${e.role ? ` (${e.role})` : ''}`,
+        }));
+        setEmployees(empList);
+        if (empList.length > 0) setSelectedEmployee(empList[0].value);
       } catch (err) {
         console.error("Failed to fetch initial POS data", err);
       }
@@ -987,7 +998,16 @@ const Dashboard = () => {
                 <Grid.Col span={5.5}>
                   <Flex align="center" gap="xs" mb="xs">
                     <Text size="sm">Employee</Text>
-                    <Select data={['admin']} defaultValue="admin" size="xs" flex={1} styles={{ input: { borderRadius: 0 } }} />
+                    <Select
+                      data={employees}
+                      value={selectedEmployee}
+                      onChange={setSelectedEmployee}
+                      size="xs"
+                      flex={1}
+                      placeholder={employees.length === 0 ? 'No employees — add in Admin' : 'Select employee...'}
+                      disabled={employees.length === 0}
+                      styles={{ input: { borderRadius: 0 } }}
+                    />
                     <Button style={btnStyle} size="xs" px="lg">LOCK</Button>
                   </Flex>
 
