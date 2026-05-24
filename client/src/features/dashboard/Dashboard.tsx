@@ -162,7 +162,7 @@ const Dashboard = () => {
   const [openTillModalOpened, setOpenTillModalOpened] = useState(false);
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
-  const [enablePrinting] = useState(true);
+  const [enablePrinting, setEnablePrinting] = useState(true);
   const [calculatorOpened, setCalculatorOpened] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState('0');
 
@@ -1251,7 +1251,13 @@ const Dashboard = () => {
 
                 {/* RIGHT COLUMN CONTENT */}
                 <Grid.Col span={6.5}>
-                  <Flex justify="flex-end" mb="xs">
+                  <Flex justify="flex-end" align="center" gap="sm" mb="xs">
+                    <Checkbox
+                      label="Enable Printing"
+                      size="xs"
+                      checked={enablePrinting}
+                      onChange={(e) => setEnablePrinting(e.currentTarget.checked)}
+                    />
                     <ActionIcon
                       aria-label="Open calculator"
                       title="Calculator"
