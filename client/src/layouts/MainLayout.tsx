@@ -1,9 +1,8 @@
 import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea, Box } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   IconAddressBook,
-  IconBan,
   IconBuildingBank,
   IconCash,
   IconChartDonut3,
@@ -28,6 +27,11 @@ const MainLayout = () => {
   const { logout, user } = useAuthStore();
   const clearCart = usePosStore((state) => state.clearCart);
 
+  // Admin/manager users must use the admin panel — redirect them out of cashier layout
+  if (user && (user.role === 'admin' || user.role === 'manager')) {
+    return <Navigate to="/admin" replace />;
+  }
+
   const handleLogout = () => {
     clearCart();
     logout();
@@ -44,7 +48,6 @@ const MainLayout = () => {
   const navItems: NavItem[] = [
     { label: 'Counter', icon: IconLayoutDashboard, path: '/' },
     { label: 'Receipts', icon: IconReceipt, path: '/receipts' },
-    { label: 'Void Transactions', icon: IconBan, path: '/void-transactions' },
     {
       label: 'Product',
       icon: IconPackage,

@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea, Box, Badge } from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title, Button, Text, Anchor, Menu, ScrollArea, Box, Badge, Center } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
@@ -23,7 +23,6 @@ import { usePosStore } from '../store/posStore';
 
 const AdminLayout = () => {
   const [opened, { toggle }] = useDisclosure();
-  const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const navigate = useNavigate();
   const location = useLocation();
@@ -125,8 +124,6 @@ const AdminLayout = () => {
     { label: 'Settings', icon: IconSettings, path: '/admin/settings' },
   ];
 
-  const showLabel = isMobile || desktopOpened;
-
   const renderNavIcon = (Icon: TablerIcon, active: boolean) => (
     <Box className="nav-icon-badge" data-active={active || undefined} aria-hidden="true">
       <Icon size={21} stroke={1.9} />
@@ -137,7 +134,7 @@ const AdminLayout = () => {
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: { base: 250, sm: desktopOpened ? 250 : 80 },
+        width: 250,
         breakpoint: 'sm',
         collapsed: { mobile: !opened }
       }}
@@ -149,7 +146,6 @@ const AdminLayout = () => {
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" />
             <Group gap={6}>
               <IconShieldLock size={20} color="var(--mantine-color-violet-6)" />
               <Title order={3} c="violet">Store POS</Title>
@@ -167,7 +163,7 @@ const AdminLayout = () => {
 
       {/* Navbar — identical structure to cashier */}
       <AppShell.Navbar className="no-print main-navbar">
-        <ScrollArea h="100%" p={showLabel ? "md" : "xs"} scrollbarSize={6} type="hover">
+        <ScrollArea h="100%" p="md" scrollbarSize={6} type="hover">
           {navItems.map((item) => {
             const isChildActive = item.children
               ? item.children.some(c => location.pathname === c.path)
@@ -180,15 +176,11 @@ const AdminLayout = () => {
                     : location.pathname === item.path)
                 : false;
 
-            const navLink = (
+            return (
               <NavLink
                 key={item.label}
-                label={showLabel ? item.label : undefined}
-                leftSection={
-                  <Center w={showLabel ? "auto" : "100%"}>
-                    {renderNavIcon(item.icon, isActive)}
-                  </Center>
-                }
+                label={item.label}
+                leftSection={renderNavIcon(item.icon, isActive)}
                 active={isActive}
                 defaultOpened={isChildActive}
                 onClick={item.path ? () => {
@@ -197,14 +189,11 @@ const AdminLayout = () => {
                 } : undefined}
                 variant="subtle"
                 mb={8}
-                py={showLabel ? "sm" : "md"}
-                style={{
-                  borderRadius: '8px',
-                  justifyContent: showLabel ? 'flex-start' : 'center',
-                }}
+                py="sm"
+                style={{ borderRadius: '8px' }}
                 color="violet"
               >
-                {item.children && showLabel && item.children.map((child) => (
+                {item.children && item.children.map((child) => (
                   <NavLink
                     key={child.label}
                     label={child.label}
@@ -214,70 +203,13 @@ const AdminLayout = () => {
                       if (isMobile && opened) toggle();
                     }}
                     py="xs"
-                    style={{
-                      borderRadius: '6px',
-                      marginRight: '8px',
-                      marginLeft: '8px',
-                      marginTop: '4px',
-                      marginBottom: '4px',
-                    }}
+                    style={{ borderRadius: '6px', marginRight: '8px', marginLeft: '8px', marginTop: '4px', marginBottom: '4px' }}
                     variant="subtle"
                     color="violet"
                   />
                 ))}
               </NavLink>
             );
-
-            if (!showLabel) {
-              if (item.children) {
-                return (
-                  <Menu key={item.label} trigger="hover" position="right-start" withinPortal>
-                    <Menu.Target>
-                      <NavLink
-                        label={undefined}
-                        leftSection={
-                          <Center w="100%">
-                            {renderNavIcon(item.icon, isChildActive)}
-                          </Center>
-                        }
-                        active={isChildActive}
-                        mb={8}
-                        py="md"
-                        style={{ borderRadius: '8px', justifyContent: 'center' }}
-                        color="violet"
-                      />
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Label>{item.label}</Menu.Label>
-                      {item.children.map((child) => (
-                        <Menu.Item
-                          key={child.label}
-                          onClick={() => {
-                            navigate(child.path);
-                            if (isMobile && opened) toggle();
-                          }}
-                          style={{
-                            fontWeight: location.pathname === child.path ? 600 : 400,
-                            backgroundColor: location.pathname === child.path ? 'var(--mantine-color-violet-light)' : undefined,
-                            color: location.pathname === child.path ? 'var(--mantine-color-violet-filled)' : undefined,
-                          }}
-                        >
-                          {child.label}
-                        </Menu.Item>
-                      ))}
-                    </Menu.Dropdown>
-                  </Menu>
-                );
-              }
-
-              return (
-                <Tooltip key={item.label} label={item.label} position="right" transitionProps={{ duration: 0 }}>
-                  {navLink}
-                </Tooltip>
-              );
-            }
-
-            return navLink;
           })}
         </ScrollArea>
       </AppShell.Navbar>

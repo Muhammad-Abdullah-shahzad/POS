@@ -50,7 +50,6 @@ const AdminProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const sharedRoutes = () => (
   <>
     <Route path="receipts" element={<Receipts />} />
-    <Route path="void-transactions" element={<VoidTransactions />} />
     <Route path="products" element={<Products />} />
     <Route path="products/codes" element={<ManageProductCodes />} />
     <Route path="products/general" element={<GeneralProducts />} />
@@ -90,6 +89,7 @@ function App() {
       <Route path="/admin" element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
         <Route index element={<AdminDashboard />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="void-transactions" element={<VoidTransactions />} />
         {sharedRoutes()}
       </Route>
 
