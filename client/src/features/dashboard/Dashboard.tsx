@@ -162,7 +162,7 @@ const Dashboard = () => {
   const [openTillModalOpened, setOpenTillModalOpened] = useState(false);
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
-  const [enablePrinting, setEnablePrinting] = useState(true);
+  const [enablePrinting] = useState(true);
 
   // Split payment state
   const [splitModalOpened, setSplitModalOpened] = useState(false);
@@ -1252,24 +1252,6 @@ const Dashboard = () => {
                     ))}
                   </Grid>
 
-                  <Grid>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, '00', 'X'].map(num => (
-                      <Grid.Col span={4} key={num}>
-                        <Button fullWidth style={{ ...btnStyle, height: '35px' }}><Text size="xl" fw="normal">{num}</Text></Button>
-                      </Grid.Col>
-                    ))}
-                    <Grid.Col span={6}>
-                      <Button fullWidth style={{ ...btnStyle, height: '28px' }}><Text size="11px">Clear All</Text></Button>
-                    </Grid.Col>
-                    <Grid.Col span={3}>
-                      <Button fullWidth style={{ ...btnStyle, height: '28px' }}><Text size="11px">C</Text></Button>
-                    </Grid.Col>
-                    <Grid.Col span={3} p={0}>
-                      <Box style={{ border: `1px solid ${customColors.border}`, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: customColors.bg, marginLeft: '2px', marginTop: '2px' }}>
-                        <Checkbox label={<Text size="9px" style={{ lineHeight: 1, whiteSpace: 'nowrap' }}>ENABLE<br />PRINTING</Text>} size="xs" checked={enablePrinting} onChange={(e) => setEnablePrinting(e.currentTarget.checked)} />
-                      </Box>
-                    </Grid.Col>
-                  </Grid>
                 </Grid.Col>
               </Grid>
 
