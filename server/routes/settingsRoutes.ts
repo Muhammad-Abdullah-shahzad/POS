@@ -9,6 +9,6 @@ router.put('/quick-products', protect, authorize('admin', 'manager', 'cashier'),
 
 router.route('/')
   .get(getSettings)
-  .put(protect, authorize('admin'), updateSettings);
+  .put(protect, authorize('admin', 'manager', 'cashier'), updateSettings);
 
 export default router;

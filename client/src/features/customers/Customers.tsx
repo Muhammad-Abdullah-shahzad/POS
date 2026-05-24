@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Button, Flex, Grid, Paper, Text, TextInput, Textarea, Table, Badge, Modal,
-  Group, Title, ActionIcon, Divider
+  Group, Title, ActionIcon, Divider, NumberInput, Stack
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import {
   IconUserPlus, IconSearch, IconEdit, IconTrash, IconUser,
-  IconPhone, IconMail, IconAddressBook, IconCheck, IconX, IconStar
+  IconPhone, IconMail, IconAddressBook, IconCheck, IconX, IconStar, IconSettings
 } from '@tabler/icons-react';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
@@ -51,6 +51,13 @@ const Customers = () => {
   const [form, setForm] = useState<Omit<Customer, '_id' | 'timesVisited' | 'totalAmount' | 'lastVisit'>>(emptyForm());
   const [loading, setLoading] = useState(false);
 
+  // Loyalty settings state
+  const [loyaltyModalOpened, setLoyaltyModalOpened] = useState(false);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [loyaltyPointsPerEuro, setLoyaltyPointsPerEuro] = useState<number>(1);
+  const [loyaltyRewardThreshold, setLoyaltyRewardThreshold] = useState<number>(100);
+  const [loyaltyRewardValue, setLoyaltyRewardValue] = useState<number>(5);
+
   const fetchCustomers = async () => {
     try {
       setLoading(true);
@@ -63,19 +70,39 @@ const Customers = () => {
       setCustomers(parsed);
     } catch (error: any) {
       console.error(error);
-      notifications.show({
-        title: 'Error Fetching Customers',
-        message: error.response?.data?.message || error.message,
-        color: 'red',
-        icon: <IconX size={16} />,
-      });
+      notifications.show({ title: 'Error Fetching Customers', message: error.response?.data?.message || error.message, color: 'red', icon: <IconX size={16} /> });
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchLoyaltySettings = async () => {
+    try {
+      const { data } = await api.get('/settings');
+      if (data.success && data.data) {
+        setLoyaltyPointsPerEuro(data.data.loyaltyPointsPerEuro ?? 1);
+        setLoyaltyRewardThreshold(data.data.loyaltyRewardThreshold ?? 100);
+        setLoyaltyRewardValue(data.data.loyaltyRewardValue ?? 5);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const saveLoyaltySettings = async () => {
+    try {
+      setLoyaltyLoading(true);
+      await api.put('/settings', { loyaltyPointsPerEuro, loyaltyRewardThreshold, loyaltyRewardValue });
+      notifications.show({ title: 'Saved', message: 'Loyalty settings updated successfully.', color: 'teal', icon: <IconCheck size={16} /> });
+      setLoyaltyModalOpened(false);
+    } catch (err: any) {
+      notifications.show({ title: 'Error', message: err.response?.data?.message || 'Failed to save', color: 'red' });
+    } finally {
+      setLoyaltyLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchCustomers();
+    fetchLoyaltySettings();
   }, []);
 
   const filtered = customers.filter(c =>
@@ -219,9 +246,18 @@ const Customers = () => {
           <Title order={2} fw={800} c="#2c3e50">Customer Details</Title>
           <Text c="dimmed" size="sm">Manage and view all customer records</Text>
         </Box>
-        <Button leftSection={<IconUserPlus size={16} />} color="teal" radius="md" size="md" onClick={openAdd}>
-          Add Customer
-        </Button>
+        <Group>
+          <Button
+            leftSection={<IconSettings size={16} />}
+            color="violet" variant="light" radius="md" size="md"
+            onClick={() => { fetchLoyaltySettings(); setLoyaltyModalOpened(true); }}
+          >
+            Loyalty Settings
+          </Button>
+          <Button leftSection={<IconUserPlus size={16} />} color="teal" radius="md" size="md" onClick={openAdd}>
+            Add Customer
+          </Button>
+        </Group>
       </Flex>
 
       {/* Summary Cards */}
@@ -250,10 +286,11 @@ const Customers = () => {
           mb="md" radius="md"
           styles={{ input: { border: '1px solid #e0e0e0' } }}
         />
-        <Table highlightOnHover verticalSpacing="sm" horizontalSpacing="md">
+        <Table.ScrollContainer minWidth={900}>
+        <Table highlightOnHover verticalSpacing="xs" horizontalSpacing="sm" fz="sm">
           <Table.Thead bg="gray.1">
             <Table.Tr>
-              {['Name', 'Contact Num1', 'Email', 'Eircode', 'Times Visited', 'Total Amount', 'Points', 'Last Visit', 'Actions'].map(h => (
+              {['Name', 'Phone', 'Email', 'Visits', 'Total', 'Points', 'Last Visit', 'Actions'].map(h => (
                 <Table.Th key={h}><Text size="xs" fw={700} tt="uppercase" c="dimmed">{h}</Text></Table.Th>
               ))}
             </Table.Tr>
@@ -261,50 +298,48 @@ const Customers = () => {
           <Table.Tbody>
             {loading && customers.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={9}><Text ta="center" c="dimmed" py="xl">Loading customers...</Text></Table.Td>
+                <Table.Td colSpan={8}><Text ta="center" c="dimmed" py="xl">Loading customers...</Text></Table.Td>
               </Table.Tr>
             ) : filtered.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={9}><Text ta="center" c="dimmed" py="xl">No customers found</Text></Table.Td>
+                <Table.Td colSpan={8}><Text ta="center" c="dimmed" py="xl">No customers found</Text></Table.Td>
               </Table.Tr>
             ) : filtered.map(c => (
               <Table.Tr key={c._id}>
                 <Table.Td>
-                  <Flex align="center" gap="sm">
-                    <Box w={32} h={32} bg="teal.6" style={{ borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Text c="white" size="sm" fw={700}>{c.name[0]}</Text>
+                  <Flex align="center" gap="xs">
+                    <Box w={28} h={28} bg="teal.6" style={{ borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Text c="white" size="xs" fw={700}>{c.name[0]}</Text>
                     </Box>
                     <Text fw={600} size="sm">{c.name}</Text>
                   </Flex>
                 </Table.Td>
                 <Table.Td><Text size="sm" c="dimmed">{c.contactNum1}</Text></Table.Td>
                 <Table.Td><Text size="sm" c="dimmed">{c.email || '—'}</Text></Table.Td>
-                <Table.Td><Text size="sm" c="dimmed">{c.eircode || '—'}</Text></Table.Td>
-                <Table.Td><Badge color="blue" variant="light" radius="sm">{c.timesVisited}</Badge></Table.Td>
-                <Table.Td><Badge color="green" variant="light" radius="sm">€ {c.totalAmount.toFixed(2)}</Badge></Table.Td>
+                <Table.Td><Badge color="blue" variant="light" radius="sm" size="sm">{c.timesVisited}</Badge></Table.Td>
+                <Table.Td><Badge color="green" variant="light" radius="sm" size="sm">€{c.totalAmount.toFixed(2)}</Badge></Table.Td>
                 <Table.Td>
-                  <Group gap={4} wrap="nowrap">
-                    <Badge color={(c.loyaltyPoints || 0) > 0 ? 'yellow' : 'gray'} variant="filled" radius="sm">
-                      ⭐ {c.loyaltyPoints || 0}
-                    </Badge>
-                    {(c.loyaltyPoints || 0) > 0 && (
-                      <ActionIcon size="xs" variant="light" color="orange" title="Reset points after giving reward" onClick={() => handleResetPoints(c)}>
-                        <IconStar size={11} />
-                      </ActionIcon>
-                    )}
-                  </Group>
+                  <Badge color={(c.loyaltyPoints || 0) > 0 ? 'yellow' : 'gray'} variant="filled" radius="sm" size="sm">
+                    ⭐ {c.loyaltyPoints || 0}
+                  </Badge>
                 </Table.Td>
                 <Table.Td><Text size="sm" c="dimmed">{c.lastVisit || '—'}</Text></Table.Td>
                 <Table.Td>
-                  <Group gap="xs">
-                    <ActionIcon variant="light" color="blue" radius="md" onClick={() => openEdit(c)}><IconEdit size={15} /></ActionIcon>
-                    <ActionIcon variant="light" color="red" radius="md" onClick={() => openDeleteModal(c)}><IconTrash size={15} /></ActionIcon>
+                  <Group gap={4}>
+                    <ActionIcon variant="light" color="blue" radius="md" size="sm" onClick={() => openEdit(c)}><IconEdit size={13} /></ActionIcon>
+                    {(c.loyaltyPoints || 0) > 0 && (
+                      <ActionIcon variant="light" color="orange" radius="md" size="sm" title="Reset loyalty points" onClick={() => handleResetPoints(c)}>
+                        <IconStar size={13} />
+                      </ActionIcon>
+                    )}
+                    <ActionIcon variant="light" color="red" radius="md" size="sm" onClick={() => openDeleteModal(c)}><IconTrash size={13} /></ActionIcon>
                   </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
       </Paper>
 
       {/* Add / Edit Modal */}
@@ -331,9 +366,15 @@ const Customers = () => {
                 <Group gap="xs" align="center">
                   <Text size="xl" fw={800} c="yellow.7">⭐ {editingCustomer.loyaltyPoints || 0}</Text>
                   {(editingCustomer.loyaltyPoints || 0) > 0 && (
-                    <ActionIcon size="sm" variant="light" color="orange" title="Reset points" onClick={() => { handleResetPoints(editingCustomer); setModalOpened(false); }}>
-                      <IconStar size={13} />
-                    </ActionIcon>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="orange"
+                      leftSection={<IconStar size={12} />}
+                      onClick={() => { handleResetPoints(editingCustomer); setModalOpened(false); }}
+                    >
+                      Reset
+                    </Button>
                   )}
                 </Group>
               </Grid.Col>
@@ -453,6 +494,62 @@ const Customers = () => {
         <Button mt="xl" color="teal" radius="md" onClick={handleSave} fullWidth size="md" loading={loading}>
           {editingCustomer ? 'Save Changes' : 'Add Customer'}
         </Button>
+      </Modal>
+
+      {/* Loyalty Settings Modal */}
+      <Modal
+        opened={loyaltyModalOpened}
+        onClose={() => setLoyaltyModalOpened(false)}
+        title={<Group gap="xs"><IconStar size={18} color="var(--mantine-color-violet-6)" /><Text fw={700} size="lg">Loyalty Points Settings</Text></Group>}
+        centered size="md" radius="lg"
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Configure how customers earn points and what reward they receive when they reach the threshold.
+          </Text>
+
+          <NumberInput
+            label="Points earned per €1 spent"
+            description="e.g. 1 = customer earns 1 point for every €1 they spend"
+            min={0}
+            decimalScale={2}
+            value={loyaltyPointsPerEuro}
+            onChange={(v) => setLoyaltyPointsPerEuro(Number(v) || 0)}
+          />
+
+          <NumberInput
+            label="Points needed to earn reward"
+            description="e.g. 100 = customer qualifies for reward after collecting 100 points"
+            min={1}
+            value={loyaltyRewardThreshold}
+            onChange={(v) => setLoyaltyRewardThreshold(Number(v) || 1)}
+          />
+
+          <NumberInput
+            label="Reward value (€ free shopping)"
+            description="e.g. 5 = customer gets €5 free shopping when they reach the threshold"
+            min={0}
+            decimalScale={2}
+            value={loyaltyRewardValue}
+            onChange={(v) => setLoyaltyRewardValue(Number(v) || 0)}
+          />
+
+          <Paper bg="violet.0" p="md" radius="md" withBorder style={{ borderColor: 'var(--mantine-color-violet-3)' }}>
+            <Text size="sm" fw={600} c="violet.7" mb={4}>📊 Example with current settings:</Text>
+            <Text size="sm" c="dimmed">
+              Customer spends <strong>€{loyaltyPointsPerEuro > 0 ? (loyaltyRewardThreshold / loyaltyPointsPerEuro).toFixed(2) : '—'}</strong> total
+              → earns <strong>{loyaltyRewardThreshold} points</strong>
+              → qualifies for <strong>€{loyaltyRewardValue} free shopping</strong>
+            </Text>
+          </Paper>
+
+          <Group justify="flex-end" mt="xs">
+            <Button variant="subtle" color="gray" onClick={() => setLoyaltyModalOpened(false)}>Cancel</Button>
+            <Button color="violet" loading={loyaltyLoading} onClick={saveLoyaltySettings} leftSection={<IconCheck size={16} />}>
+              Save Settings
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Box>
   );
