@@ -1318,7 +1318,12 @@ const Dashboard = () => {
                       { label: '20', bg: '#7ba2b8' },
                       { label: '50', bg: '#dcb882' }
                     ].map((btn) => (
-                      <Button key={btn.label} flex={1} style={{ backgroundColor: btn.bg, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}>
+                      <Button
+                        key={btn.label}
+                        flex={1}
+                        style={{ backgroundColor: btn.bg, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}
+                        onClick={() => setDepositInput(prev => String((Number(prev) || 0) + Number(btn.label)))}
+                      >
                         <Text size="18px" fw="bold" c="black">{btn.label}</Text>
                       </Button>
                     ))}
