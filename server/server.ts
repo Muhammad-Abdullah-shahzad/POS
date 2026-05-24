@@ -44,6 +44,7 @@ import supplierRoutes from './routes/supplierRoutes';
 import employeeRoutes from './routes/employeeRoutes';
 import bankRoutes from './routes/bankRoutes';
 import customerRoutes from './routes/customerRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 
 // Import Routes
 app.use('/api/auth', authRoutes);
@@ -56,6 +57,7 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/banks', bankRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/settings', settingsRoutes);
 
 
 const PORT = process.env.PORT || 5000;

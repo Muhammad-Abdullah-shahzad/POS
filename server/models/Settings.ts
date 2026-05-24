@@ -9,6 +9,12 @@ export interface ISettings extends Document {
   receiptFooter: string;
   defaultVatRate: number;
   isVatInclusiveDefault: boolean;
+  quickProducts: {
+    id: string;
+    name: string;
+    barcode: string;
+    color: string;
+  }[];
 }
 
 const SettingsSchema = new Schema<ISettings>({
@@ -20,6 +26,22 @@ const SettingsSchema = new Schema<ISettings>({
   receiptFooter: { type: String, default: 'THANK YOU FOR SHOPPING! Please visit us again soon.' },
   defaultVatRate: { type: Number, required: true, default: 20 },
   isVatInclusiveDefault: { type: Boolean, required: true, default: true },
+  quickProducts: {
+    type: [{
+      id: { type: String, required: true },
+      name: { type: String, required: true },
+      barcode: { type: String, required: true },
+      color: { type: String, required: true },
+    }],
+    default: [
+      { id: 'open-item', name: 'OPEN ITEM', barcode: 'open1234', color: '#688939' },
+      { id: 'house-hold', name: 'HOUSE HOLD', barcode: 'hh1234', color: '#688939' },
+      { id: 'sweets', name: 'SWEETS', barcode: 'sw1234', color: '#688939' },
+      { id: 'minerals', name: 'MINERALS', barcode: 'mn1234', color: '#86af49' },
+      { id: 'veg-item', name: 'VEG ITEM', barcode: 'vg1234', color: '#86af49' },
+      { id: 'fresh-meat', name: 'FRESH MEAT', barcode: 'fm1234', color: '#86af49' },
+    ],
+  },
 }, { timestamps: true });
 
 export default mongoose.model<ISettings>('Settings', SettingsSchema);

@@ -55,6 +55,7 @@ const AdminLayout = () => {
       children: [
         { label: 'Manage Category', path: '/admin/products/category' },
         { label: 'Manage Products', path: '/admin/products' },
+        { label: 'Manage Quick Products', path: '/admin/products/quick' },
         { label: 'Manage General Products', path: '/admin/products/general' },
         { label: 'Edit Price', path: '/admin/products/edit-price' },
         { label: 'Barcodes', path: '/admin/products/codes' },

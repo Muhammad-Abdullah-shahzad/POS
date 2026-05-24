@@ -3,11 +3,12 @@ import {
   Box, Checkbox, Modal, SimpleGrid, NumberInput, Divider, Autocomplete, ActionIcon
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconCalculator, IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../../services/api';
+import { fetchQuickProducts, loadQuickProducts, type QuickProductButton } from '../products/QuickProducts';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
 
@@ -112,6 +113,7 @@ const getDiscountForProduct = (productName: string, category: string): { pct: nu
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [carts, setCarts] = useState<CustomerCart[]>([
     { id: 'customer1', name: 'CUSTOMER 1', items: [], selectedItemId: '' },
     { id: 'customer2', name: 'CUSTOMER 2', items: [], selectedItemId: '' },
@@ -165,6 +167,7 @@ const Dashboard = () => {
   const [enablePrinting, setEnablePrinting] = useState(true);
   const [calculatorOpened, setCalculatorOpened] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState('0');
+  const [quickProducts, setQuickProducts] = useState<QuickProductButton[]>(() => loadQuickProducts());
 
   // Split payment state
   const [splitModalOpened, setSplitModalOpened] = useState(false);
@@ -196,6 +199,22 @@ const Dashboard = () => {
       }
     };
     fetchDbData();
+  }, []);
+
+  useEffect(() => {
+    fetchQuickProducts().then(setQuickProducts);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const refreshQuickProducts = () => {
+      fetchQuickProducts().then(setQuickProducts);
+    };
+    window.addEventListener('quick-products-updated', refreshQuickProducts);
+    window.addEventListener('focus', refreshQuickProducts);
+    return () => {
+      window.removeEventListener('quick-products-updated', refreshQuickProducts);
+      window.removeEventListener('focus', refreshQuickProducts);
+    };
   }, []);
 
   // Load last transaction and transaction count from the database on mount
@@ -1271,12 +1290,11 @@ const Dashboard = () => {
                   </Flex>
                   <Grid >
                     {[
-                      { name: 'OPEN ITEM', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('OPEN ITEM', 'open1234') },
-                      { name: 'HOUSE HOLD', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('HOUSE HOLD', 'hh1234') },
-                      { name: 'SWEETS', color: customColors.greenBtnTop, onClick: () => handleCategoryItem('SWEETS', 'sw1234') },
-                      { name: 'MINERALS', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('MINERALS', 'mn1234') },
-                      { name: 'VEG ITEM', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('VEG ITEM', 'vg1234') },
-                      { name: 'FRESH MEAT', color: customColors.greenBtnMid, onClick: () => handleCategoryItem('FRESH MEAT', 'fm1234') },
+                      ...quickProducts.map(item => ({
+                        name: item.name,
+                        color: item.color,
+                        onClick: () => handleCategoryItem(item.name, item.barcode),
+                      })),
                       { name: 'FISH AND SEAFOOD', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('FISH AND SEAFOOD'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('FISH AND SEAFOOD'); } },
                       { name: 'LAMB BEEF', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('LAMB BEEF'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('LAMB BEEF'); } },
                       { name: 'CHICKEN', color: customColors.orangeBtn, onClick: () => { setOpenedCategoryName('CHICKEN'); setCategorySearch(''); setCategoryDbProducts([]); setCategoryModalOpened(true); fetchCategoryProducts('CHICKEN'); } },

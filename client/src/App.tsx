@@ -24,6 +24,7 @@ import {
   ManageProductCodes 
 } from './features/products/StockSubFeatures';
 import { ProductsSubFeatures } from './features/products/ProductsSubFeatures';
+import ManageQuickProducts from './features/products/QuickProducts';
 import { ReportsSubFeatures } from './features/reports/ReportsSubFeatures';
 import GeneralProducts from './features/products/GeneralProducts';
 import BankManagement from './features/bank/BankManagement';
@@ -51,6 +52,7 @@ const sharedRoutes = () => (
   <>
     <Route path="receipts" element={<Receipts />} />
     <Route path="products" element={<Products />} />
+    <Route path="products/quick" element={<ManageQuickProducts />} />
     <Route path="products/codes" element={<ManageProductCodes />} />
     <Route path="products/general" element={<GeneralProducts />} />
     <Route path="products/general/:category" element={<GeneralProducts />} />
