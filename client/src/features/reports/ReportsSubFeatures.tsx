@@ -208,22 +208,46 @@ export const ReportsSubFeatures = () => {
       },
       'transaction-sales': {
         title: 'Transaction Sales Report',
-        description: 'Detailed audit trail of all transactions processed through registers.',
+        description: 'Detailed audit trail of all transactions — Cash, Card, and Split payments shown separately.',
         hasChart: 'none',
-        headers: ['Invoice No', 'Time', 'Cashier', 'Customer', 'Items Qty', 'Total Amount', 'Payment Method'],
-        mockData: orders.map(o => ({
-          invoice: o.invoiceId,
-          time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-          cashier: 'Admin',
-          customer: o.customerName || 'Walk-in',
-          items: sum(o.items || [], 'quantity'),
-          total: o.total,
-          method: o.paymentMethod || 'cash'
-        })),
+        headers: ['Invoice No', 'Date', 'Time', 'Items Qty', 'Total Amount', 'Payment Type', 'Cash Amt', 'Card Amt'],
+        mockData: orders.map(o => {
+          const method = (o.paymentMethod || 'cash').toLowerCase();
+          const isSplit = method === 'split';
+          const isCash  = method === 'cash';
+          const isCard  = method === 'card';
+          return {
+            invoice:    o.invoiceId,
+            date:       o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'N/A',
+            time:       o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+            items:      sum(o.items || [], 'quantity'),
+            total:      o.total,
+            method:     isSplit ? 'SPLIT' : isCash ? 'CASH' : isCard ? 'CARD' : method.toUpperCase(),
+            cashAmt:    isSplit ? (o.splitCash ?? 0) : isCash ? o.total : 0,
+            cardAmt:    isSplit ? (o.splitCard ?? 0) : isCard ? o.total : 0,
+          };
+        }),
         summaryCards: [
-          { label: 'Cash Sales', value: `Rs. ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total').toLocaleString()}` },
-          { label: 'Card/Digital Sales', value: `Rs. ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() !== 'cash'), 'total').toLocaleString()}` },
-          { label: 'Avg Basket Size', value: `${orders.length > 0 ? (sum(orders.flatMap(o => o.items || []), 'quantity') / orders.length).toFixed(1) : 0} items` },
+          {
+            label: 'Cash Sales',
+            value: `Rs. ${(
+              sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total') +
+              orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split')
+                    .reduce((acc: number, o: any) => acc + (Number(o.splitCash) || 0), 0)
+            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+          },
+          {
+            label: 'Card Sales',
+            value: `Rs. ${(
+              sum(orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'card'), 'total') +
+              orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split')
+                    .reduce((acc: number, o: any) => acc + (Number(o.splitCard) || 0), 0)
+            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+          },
+          {
+            label: 'Split Transactions',
+            value: `${orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split').length} txns`
+          },
         ]
       },
       'category-sale': {
@@ -882,6 +906,75 @@ export const ReportsSubFeatures = () => {
         </Group>
 
         <Box style={{ flex: 1, overflowY: 'auto' }}>
+          {/* Special layout for transaction-sales */}
+          {reportType === 'transaction-sales' ? (
+            <Table striped highlightOnHover verticalSpacing="xs">
+              <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1, boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+                <Table.Tr>
+                  <Table.Th>Invoice No</Table.Th>
+                  <Table.Th>Date</Table.Th>
+                  <Table.Th>Time</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Items</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Total (Rs.)</Table.Th>
+                  <Table.Th style={{ textAlign: 'center' }}>Payment Type</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Cash (Rs.)</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Card (Rs.)</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {filteredData.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#868e96' }}>
+                      No transactions found.
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  filteredData.map((row: any, rowIdx: number) => (
+                    <Table.Tr key={rowIdx}>
+                      <Table.Td fw={600} style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.invoice}</Table.Td>
+                      <Table.Td>{row.date}</Table.Td>
+                      <Table.Td c="dimmed">{row.time}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>{row.items}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} fw={600}>
+                        {Number(row.total).toFixed(2)}
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'center' }}>
+                        <Badge
+                          color={row.method === 'CASH' ? 'green' : row.method === 'CARD' ? 'blue' : 'grape'}
+                          variant="filled"
+                          size="sm"
+                        >
+                          {row.method}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} c={row.cashAmt > 0 ? 'green.7' : 'dimmed'}>
+                        {row.cashAmt > 0 ? Number(row.cashAmt).toFixed(2) : '—'}
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} c={row.cardAmt > 0 ? 'blue.7' : 'dimmed'}>
+                        {row.cardAmt > 0 ? Number(row.cardAmt).toFixed(2) : '—'}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))
+                )}
+              </Table.Tbody>
+              {filteredData.length > 0 && (() => {
+                const totalCash = filteredData.reduce((s: number, r: any) => s + (Number(r.cashAmt) || 0), 0);
+                const totalCard = filteredData.reduce((s: number, r: any) => s + (Number(r.cardAmt) || 0), 0);
+                const grandTotal = filteredData.reduce((s: number, r: any) => s + (Number(r.total) || 0), 0);
+                return (
+                  <Table.Tfoot style={{ backgroundColor: '#f1f3f5', fontWeight: 700 }}>
+                    <Table.Tr>
+                      <Table.Td colSpan={4} fw={700}>TOTALS ({filteredData.length} transactions)</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} fw={700}>Rs. {grandTotal.toFixed(2)}</Table.Td>
+                      <Table.Td />
+                      <Table.Td style={{ textAlign: 'right' }} fw={700} c="green.7">Rs. {totalCash.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} fw={700} c="blue.7">Rs. {totalCard.toFixed(2)}</Table.Td>
+                    </Table.Tr>
+                  </Table.Tfoot>
+                );
+              })()}
+            </Table>
+          ) : (
           <Table striped highlightOnHover verticalSpacing="xs">
             <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1, boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
               <Table.Tr>
@@ -935,6 +1028,7 @@ export const ReportsSubFeatures = () => {
               )}
             </Table.Tbody>
           </Table>
+          )}
         </Box>
       </Paper>
     </Stack>

@@ -18,6 +18,8 @@ export interface IOrder extends Document {
   discount: number;
   total: number;
   paymentMethod: string;
+  splitCash?: number;
+  splitCard?: number;
   status: 'completed' | 'voided';
   voidReason?: string;
   voidedAt?: Date;
@@ -43,6 +45,8 @@ const OrderSchema = new Schema<IOrder>({
   discount: { type: Number, required: true, default: 0 },
   total: { type: Number, required: true },
   paymentMethod: { type: String, required: true },
+  splitCash: { type: Number, default: null },
+  splitCard: { type: Number, default: null },
   status: { type: String, enum: ['completed', 'voided'], default: 'completed', index: true },
   voidReason: { type: String, default: null },
   voidedAt: { type: Date, default: null },

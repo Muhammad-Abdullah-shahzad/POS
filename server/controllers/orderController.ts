@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { items, subtotal, totalVAT, discount, total, paymentMethod } = req.body;
+    const { items, subtotal, totalVAT, discount, total, paymentMethod, splitCash, splitCard } = req.body;
     
     // Check stock availability only for items with a product reference
     for (const item of items) {
@@ -38,7 +38,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       totalVAT,
       discount,
       total,
-      paymentMethod
+      paymentMethod,
+      ...(splitCash != null && { splitCash: Number(splitCash) }),
+      ...(splitCard != null && { splitCard: Number(splitCard) }),
     });
 
     res.status(201).json(successResponse(order, 'Order completed'));
