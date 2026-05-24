@@ -1,7 +1,4 @@
-import {
-  AppShell, Burger, Group, NavLink, Title, Button, Tooltip,
-  Center, Text, Anchor, Menu, ScrollArea, Box, Badge
-} from '@mantine/core';
+import { AppShell, Burger, Group, NavLink, Title, Button, Tooltip, Center, Text, Anchor, Menu, ScrollArea, Box, Badge } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
@@ -33,11 +30,8 @@ const AdminLayout = () => {
   const { logout, user } = useAuthStore();
   const clearCart = usePosStore((state) => state.clearCart);
 
-  // Guard: only admin / manager can access this layout
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin' && user.role !== 'manager') {
-    return <Navigate to="/" replace />;
-  }
+  if (user.role !== 'admin' && user.role !== 'manager') return <Navigate to="/" replace />;
 
   const handleLogout = () => {
     clearCart();
@@ -52,7 +46,6 @@ const AdminLayout = () => {
     children?: { label: string; path: string }[];
   }
 
-  // Admin nav — all sections under /admin
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: IconLayoutDashboard, path: '/admin' },
     { label: 'Receipts', icon: IconReceipt, path: '/admin/receipts' },
@@ -135,11 +128,7 @@ const AdminLayout = () => {
   const showLabel = isMobile || desktopOpened;
 
   const renderNavIcon = (Icon: TablerIcon, active: boolean) => (
-    <Box
-      className="nav-icon-badge"
-      data-active={active || undefined}
-      aria-hidden="true"
-    >
+    <Box className="nav-icon-badge" data-active={active || undefined} aria-hidden="true">
       <Icon size={21} stroke={1.9} />
     </Box>
   );
@@ -148,31 +137,27 @@ const AdminLayout = () => {
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: { base: 260, sm: desktopOpened ? 260 : 80 },
+        width: { base: 250, sm: desktopOpened ? 250 : 80 },
         breakpoint: 'sm',
         collapsed: { mobile: !opened }
       }}
       transitionDuration={400}
       transitionTimingFunction="ease"
     >
-      <AppShell.Header className="no-print" style={{ backgroundColor: '#2c1654' }}>
+      {/* Header — same structure as cashier, violet accent */}
+      <AppShell.Header className="no-print">
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" color="white" />
-            <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" color="white" />
-            <Group gap="xs">
-              <IconShieldLock size={22} color="#c084fc" />
-              <Title order={3} c="white">Store POS</Title>
-              <Badge color="violet" variant="filled" size="sm">ADMIN</Badge>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" />
+            <Group gap={6}>
+              <IconShieldLock size={20} color="var(--mantine-color-violet-6)" />
+              <Title order={3} c="violet">Store POS</Title>
+              <Badge color="violet" variant="filled" size="sm" radius="sm">ADMIN</Badge>
             </Group>
           </Group>
           <Group>
-            {!isMobile && (
-              <Text size="sm" c="gray.3">
-                {user.name} &nbsp;·&nbsp;
-                <Text component="span" c="violet.3" fw={600}>{user.role.toUpperCase()}</Text>
-              </Text>
-            )}
+            {!isMobile && <Title order={6}>Welcome, {user.name}</Title>}
             <Button variant="light" color="red" size="xs" onClick={handleLogout} leftSection={<IconLogout size={16} />}>
               Logout
             </Button>
@@ -180,35 +165,27 @@ const AdminLayout = () => {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar
-        className="no-print main-navbar"
-        style={{ backgroundColor: '#1e1035', borderRight: '1px solid #3b1f6e' }}
-      >
-        <ScrollArea h="100%" p={showLabel ? 'md' : 'xs'} scrollbarSize={6} type="hover">
+      {/* Navbar — identical structure to cashier */}
+      <AppShell.Navbar className="no-print main-navbar">
+        <ScrollArea h="100%" p={showLabel ? "md" : "xs"} scrollbarSize={6} type="hover">
           {navItems.map((item) => {
             const isChildActive = item.children
-              ? item.children.some(c => location.pathname === c.path || location.pathname.startsWith(c.path + '/'))
+              ? item.children.some(c => location.pathname === c.path)
               : false;
             const isActive = item.children
               ? isChildActive
               : item.path
                 ? (item.path === '/admin'
                     ? location.pathname === '/admin'
-                    : location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
+                    : location.pathname === item.path)
                 : false;
-
-            const navLinkStyles = {
-              borderRadius: '8px',
-              justifyContent: showLabel ? 'flex-start' : 'center',
-              color: 'white',
-            };
 
             const navLink = (
               <NavLink
                 key={item.label}
                 label={showLabel ? item.label : undefined}
                 leftSection={
-                  <Center w={showLabel ? 'auto' : '100%'}>
+                  <Center w={showLabel ? "auto" : "100%"}>
                     {renderNavIcon(item.icon, isActive)}
                   </Center>
                 }
@@ -219,17 +196,13 @@ const AdminLayout = () => {
                   if (isMobile && opened) toggle();
                 } : undefined}
                 variant="subtle"
-                mb={6}
-                py={showLabel ? 'sm' : 'md'}
-                style={navLinkStyles}
-                styles={{
-                  label: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
-                  root: {
-                    '&[dataActive]': {
-                      backgroundColor: 'rgba(192,132,252,0.15)',
-                    }
-                  }
+                mb={8}
+                py={showLabel ? "sm" : "md"}
+                style={{
+                  borderRadius: '8px',
+                  justifyContent: showLabel ? 'flex-start' : 'center',
                 }}
+                color="violet"
               >
                 {item.children && showLabel && item.children.map((child) => (
                   <NavLink
@@ -241,9 +214,15 @@ const AdminLayout = () => {
                       if (isMobile && opened) toggle();
                     }}
                     py="xs"
-                    style={{ borderRadius: '6px', margin: '2px 8px' }}
+                    style={{
+                      borderRadius: '6px',
+                      marginRight: '8px',
+                      marginLeft: '8px',
+                      marginTop: '4px',
+                      marginBottom: '4px',
+                    }}
                     variant="subtle"
-                    styles={{ label: { color: 'rgba(255,255,255,0.7)', fontSize: 12 } }}
+                    color="violet"
                   />
                 ))}
               </NavLink>
@@ -256,11 +235,16 @@ const AdminLayout = () => {
                     <Menu.Target>
                       <NavLink
                         label={undefined}
-                        leftSection={<Center w="100%">{renderNavIcon(item.icon, isChildActive)}</Center>}
+                        leftSection={
+                          <Center w="100%">
+                            {renderNavIcon(item.icon, isChildActive)}
+                          </Center>
+                        }
                         active={isChildActive}
-                        mb={6}
+                        mb={8}
                         py="md"
                         style={{ borderRadius: '8px', justifyContent: 'center' }}
+                        color="violet"
                       />
                     </Menu.Target>
                     <Menu.Dropdown>
@@ -268,10 +252,14 @@ const AdminLayout = () => {
                       {item.children.map((child) => (
                         <Menu.Item
                           key={child.label}
-                          onClick={() => { navigate(child.path); if (isMobile && opened) toggle(); }}
+                          onClick={() => {
+                            navigate(child.path);
+                            if (isMobile && opened) toggle();
+                          }}
                           style={{
                             fontWeight: location.pathname === child.path ? 600 : 400,
                             backgroundColor: location.pathname === child.path ? 'var(--mantine-color-violet-light)' : undefined,
+                            color: location.pathname === child.path ? 'var(--mantine-color-violet-filled)' : undefined,
                           }}
                         >
                           {child.label}
@@ -281,6 +269,7 @@ const AdminLayout = () => {
                   </Menu>
                 );
               }
+
               return (
                 <Tooltip key={item.label} label={item.label} position="right" transitionProps={{ duration: 0 }}>
                   {navLink}
