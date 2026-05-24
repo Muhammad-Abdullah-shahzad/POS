@@ -18,6 +18,7 @@ interface Product {
   vatType: string;
   costPrice: number;
   stock: number;
+  drs?: number;
   image?: string;
 }
 
@@ -81,10 +82,10 @@ const Products = () => {
       vatType: 'exclusive',
       costPrice: 0,
       stock: 0,
+      drs: 0,
     },
     validate: {
       name: (v) => v.trim() ? null : 'Name is required',
-      sku: (v) => v.trim() ? null : 'SKU is required',
       barcode: (v) => v.trim() ? null : 'Barcode is required',
       category: (v) => v.trim() ? null : 'Category is required',
       price: (v) => v > 0 ? null : 'Price must be greater than 0',
@@ -101,7 +102,7 @@ const Products = () => {
         // With image: use FormData (multer handles it)
         const formData = new FormData();
         formData.append('name', values.name);
-        formData.append('sku', values.sku);
+        if (values.sku.trim()) formData.append('sku', values.sku.trim());
         formData.append('barcode', values.barcode);
         formData.append('category', values.category);
         formData.append('price', String(values.price));
@@ -109,11 +110,17 @@ const Products = () => {
         formData.append('vatRate', String(values.vatRate));
         formData.append('vatType', values.vatType);
         formData.append('stock', String(values.stock));
+        formData.append('drs', String(values.drs || 0));
         formData.append('image', imageFile);
         await api.post('/products', formData);
       } else {
         // No image: plain JSON to the same endpoint
-        await api.post('/products', values);
+        const payload = {
+          ...values,
+          sku: values.sku.trim() || undefined,
+          drs: values.drs || 0,
+        };
+        await api.post('/products', payload);
       }
       notifications.show({
         title: 'Success',
@@ -268,6 +275,7 @@ const Products = () => {
               <Table.Th>SKU / Barcode</Table.Th>
               <Table.Th>Category</Table.Th>
               <Table.Th>Price</Table.Th>
+              <Table.Th>DRS</Table.Th>
               <Table.Th>VAT</Table.Th>
               <Table.Th>Stock</Table.Th>
               <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
@@ -290,9 +298,10 @@ const Products = () => {
                   )}
                 </Table.Td>
                 <Table.Td>{p.name}</Table.Td>
-                <Table.Td>{p.sku} / {p.barcode}</Table.Td>
+                <Table.Td>{p.sku || '-'} / {p.barcode}</Table.Td>
                 <Table.Td>{p.category}</Table.Td>
                 <Table.Td>€ {p.price.toFixed(2)}</Table.Td>
+                <Table.Td>€ {(p.drs || 0).toFixed(2)}</Table.Td>
                 <Table.Td>{p.vatRate}% ({p.vatType})</Table.Td>
                 <Table.Td fw={700} c={p.stock < 10 ? 'red' : 'inherit'}>{p.stock}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
@@ -379,13 +388,14 @@ const Products = () => {
             />
           </Group>
           <Group grow mb="md">
-            <TextInput label="SKU" required {...form.getInputProps('sku')} />
+            <TextInput label="SKU (optional)" {...form.getInputProps('sku')} />
             <TextInput label="Barcode" required {...form.getInputProps('barcode')} />
           </Group>
           <Group grow mb="md">
             <NumberInput label="Selling Price" required min={0} {...form.getInputProps('price')} />
             <NumberInput label="Cost Price (Your Cost)" required min={0} {...form.getInputProps('costPrice')} />
           </Group>
+          <NumberInput label="DRS (optional)" min={0} mb="md" {...form.getInputProps('drs')} />
           <Group grow mb="md">
             <NumberInput label="VAT Rate (%)" required min={0} {...form.getInputProps('vatRate')} />
             <Select

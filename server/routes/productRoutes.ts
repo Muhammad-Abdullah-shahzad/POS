@@ -30,7 +30,7 @@ const productUpload = (req: Request, res: Response, next: NextFunction) => {
 };
 
 router.get('/', protect, getProducts);
-router.post('/', protect, authorize('admin', 'manager'), productUpload, createProduct);
+router.post('/', protect, authorize('admin', 'manager', 'cashier'), productUpload, createProduct);
 router.get('/barcode/:barcode', protect, getProductByBarcode);
 router.patch('/:id/stock', protect, authorize('admin', 'manager'), updateStock);
 router.patch('/:id', protect, authorize('admin', 'manager'), productUpload, updateProduct);

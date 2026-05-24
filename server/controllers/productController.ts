@@ -34,6 +34,8 @@ export const upload = multer({ storage, fileFilter, limits: { fileSize: 15 * 102
 
 const localImageUrl = (file: Express.Multer.File): string => `/uploads/products/${file.filename}`;
 
+const generatedSku = (): string => `SKU-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+
 // Upload to Drive after the product is already saved so image uploads never block product creation.
 function promoteImageToDrive(
   productId: string,
@@ -86,10 +88,12 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
     if (typeof body.costPrice === 'string') body.costPrice = parseFloat(body.costPrice);
     if (typeof body.vatRate === 'string')   body.vatRate   = parseFloat(body.vatRate);
     if (typeof body.stock === 'string')     body.stock     = parseInt(body.stock, 10);
+    if (typeof body.drs === 'string')       body.drs       = parseFloat(body.drs);
+    if (typeof body.sku === 'string')       body.sku       = body.sku.trim();
 
     console.log('Creating product with body:', JSON.stringify(body));
 
-    const missingFields = ['name', 'sku', 'barcode', 'category'].filter((field) => !body[field]);
+    const missingFields = ['name', 'barcode', 'category'].filter((field) => !body[field]);
     if (missingFields.length > 0) {
       if (req.file) fs.unlink(req.file.path, () => {});
       res.status(400).json(errorResponse(`Missing required field(s): ${missingFields.join(', ')}`));
@@ -102,6 +106,8 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
     if (body.price === undefined || isNaN(body.price)) body.price = 0;
     if (body.costPrice === undefined || isNaN(body.costPrice)) body.costPrice = 0;
     if (body.stock === undefined || isNaN(body.stock)) body.stock = 0;
+    if (body.drs === undefined || isNaN(body.drs)) body.drs = 0;
+    if (!body.sku) body.sku = generatedSku();
 
     const product = await Product.create({ ...body, image: imageUrl });
     if (req.file) promoteImageToDrive(String(product._id), req.file);
@@ -155,6 +161,9 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     if (typeof updateData.costPrice === 'string') updateData.costPrice = parseFloat(updateData.costPrice);
     if (typeof updateData.vatRate === 'string')   updateData.vatRate   = parseFloat(updateData.vatRate);
     if (typeof updateData.stock === 'string')     updateData.stock     = parseInt(updateData.stock, 10);
+    if (typeof updateData.drs === 'string')       updateData.drs       = parseFloat(updateData.drs);
+    if (typeof updateData.sku === 'string')       updateData.sku       = updateData.sku.trim();
+    if (updateData.sku === '') delete updateData.sku;
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,

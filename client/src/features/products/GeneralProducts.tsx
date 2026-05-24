@@ -55,6 +55,7 @@ interface Product {
   stock: number;
   vatRate: number;
   vatType: string;
+  drs?: number;
   image?: string;
 }
 
@@ -67,6 +68,7 @@ const emptyForm = {
   stock: 0 as number | string,
   vatRate: 0 as number | string,
   vatType: 'inclusive',
+  drs: 0 as number | string,
 };
 
 export const GeneralProducts = () => {
@@ -127,6 +129,7 @@ export const GeneralProducts = () => {
       stock: p.stock,
       vatRate: p.vatRate,
       vatType: p.vatType,
+      drs: p.drs || 0,
     });
     setImageFile(null);
     setImagePreview(p.image ? resolveImageUrl(p.image) : null);
@@ -158,8 +161,8 @@ export const GeneralProducts = () => {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.sku.trim() || !form.barcode.trim()) {
-      notifications.show({ title: 'Validation', message: 'Name, SKU and Barcode are required.', color: 'red' });
+    if (!form.name.trim() || !form.barcode.trim()) {
+      notifications.show({ title: 'Validation', message: 'Name and Barcode are required.', color: 'red' });
       return;
     }
     try {
@@ -170,7 +173,7 @@ export const GeneralProducts = () => {
         console.log('Preparing FormData with image:', imageFile.name, imageFile.type, imageFile.size);
         const fd = new FormData();
         fd.append('name', form.name.trim());
-        fd.append('sku', form.sku.trim());
+        if (form.sku.trim()) fd.append('sku', form.sku.trim());
         fd.append('barcode', form.barcode.trim());
         fd.append('category', activeCategory);
         fd.append('price', String(Number(form.price) || 0));
@@ -178,6 +181,7 @@ export const GeneralProducts = () => {
         fd.append('stock', String(Number(form.stock) || 0));
         fd.append('vatRate', String(Number(form.vatRate) || 0));
         fd.append('vatType', form.vatType);
+        fd.append('drs', String(Number(form.drs) || 0));
         fd.append('image', imageFile);
 
         console.log('Sending FormData to:', editingId ? `PATCH /products/${editingId}` : 'POST /products');
@@ -192,7 +196,7 @@ export const GeneralProducts = () => {
         // Plain JSON - no image
         const payload = {
           name: form.name.trim(),
-          sku: form.sku.trim(),
+          sku: form.sku.trim() || undefined,
           barcode: form.barcode.trim(),
           category: activeCategory,
           price: Number(form.price) || 0,
@@ -200,6 +204,7 @@ export const GeneralProducts = () => {
           stock: Number(form.stock) || 0,
           vatRate: Number(form.vatRate) || 0,
           vatType: form.vatType,
+          drs: Number(form.drs) || 0,
         };
         if (editingId) {
           await api.patch(`/products/${editingId}`, payload);
@@ -344,6 +349,7 @@ export const GeneralProducts = () => {
                 <Table.Th>SKU</Table.Th>
                 <Table.Th>Barcode</Table.Th>
                 <Table.Th style={{ textAlign: 'right' }}>Price</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>DRS</Table.Th>
                 <Table.Th style={{ textAlign: 'right' }}>Stock</Table.Th>
                 <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
               </Table.Tr>
@@ -368,6 +374,7 @@ export const GeneralProducts = () => {
                   <Table.Td c="dimmed">{p.sku}</Table.Td>
                   <Table.Td c="dimmed">{p.barcode}</Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>€ {p.price.toFixed(2)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right' }}>€ {(p.drs || 0).toFixed(2)}</Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Badge color={p.stock > 0 ? 'green' : 'red'} variant="light">{p.stock}</Badge>
                   </Table.Td>
@@ -385,7 +392,7 @@ export const GeneralProducts = () => {
               ))}
               {filtered.length === 0 && (
                 <Table.Tr>
-                  <Table.Td colSpan={7} style={{ textAlign: 'center' }}>
+                  <Table.Td colSpan={8} style={{ textAlign: 'center' }}>
                     <Text c="dimmed" py="md">
                       {search ? 'No products match your search.' : `No products in ${activeCategory} yet. Click "Add Product" to get started.`}
                     </Text>
@@ -416,9 +423,8 @@ export const GeneralProducts = () => {
           <Grid>
             <Grid.Col span={6}>
               <TextInput
-                label="SKU"
+                label="SKU (optional)"
                 placeholder="e.g. FSH-001"
-                required
                 value={form.sku}
                 onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
               />
@@ -458,6 +464,14 @@ export const GeneralProducts = () => {
                 min={0}
                 value={form.stock}
                 onChange={val => setForm(f => ({ ...f, stock: val }))}
+              />
+            </Grid.Col>
+            <Grid.Col span={4}>
+              <NumberInput
+                label="DRS (optional)"
+                min={0}
+                value={form.drs}
+                onChange={val => setForm(f => ({ ...f, drs: val }))}
               />
             </Grid.Col>
             <Grid.Col span={4}>

@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IProduct extends Document {
   name: string;
-  sku: string;
+  sku?: string;
   barcode: string;
   category: string;
   price: number;
@@ -10,12 +10,13 @@ export interface IProduct extends Document {
   vatType: 'inclusive' | 'exclusive';
   costPrice: number;
   stock: number;
+  drs?: number;
   image?: string;
 }
 
 const ProductSchema: Schema = new Schema({
   name: { type: String, required: true },
-  sku: { type: String, required: true, unique: true },
+  sku: { type: String, required: false, unique: true, sparse: true },
   barcode: { type: String, required: true, unique: true, index: true },
   category: { type: String, required: true },
   price: { type: Number, required: true },
@@ -23,6 +24,7 @@ const ProductSchema: Schema = new Schema({
   vatType: { type: String, enum: ['inclusive', 'exclusive'], required: true },
   costPrice: { type: Number, required: true },
   stock: { type: Number, required: true, default: 0 },
+  drs: { type: Number, default: 0 },
   image: { type: String, default: null },
 }, { timestamps: true });
 
