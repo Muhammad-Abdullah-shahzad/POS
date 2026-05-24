@@ -68,20 +68,25 @@ export const deleteCustomer = async (req: Request, res: Response): Promise<void>
 // Record a transaction — increment visits, add totalAmount, add loyalty points
 export const updateCustomerStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { amount } = req.body;
+    const { amount, pointsOverride } = req.body;
     if (typeof amount !== 'number') {
       res.status(400).json(errorResponse('Amount must be a number'));
       return;
     }
 
-    // Get loyalty settings
-    let pointsPerEuro = 1;
-    try {
-      const settings = await Settings.findOne();
-      if (settings) pointsPerEuro = settings.loyaltyPointsPerEuro ?? 1;
-    } catch { /* use default */ }
+    // Use pointsOverride if provided (category-based), else fall back to global setting
+    let pointsEarned = 0;
+    if (typeof pointsOverride === 'number' && pointsOverride >= 0) {
+      pointsEarned = Math.floor(pointsOverride);
+    } else {
+      let pointsPerEuro = 1;
+      try {
+        const settings = await Settings.findOne();
+        if (settings) pointsPerEuro = settings.loyaltyPointsPerEuro ?? 1;
+      } catch { /* use default */ }
+      pointsEarned = Math.floor(amount * pointsPerEuro);
+    }
 
-    const pointsEarned = Math.floor(amount * pointsPerEuro);
     const today = new Date().toISOString().split('T')[0];
 
     const customer = await Customer.findByIdAndUpdate(

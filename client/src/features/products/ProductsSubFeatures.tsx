@@ -327,11 +327,13 @@ export const ProductsSubFeatures = () => {
   const [newCatName, setNewCatName] = useState('');
   const [newCatVatRate, setNewCatVatRate] = useState<number | string>(0);
   const [newCatVatType, setNewCatVatType] = useState<string>('exclusive');
+  const [newCatLoyaltyPoints, setNewCatLoyaltyPoints] = useState<number | string>(0);
 
   interface CategoryEntry {
     name: string;
     vatRate: number;
     vatType: string;
+    loyaltyPoints?: number;
   }
 
   const [customCategories, setCustomCategories] = useState<CategoryEntry[]>(() => {
@@ -358,6 +360,7 @@ export const ProductsSubFeatures = () => {
         value: totalValue,
         vatRate: catEntry?.vatRate ?? 0,
         vatType: catEntry?.vatType ?? 'exclusive',
+        loyaltyPoints: catEntry?.loyaltyPoints ?? 0,
       };
     });
   }, [products, customCategories]);
@@ -387,6 +390,7 @@ export const ProductsSubFeatures = () => {
       name: newCatName.trim(),
       vatRate: Number(newCatVatRate) || 0,
       vatType: newCatVatType,
+      loyaltyPoints: Number(newCatLoyaltyPoints) || 0,
     };
     const updated = [...customCategories, newEntry];
     setCustomCategories(updated);
@@ -394,9 +398,10 @@ export const ProductsSubFeatures = () => {
     setNewCatName('');
     setNewCatVatRate(0);
     setNewCatVatType('exclusive');
+    setNewCatLoyaltyPoints(0);
     notifications.show({
       title: 'Success',
-      message: `Category "${newEntry.name}" added with ${newEntry.vatRate}% VAT (${newEntry.vatType})`,
+      message: `Category "${newEntry.name}" added with ${newEntry.vatRate}% VAT (${newEntry.vatType})${newEntry.loyaltyPoints ? ` · ${newEntry.loyaltyPoints} pts/item` : ''}`,
       color: 'green',
       icon: <IconCheck size={16} />
     });
@@ -663,6 +668,14 @@ export const ProductsSubFeatures = () => {
                               onChange={(val) => setNewCatVatType(val || 'exclusive')}
                             />
                           </Group>
+                          <NumberInput
+                            label="Loyalty Points per item (optional)"
+                            description="Points earned per product bought from this category"
+                            placeholder="e.g. 5"
+                            min={0}
+                            value={newCatLoyaltyPoints}
+                            onChange={(val) => setNewCatLoyaltyPoints(val)}
+                          />
                           <Button type="submit" leftSection={<IconPlus size={16} />} color="blue" fullWidth>
                             Add Category
                           </Button>
@@ -677,6 +690,7 @@ export const ProductsSubFeatures = () => {
                           <Table.Tr>
                             <Table.Th>Name</Table.Th>
                             <Table.Th style={{ textAlign: 'center' }}>VAT</Table.Th>
+                            <Table.Th style={{ textAlign: 'center' }}>Points/item</Table.Th>
                             <Table.Th style={{ textAlign: 'right' }}>SKUs</Table.Th>
                             <Table.Th style={{ textAlign: 'right' }}>Assets</Table.Th>
                           </Table.Tr>
@@ -688,6 +702,11 @@ export const ProductsSubFeatures = () => {
                               <Table.Td style={{ textAlign: 'center' }}>
                                 <Badge size="sm" color={cat.vatRate > 0 ? 'blue' : 'gray'} variant="light">
                                   {cat.vatRate}% {cat.vatType}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: 'center' }}>
+                                <Badge size="sm" color={cat.loyaltyPoints > 0 ? 'yellow' : 'gray'} variant="light">
+                                  ⭐ {cat.loyaltyPoints}
                                 </Badge>
                               </Table.Td>
                               <Table.Td style={{ textAlign: 'right' }}>{cat.count} SKUs</Table.Td>

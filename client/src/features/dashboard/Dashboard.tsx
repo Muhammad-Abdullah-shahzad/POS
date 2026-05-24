@@ -555,7 +555,38 @@ const Dashboard = () => {
     let loyaltyRewardValue = 0;
     if (activeCart.customerId) {
       try {
-        const txRes = await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total });
+        // Calculate points from category definitions in localStorage
+        const savedCategories = localStorage.getItem('customProductCategories');
+        const categoryEntries: { name: string; loyaltyPoints?: number }[] = savedCategories ? JSON.parse(savedCategories) : [];
+
+        // Sum points per cart item based on its product's category
+        let categoryPoints = 0;
+        for (const item of cartItems) {
+          // Find the product to get its category
+          try {
+            const { data: pData } = await api.get(`/products?search=${encodeURIComponent(item.name)}`);
+            const prod = (pData.data || []).find((p: any) => p.name === item.name || p.barcode === item.barcode);
+            if (prod) {
+              const catEntry = categoryEntries.find(c =>
+                typeof c === 'string' ? c === prod.category : c.name === prod.category
+              );
+              const ptsPerItem = (catEntry as any)?.loyaltyPoints || 0;
+              categoryPoints += ptsPerItem * item.qty;
+            }
+          } catch { /* skip */ }
+        }
+
+        // Fallback to global setting if no category points defined
+        let pointsToAdd = categoryPoints;
+        if (pointsToAdd === 0) {
+          try {
+            const settingsRes = await api.get('/settings');
+            const ptsPerEuro = settingsRes.data?.data?.loyaltyPointsPerEuro ?? 1;
+            pointsToAdd = Math.floor(total * ptsPerEuro);
+          } catch { pointsToAdd = Math.floor(total); }
+        }
+
+        const txRes = await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total, pointsOverride: pointsToAdd });
         const updatedCustomer = txRes.data?.data;
         if (updatedCustomer) {
           loyaltyPointsEarned = updatedCustomer.pointsEarned || 0;
