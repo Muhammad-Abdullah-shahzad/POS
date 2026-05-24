@@ -5,7 +5,7 @@ import { protect, authorize } from '../middleware/auth';
 const router = express.Router();
 
 router.route('/')
-  .get(protect, authorize('admin', 'manager'), getExpenses)
-  .post(protect, authorize('admin', 'manager'), createExpense);
+  .get(protect, authorize('admin', 'manager', 'cashier'), getExpenses)
+  .post(protect, authorize('admin', 'manager', 'cashier'), createExpense);
 
 export default router;

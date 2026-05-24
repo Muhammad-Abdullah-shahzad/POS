@@ -57,7 +57,6 @@ const MainLayout = () => {
         { label: 'Manage Quick Products', path: '/products/quick' },
         { label: 'Manage General Products', path: '/products/general' },
         { label: 'Edit Price', path: '/products/edit-price' },
-        { label: 'Barcodes', path: '/products/codes' },
         { label: 'Wastage Management', path: '/products/wastage' },
         { label: 'Excel Sheet Load', path: '/products/excel-load' },
         { label: 'Stock Reconciliation', path: '/products/reconciliation' },
@@ -70,7 +69,6 @@ const MainLayout = () => {
         { label: 'View Stock', path: '/products' },
         { label: 'Manage Suppliers', path: '/suppliers' },
         { label: 'Supplier Payments', path: '/suppliers/payments' },
-        { label: 'Manage Product Codes', path: '/products/codes' },
       ]
     },
     { label: 'Expenses', icon: IconCash, path: '/expenses' },

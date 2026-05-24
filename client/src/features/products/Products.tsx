@@ -5,7 +5,7 @@ import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto } from '@tabler/icons-react';
+import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto, IconEdit } from '@tabler/icons-react';
 
 interface Product {
   _id: string;
@@ -31,6 +31,7 @@ const Products = () => {
   const [loading, setLoading] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [addStockQuantity, setAddStockQuantity] = useState(0);
   const [searchBarcode, setSearchBarcode] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -97,9 +98,11 @@ const Products = () => {
     if (loading) return;
     try {
       setLoading(true);
+      const isEdit = !!editingProduct;
+      const endpoint = isEdit ? `/products/${editingProduct!._id}` : '/products';
+      const method = isEdit ? 'patch' : 'post';
 
       if (imageFile) {
-        // With image: use FormData (multer handles it)
         const formData = new FormData();
         formData.append('name', values.name);
         if (values.sku.trim()) formData.append('sku', values.sku.trim());
@@ -112,19 +115,15 @@ const Products = () => {
         formData.append('stock', String(values.stock));
         formData.append('drs', String(values.drs || 0));
         formData.append('image', imageFile);
-        await api.post('/products', formData);
+        await api[method](endpoint, formData);
       } else {
-        // No image: plain JSON to the same endpoint
-        const payload = {
-          ...values,
-          sku: values.sku.trim() || undefined,
-          drs: values.drs || 0,
-        };
-        await api.post('/products', payload);
+        const payload = { ...values, sku: values.sku.trim() || undefined, drs: values.drs || 0 };
+        await api[method](endpoint, payload);
       }
+
       notifications.show({
         title: 'Success',
-        message: 'Product saved successfully',
+        message: isEdit ? 'Product updated successfully' : 'Product saved successfully',
         color: 'green',
         icon: <IconCheck size={16} />,
       });
@@ -132,17 +131,12 @@ const Products = () => {
       form.reset();
       setImageFile(null);
       setImagePreview(null);
+      setEditingProduct(null);
       resetImageRef.current?.();
       fetchProducts();
     } catch (error: any) {
-      console.error('Submit Error:', error);
       const message = error.response?.data?.message || error.message || 'Unknown error';
-      notifications.show({
-        title: 'Error Saving Product',
-        message: message,
-        color: 'red',
-        icon: <IconX size={16} />,
-      });
+      notifications.show({ title: 'Error', message, color: 'red', icon: <IconX size={16} /> });
     } finally {
       setLoading(false);
     }
@@ -245,6 +239,33 @@ const Products = () => {
 
   const uniqueCategories = Array.from(new Set([...customCategories, ...products.map(p => p.category)])).filter(Boolean);
 
+  const openEdit = (product: Product) => {
+    setEditingProduct(product);
+    setImageFile(null);
+    // Show existing image as preview
+    const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+    setImagePreview(
+      product.image
+        ? product.image.startsWith('http')
+          ? product.image
+          : `${apiBase}${product.image}`
+        : null
+    );
+    form.setValues({
+      name: product.name,
+      sku: product.sku || '',
+      barcode: product.barcode,
+      category: product.category,
+      price: product.price,
+      vatRate: product.vatRate,
+      vatType: product.vatType,
+      costPrice: product.costPrice,
+      stock: product.stock,
+      drs: product.drs || 0,
+    });
+    open();
+  };
+
   return (
     <Paper withBorder p="md" radius="md">
       <Group justify="space-between" mb="md">
@@ -306,6 +327,15 @@ const Products = () => {
                 <Table.Td fw={700} c={p.stock < 10 ? 'red' : 'inherit'}>{p.stock}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
+                    <Button
+                      size="compact-xs"
+                      variant="light"
+                      color="blue"
+                      leftSection={<IconEdit size={13} />}
+                      onClick={() => openEdit(p)}
+                    >
+                      Edit
+                    </Button>
                     <Button 
                       size="compact-xs" 
                       variant="light" 
@@ -332,7 +362,7 @@ const Products = () => {
         </Table>
       </Table.ScrollContainer>
 
-      <Modal opened={opened} onClose={() => { close(); setImageFile(null); setImagePreview(null); resetImageRef.current?.(); }} title="Add New Product" size="lg">
+      <Modal opened={opened} onClose={() => { close(); setImageFile(null); setImagePreview(null); setEditingProduct(null); resetImageRef.current?.(); form.reset(); }} title={editingProduct ? `Edit: ${editingProduct.name}` : 'Add New Product'} size="lg">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           {/* Image Upload */}
           <Group mb="md" align="flex-end">
@@ -406,7 +436,7 @@ const Products = () => {
             />
           </Group>
           <NumberInput label="Initial Stock" required min={0} mb="xl" {...form.getInputProps('stock')} />
-          <Button fullWidth type="submit" loading={loading}>Save Product</Button>
+          <Button fullWidth type="submit" loading={loading}>{editingProduct ? 'Update Product' : 'Save Product'}</Button>
         </form>
       </Modal>
 

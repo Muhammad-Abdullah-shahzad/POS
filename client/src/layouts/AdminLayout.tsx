@@ -58,7 +58,6 @@ const AdminLayout = () => {
         { label: 'Manage Quick Products', path: '/admin/products/quick' },
         { label: 'Manage General Products', path: '/admin/products/general' },
         { label: 'Edit Price', path: '/admin/products/edit-price' },
-        { label: 'Barcodes', path: '/admin/products/codes' },
         { label: 'Wastage Management', path: '/admin/products/wastage' },
         { label: 'Excel Sheet Load', path: '/admin/products/excel-load' },
         { label: 'Stock Reconciliation', path: '/admin/products/reconciliation' },
@@ -71,7 +70,6 @@ const AdminLayout = () => {
         { label: 'View Stock', path: '/admin/products' },
         { label: 'Manage Suppliers', path: '/admin/suppliers' },
         { label: 'Supplier Payments', path: '/admin/suppliers/payments' },
-        { label: 'Manage Product Codes', path: '/admin/products/codes' },
       ]
     },
     { label: 'Expenses', icon: IconCash, path: '/admin/expenses' },
