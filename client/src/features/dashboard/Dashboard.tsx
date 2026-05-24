@@ -1076,7 +1076,7 @@ const Dashboard = () => {
                     <Select
                       data={employees}
                       value={selectedEmployee}
-                      onChange={setSelectedEmployee}
+                      onChange={(val) => setSelectedEmployee(val)}
                       size="xs"
                       flex={1}
                       placeholder={employees.length === 0 ? 'No employees - add in Admin' : 'Select employee...'}
@@ -1330,7 +1330,7 @@ const Dashboard = () => {
                       </Box>
 
                       {/* TOTALS GRID */}
-                      <Box w="34%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
+                      <Box w="46%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
                             <Text size="13px" c="black">Sub Total</Text>
@@ -1378,17 +1378,7 @@ const Dashboard = () => {
                         </Flex>
                       </Box>
 
-                      {/* INPUTS */}
-                      <Box w="22%" style={{ borderRight: `1px solid ${customColors.border}` }} p="6px 8px">
-                        <Flex align="center" justify="space-between" h="50%" pb="3px">
-                          <Text size="12px" c="black">CASH</Text>
-                          <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
-                        </Flex>
-                        <Flex align="center" justify="space-between" h="50%" pt="3px">
-                          <Text size="12px" c="black">CARD</Text>
-                          <TextInput size="md" w={70} styles={{ input: { borderRadius: 0, textAlign: 'right', height: 34, minHeight: 34, fontSize: '18px', padding: '0 4px', border: `1px solid ${customColors.border}` } }} defaultValue="0.00" />
-                        </Flex>
-                      </Box>
+                      {/* INPUTS — removed non-functional CASH/CARD display boxes */}
 
                       {/* SPLIT PAY BUTTON */}
                       <Box
