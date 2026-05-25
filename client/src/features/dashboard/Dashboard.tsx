@@ -1611,33 +1611,30 @@ const Dashboard = () => {
       <div style={{ display: 'none' }}>
         <div ref={componentRef}>
           {lastTransaction ? (
-            <div style={{ padding: '24px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '15px', fontWeight: 900, lineHeight: 1.45, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-              <div style={{ textAlign: 'center', marginBottom: '22px', borderBottom: '5px solid #000', paddingBottom: '12px' }}>
-                <h1 style={{ margin: '0', fontSize: '34px', fontFamily: 'Arial Black, Arial, Helvetica, sans-serif', fontWeight: 900, letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
-                <p style={{ margin: '6px 0 2px', fontSize: '17px', fontWeight: 900 }}>123 Business Road, Commerce City</p>
+            <div style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '12px', fontWeight: 500, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '1px solid #000', paddingBottom: '12px' }}>
+                <h1 style={{ margin: '0 0 4px', fontSize: '20px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '18px', fontSize: '14px', fontWeight: 900 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', fontSize: '10px', color: '#333' }}>
                 <div>
-                  <p style={{ margin: '3px 0' }}><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
-                  {(lastTransaction as any).customerPhone && <p style={{ margin: '3px 0' }}><strong>PHONE:</strong> {(lastTransaction as any).customerPhone}</p>}
-                  <p style={{ margin: '3px 0' }}><strong>DATE:</strong> {lastTransaction.date}</p>
+                  <p style={{ margin: '2px 0' }}><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
+                  {(lastTransaction as any).customerPhone && <p style={{ margin: '2px 0' }}><strong>PHONE:</strong> {(lastTransaction as any).customerPhone}</p>}
+                  <p style={{ margin: '2px 0' }}><strong>DATE:</strong> {lastTransaction.date}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p style={{ margin: '3px 0' }}><strong>RECEIPT #:</strong> {lastTransaction.transactionNo}</p>
-                  <p style={{ margin: '3px 0' }}><strong>STATUS:</strong> PAID</p>
+                  <p style={{ margin: '2px 0' }}><strong>RECEIPT #:</strong> {lastTransaction.transactionNo}</p>
+                  <p style={{ margin: '2px 0' }}><strong>STATUS:</strong> PAID</p>
                 </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px', fontSize: '15px', fontWeight: 900 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '18px', fontSize: '11px' }}>
                 <thead>
-                  <tr style={{ borderTop: '4px solid #000', borderBottom: '4px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 5px', fontWeight: 900 }}>DESCRIPTION</th>
-                    <th style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>QTY</th>
-                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>UNIT</th>
-                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>DISC</th>
-                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>DRS</th>
-                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>TOTAL</th>
+                  <tr style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', lineHeight: '2' }}>
+                    <th style={{ width: '50%', textAlign: 'left', padding: '4px 0', fontWeight: 'bold' }}>ITEM</th>
+                    <th style={{ width: '10%', textAlign: 'center', padding: '4px 0', fontWeight: 'bold' }}>QTY</th>
+                    <th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>PRICE</th>
+                    <th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>TOTAL</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1648,77 +1645,83 @@ const Dashboard = () => {
                     const totalDRSAmt = (item.drs ?? 0) * item.qty;
                     const totalItemAmt = item.qty * item.price + totalDRSAmt;
                     return (
-                      <tr key={item.id} style={{ borderBottom: '2px solid #000' }}>
-                        <td style={{ padding: '10px 5px', fontWeight: 900 }}>{item.name}</td>
-                        <td style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>{item.qty}</td>
-                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {originalPrice.toFixed(2)}</td>
-                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>
-                          {totalDiscountAmt > 0 ? (discountPct > 0 ? `-${discountPct}% (€${totalDiscountAmt.toFixed(2)})` : `-€${totalDiscountAmt.toFixed(2)}`) : '-'}
+                      <tr key={item.id} style={{ borderBottom: '1px dashed #eee' }}>
+                        <td style={{ width: '50%', textAlign: 'left', padding: '6px 0', verticalAlign: 'top' }}>
+                          <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
+                          {totalDiscountAmt > 0 && (
+                            <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
+                              Discount: {discountPct > 0 ? `-${discountPct}% ` : ''}(-€{totalDiscountAmt.toFixed(2)})
+                            </div>
+                          )}
+                          {totalDRSAmt > 0 && (
+                            <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
+                              DRS Deposit: +€{totalDRSAmt.toFixed(2)}
+                            </div>
+                          )}
                         </td>
-                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>
-                          {totalDRSAmt > 0 ? `€ ${totalDRSAmt.toFixed(2)}` : '-'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {totalItemAmt.toFixed(2)}</td>
+                        <td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.qty}</td>
+                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€ {originalPrice.toFixed(2)}</td>
+                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€ {totalItemAmt.toFixed(2)}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
 
-              <div style={{ width: '285px', marginLeft: 'auto', fontSize: '16px', fontWeight: 900 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+              <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                   <span>Subtotal:</span>
-                  <span>€ {lastTransaction.subTotal.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€ {lastTransaction.subTotal.toFixed(2)}</span>
                 </div>
                 {lastTransaction.discount && lastTransaction.discount > 0 ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', color: '#000' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
                     <span>Flat Discount:</span>
-                    <span>- € {lastTransaction.discount.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>- € {lastTransaction.discount.toFixed(2)}</span>
                   </div>
                 ) : null}
                 {lastTransaction.totalDRS && lastTransaction.totalDRS > 0 ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                     <span>Total DRS:</span>
-                    <span>€ {lastTransaction.totalDRS.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>€ {lastTransaction.totalDRS.toFixed(2)}</span>
                   </div>
                 ) : null}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', borderTop: '4px solid #000', fontWeight: 900, fontSize: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px', color: '#000' }}>
                   <span>TOTAL:</span>
-                  <span>€ {lastTransaction.total.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€ {lastTransaction.total.toFixed(2)}</span>
                 </div>
                 {(lastTransaction as any).splitCash !== undefined && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px', borderTop: '2px solid #000', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px', borderTop: '1px dashed #ccc', marginTop: '4px', paddingTop: '4px' }}>
                       <span>Cash Paid:</span>
                       <span>{Number((lastTransaction as any).splitCash).toFixed(2)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px' }}>
                       <span>Card Paid:</span>
                       <span>{Number((lastTransaction as any).splitCard).toFixed(2)}</span>
                     </div>
                     {Number((lastTransaction as any).change) > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px', fontWeight: 900 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px', fontWeight: 'bold' }}>
                         <span>Change:</span>
                         <span>{Number((lastTransaction as any).change).toFixed(2)}</span>
                       </div>
                     )}
                   </>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px' }}>
                   <span>Payment:</span>
                   <span>{lastTransaction.paymentMethod}</span>
                 </div>
                 {(lastTransaction as any).loyaltyPointsEarned !== undefined && (
-                  <div style={{ marginTop: '12px', padding: '10px', border: '2px dashed #000', borderRadius: '4px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 900 }}>⭐ LOYALTY POINTS</div>
-                    <div style={{ fontSize: '13px', marginTop: '4px' }}>
+                  <div style={{ marginTop: '12px', padding: '8px', border: '1px dashed #ccc', borderRadius: '4px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold' }}>⭐ LOYALTY POINTS</div>
+                    <div style={{ fontSize: '11px', marginTop: '4px' }}>
                       Earned this visit: <strong>+{(lastTransaction as any).loyaltyPointsEarned} pts</strong>
                     </div>
-                    <div style={{ fontSize: '13px' }}>
+                    <div style={{ fontSize: '11px' }}>
                       Total points: <strong>{(lastTransaction as any).loyaltyPointsTotal} pts</strong>
                     </div>
                     {(lastTransaction as any).loyaltyRewardThreshold && (
-                      <div style={{ fontSize: '12px', marginTop: '4px', color: '#555' }}>
+                      <div style={{ fontSize: '9px', marginTop: '4px', color: '#555' }}>
                         Reward at {(lastTransaction as any).loyaltyRewardThreshold} pts = €{(lastTransaction as any).loyaltyRewardValue} free shopping
                       </div>
                     )}

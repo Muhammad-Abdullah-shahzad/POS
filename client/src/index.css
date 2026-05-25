@@ -181,8 +181,6 @@ code {
   .print-only,
   .print-only * {
     color: #000 !important;
-    font-weight: 900 !important;
-    text-shadow: 0 0 0 #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

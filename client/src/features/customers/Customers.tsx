@@ -30,7 +30,7 @@ interface Customer {
   loyaltyPoints: number;
 }
 
-const emptyForm = (): Omit<Customer, '_id' | 'timesVisited' | 'totalAmount' | 'lastVisit'> => ({
+const emptyForm = (): Omit<Customer, '_id' | 'timesVisited' | 'totalAmount' | 'lastVisit' | 'loyaltyPoints'> => ({
   name: '',
   contactNum1: '',
   contactNum2: '',
@@ -48,7 +48,7 @@ const Customers = () => {
   const [search, setSearch] = useState('');
   const [modalOpened, setModalOpened] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState<Omit<Customer, '_id' | 'timesVisited' | 'totalAmount' | 'lastVisit'>>(emptyForm());
+  const [form, setForm] = useState<Omit<Customer, '_id' | 'timesVisited' | 'totalAmount' | 'lastVisit' | 'loyaltyPoints'>>(emptyForm());
   const [loading, setLoading] = useState(false);
 
   // Loyalty settings state

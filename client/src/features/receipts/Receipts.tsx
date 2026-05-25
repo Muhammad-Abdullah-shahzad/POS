@@ -127,61 +127,79 @@ const Receipts = () => {
       >
         {selectedReceipt && (
           <Stack gap="md">
-            <div ref={printRef} style={{ padding: '24px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', fontSize: '15px', fontWeight: 900, lineHeight: 1.45, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '5px solid #000', paddingBottom: '12px' }}>
-                <Title order={3} style={{ fontFamily: 'Arial Black, Arial, Helvetica, sans-serif', fontWeight: 900, letterSpacing: 0 }}>Castlebar Halal Foods</Title>
-                <Text size="md" fw={900}>123 Business Road, Commerce City</Text>
+            <div ref={printRef} style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', fontSize: '12px', fontWeight: 500, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '1px solid #000', paddingBottom: '12px' }}>
+                <Title order={3} style={{ margin: '0 0 4px', fontSize: '20px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: 0, textTransform: 'uppercase' }}>Castlebar Halal Foods</Title>
               </div>
               
               <Divider mb="sm" color="dark" size="md" />
               
-              <Group justify="space-between" mb="xs">
-                <Text size="sm" fw={900}><strong>Receipt #:</strong> {selectedReceipt.invoiceId}</Text>
-                <Text size="sm" fw={900}><strong>Date:</strong> {new Date(selectedReceipt.createdAt).toLocaleString()}</Text>
-              </Group>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', fontSize: '10px', color: '#333' }}>
+                <p style={{ margin: '2px 0' }}><strong>Receipt #:</strong> {selectedReceipt.invoiceId}</p>
+                <p style={{ margin: '2px 0' }}><strong>Date:</strong> {new Date(selectedReceipt.createdAt).toLocaleString()}</p>
+              </div>
 
-              <Table withTableBorder withColumnBorders mb="md" style={{ fontSize: '15px', fontWeight: 900 }}>
+              <Table withTableBorder withColumnBorders mb="md" style={{ fontSize: '11px' }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th style={{ fontWeight: 900 }}>Item</Table.Th>
-                    <Table.Th style={{ textAlign: 'center', fontWeight: 900 }}>Qty</Table.Th>
-                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Unit</Table.Th>
-                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Disc</Table.Th>
-                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>DRS</Table.Th>
-                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Total</Table.Th>
+                    <Table.Th style={{ width: '50%', textAlign: 'left', padding: '4px 0', fontWeight: 'bold' }}>Item</Table.Th>
+                    <Table.Th style={{ width: '10%', textAlign: 'center', padding: '4px 0', fontWeight: 'bold' }}>Qty</Table.Th>
+                    <Table.Th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>Price</Table.Th>
+                    <Table.Th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>Total</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {selectedReceipt.items.map((item: any, idx: number) => (
+                   {selectedReceipt.items.map((item: any, idx: number) => (
                     <Table.Tr key={idx}>
-                      <Table.Td style={{ fontWeight: 900 }}>{item.name}</Table.Td>
-                      <Table.Td style={{ textAlign: 'center', fontWeight: 900 }}>{item.quantity}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>€ {(item.price || 0).toFixed(2)}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right', fontWeight: 900, color: '#000' }}>
-                        {item.discountAmt > 0 ? (item.discountPct > 0 ? `-${item.discountPct}% (€${item.discountAmt.toFixed(2)})` : `-€${item.discountAmt.toFixed(2)}`) : '-'}
+                      <Table.Td style={{ width: '50%', textAlign: 'left', padding: '6px 0', verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
+                        {item.discountAmt > 0 && (
+                          <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
+                            Discount: {item.discountPct > 0 ? `-${item.discountPct}% ` : ''}(-€{item.discountAmt.toFixed(2)})
+                          </div>
+                        )}
+                        {item.drs > 0 && (
+                          <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
+                            DRS Deposit: +€{(item.drs * item.quantity).toFixed(2)}
+                          </div>
+                        )}
                       </Table.Td>
-                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>
-                        {item.drs > 0 ? `€ ${(item.drs * item.quantity).toFixed(2)}` : '-'}
-                      </Table.Td>
-                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>€ {(item.finalPrice || item.totalPrice).toFixed(2)}</Table.Td>
+                      <Table.Td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.quantity}</Table.Td>
+                      <Table.Td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€ {(item.price || 0).toFixed(2)}</Table.Td>
+                      <Table.Td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€ {(item.finalPrice || item.totalPrice).toFixed(2)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
 
-              <Stack gap={4} align="flex-end">
-                <Text size="md" fw={900}>Subtotal: € {selectedReceipt.subtotal.toFixed(2)}</Text>
-                <Text size="md" fw={900}>Tax: € {selectedReceipt.totalVAT.toFixed(2)}</Text>
+              <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                  <span>Subtotal:</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.subtotal.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                  <span>Tax:</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.totalVAT.toFixed(2)}</span>
+                </div>
                 {selectedReceipt.discount > 0 && (
-                  <Text size="md" fw={900}>Discount: - € {selectedReceipt.discount.toFixed(2)}</Text>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
+                    <span>Discount:</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>- € {selectedReceipt.discount.toFixed(2)}</span>
+                  </div>
                 )}
                 {selectedReceipt.totalDRS > 0 && (
-                  <Text size="md" fw={900}>Total DRS: € {selectedReceipt.totalDRS.toFixed(2)}</Text>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                    <span>Total DRS:</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.totalDRS.toFixed(2)}</span>
+                  </div>
                 )}
-                <Text size="xl" fw={900} style={{ borderTop: '4px solid #000', paddingTop: 8 }}>TOTAL: € {selectedReceipt.total.toFixed(2)}</Text>
-              </Stack>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px', color: '#000' }}>
+                  <span>TOTAL:</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.total.toFixed(2)}</span>
+                </div>
+              </div>
               
-              <Text ta="center" mt="xl" size="sm" fw={900}>THANK YOU FOR YOUR BUSINESS!</Text>
+              <Text ta="center" mt="xl" size="xs" c="dimmed">THANK YOU FOR YOUR BUSINESS!</Text>
             </div>
 
             <Button fullWidth leftSection={<IconPrinter size={16} />} onClick={() => handlePrint()}>
