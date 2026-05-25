@@ -1660,8 +1660,8 @@ const Dashboard = () => {
                           )}
                         </td>
                         <td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.qty}</td>
-                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€ {originalPrice.toFixed(2)}</td>
-                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€ {totalItemAmt.toFixed(2)}</td>
+                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€{originalPrice.toFixed(2)}</td>
+                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€{totalItemAmt.toFixed(2)}</td>
                       </tr>
                     );
                   })}
@@ -1671,23 +1671,23 @@ const Dashboard = () => {
               <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                   <span>Subtotal:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€ {lastTransaction.subTotal.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€{lastTransaction.subTotal.toFixed(2)}</span>
                 </div>
                 {lastTransaction.discount && lastTransaction.discount > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
                     <span>Flat Discount:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>- € {lastTransaction.discount.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>-€{lastTransaction.discount.toFixed(2)}</span>
                   </div>
                 ) : null}
                 {lastTransaction.totalDRS && lastTransaction.totalDRS > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                     <span>Total DRS:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>€ {lastTransaction.totalDRS.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>€{lastTransaction.totalDRS.toFixed(2)}</span>
                   </div>
                 ) : null}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px', color: '#000' }}>
                   <span>TOTAL:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€ {lastTransaction.total.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>€{lastTransaction.total.toFixed(2)}</span>
                 </div>
                 {(lastTransaction as any).splitCash !== undefined && (
                   <>
