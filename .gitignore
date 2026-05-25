@@ -1,0 +1,12 @@
+
+
+.env
+dist
+.env
+.env.dev
+.env.example
+dist
+node_modules
+.env
+.env.dev
+.env.example
