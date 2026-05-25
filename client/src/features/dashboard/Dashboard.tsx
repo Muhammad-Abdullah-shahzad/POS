@@ -29,6 +29,10 @@ interface CartItem {
   qty: number;
   price: number;
   stock?: number;
+  originalPrice?: number;
+  discountPct?: number;
+  discountAmt?: number;
+  drs?: number;
 }
 
 interface Transaction {
@@ -39,6 +43,8 @@ interface Transaction {
   total: number;
   date: string;
   paymentMethod: string;
+  discount?: number;
+  totalDRS?: number;
 }
 
 interface CustomerCart {
@@ -58,6 +64,10 @@ interface StagingItem {
   qty: number | string;
   price: number | string;
   stock?: number;
+  originalPrice?: number;
+  discountPct?: number;
+  discountAmt?: number;
+  drs?: number;
 }
 
 // Read active offers from localStorage
@@ -233,12 +243,18 @@ const Dashboard = () => {
               barcode: '',
               qty: item.quantity,
               price: item.price,
+              originalPrice: item.price + (item.discountAmt || 0) / (item.quantity || 1),
+              discountPct: item.discountPct || 0,
+              discountAmt: item.discountAmt ? (item.discountAmt / item.quantity) : 0,
+              drs: item.drs || 0,
             })),
             subTotal: lastOrder.subtotal,
             deposit: 0,
             total: lastOrder.total,
             date: new Date(lastOrder.createdAt).toLocaleString(),
             paymentMethod: lastOrder.paymentMethod || 'MIXED',
+            discount: lastOrder.discount || 0,
+            totalDRS: lastOrder.totalDRS || 0,
           });
           setTransactionNo(orders.length + 1);
         }
@@ -270,6 +286,9 @@ const Dashboard = () => {
         // Calculate discounted price
         const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
 
+        const drs = product.drs || 0;
+        const discountAmt = parseFloat((product.price * (discountPct / 100)).toFixed(2));
+
         const newItem: CartItem = {
           id: Date.now().toString(),
           product: product._id,
@@ -278,10 +297,14 @@ const Dashboard = () => {
           qty: 1,
           price: discountedPrice,
           stock: product.stock,
+          originalPrice: product.price,
+          discountPct: discountPct,
+          discountAmt: discountAmt,
+          drs: drs,
         };
         updateCartItems([...cartItems, newItem]);
         updateSelectedItemId(newItem.id);
-        setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock });
+        setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock, originalPrice: product.price, discountPct, discountAmt, drs });
         setBarcodeSearch('');
 
         if (discountPct > 0) {
@@ -345,6 +368,8 @@ const Dashboard = () => {
     const offerDiscount = getDiscountForProduct(product.name, product.category || '');
     const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
     const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
+    const drs = product.drs || 0;
+    const discountAmt = parseFloat((product.price * (discountPct / 100)).toFixed(2));
     const newItem: CartItem = {
       id: Date.now().toString(),
       product: product._id,
@@ -353,10 +378,14 @@ const Dashboard = () => {
       qty: 1,
       price: discountedPrice,
       stock: product.stock,
+      originalPrice: product.price,
+      discountPct: discountPct,
+      discountAmt: discountAmt,
+      drs: drs,
     };
     updateCartItems([...cartItems, newItem]);
     updateSelectedItemId(newItem.id);
-    setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock });
+    setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock, originalPrice: product.price, discountPct, discountAmt, drs });
     if (discountPct > 0) {
       notifications.show({
         title: 'Discount Applied!',
@@ -477,6 +506,10 @@ const Dashboard = () => {
       qty: Number(stagingItem.qty) || 1,
       price: Number(stagingItem.price) || 0,
       stock: stagingItem.stock,
+      originalPrice: stagingItem.originalPrice !== undefined ? stagingItem.originalPrice : (Number(stagingItem.price) || 0),
+      discountPct: stagingItem.discountPct || 0,
+      discountAmt: stagingItem.discountAmt || 0,
+      drs: stagingItem.drs || 0,
     };
     updateCartItems(prev => [...prev, newItem]);
     updateSelectedItemId('');
@@ -486,7 +519,19 @@ const Dashboard = () => {
   const handleUpdateItem = () => {
     if (!stagingItem.id) return;
     updateCartItems(prev => prev.map(item =>
-      item.id === stagingItem.id ? { ...item, product: stagingItem.product, name: stagingItem.name, barcode: stagingItem.barcode, qty: Number(stagingItem.qty) || 1, price: Number(stagingItem.price) || 0, stock: stagingItem.stock } : item
+      item.id === stagingItem.id ? { 
+        ...item, 
+        product: stagingItem.product, 
+        name: stagingItem.name, 
+        barcode: stagingItem.barcode, 
+        qty: Number(stagingItem.qty) || 1, 
+        price: Number(stagingItem.price) || 0, 
+        stock: stagingItem.stock,
+        originalPrice: stagingItem.originalPrice !== undefined ? stagingItem.originalPrice : (Number(stagingItem.price) || 0),
+        discountPct: stagingItem.discountPct || 0,
+        discountAmt: stagingItem.discountAmt || 0,
+        drs: stagingItem.drs || 0,
+      } : item
     ));
   };
 
@@ -538,7 +583,8 @@ const Dashboard = () => {
   const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
   const flatDiscountVal = Math.min(Number(flatDiscount) || 0, subTotal);
   const depositVal = Number(depositInput) || 0;
-  const total = Math.max(0, subTotal - flatDiscountVal);
+  const totalDRS = cartItems.reduce((acc, item) => acc + (item.qty * (item.drs || 0)), 0);
+  const total = Math.max(0, subTotal - flatDiscountVal + totalDRS);
 
   const handleCheckout = async (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
@@ -615,11 +661,16 @@ const Dashboard = () => {
           price: item.price,
           vatRate: 0,
           vatAmount: 0,
-          totalPrice: item.qty * item.price,
+          totalPrice: item.qty * (item.originalPrice ?? item.price),
+          discountPct: item.discountPct || 0,
+          discountAmt: (item.discountAmt || 0) * item.qty,
+          finalPrice: item.qty * item.price + (item.drs || 0) * item.qty,
+          drs: item.drs || 0,
         })),
         subtotal: subTotal,
         totalVAT: 0,
         discount: flatDiscountVal,
+        totalDRS,
         total,
         paymentMethod: method.toLowerCase(),
       });
@@ -641,7 +692,9 @@ const Dashboard = () => {
       deposit: depositVal,
       total,
       date: new Date().toLocaleString(),
-      paymentMethod: method
+      paymentMethod: method,
+      discount: flatDiscountVal,
+      totalDRS,
     };
 
     // Add customer data fields for printing
@@ -714,11 +767,16 @@ const Dashboard = () => {
           price: item.price,
           vatRate: 0,
           vatAmount: 0,
-          totalPrice: item.qty * item.price,
+          totalPrice: item.qty * (item.originalPrice ?? item.price),
+          discountPct: item.discountPct || 0,
+          discountAmt: (item.discountAmt || 0) * item.qty,
+          finalPrice: item.qty * item.price + (item.drs || 0) * item.qty,
+          drs: item.drs || 0,
         })),
         subtotal: subTotal,
         totalVAT: 0,
         discount: flatDiscountVal,
+        totalDRS,
         total,
         paymentMethod: 'split',
         splitCash: cashAmt,
@@ -739,7 +797,9 @@ const Dashboard = () => {
       deposit: splitTotal,
       total,
       date: new Date().toLocaleString(),
-      paymentMethod: `SPLIT (Cash: €${cashAmt.toFixed(2)} / Card: €${cardAmt.toFixed(2)})`
+      paymentMethod: `SPLIT (Cash: €${cashAmt.toFixed(2)} / Card: €${cardAmt.toFixed(2)})`,
+      discount: flatDiscountVal,
+      totalDRS,
     };
     (newTransaction as any).customerName = activeCart.customerId ? activeCart.name : 'Walk-in';
     (newTransaction as any).customerPhone = activeCart.customerPhone || '';
@@ -964,6 +1024,9 @@ const Dashboard = () => {
         const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
         const discountedPrice = parseFloat((product.price * (1 - discountPct / 100)).toFixed(2));
 
+        const drs = product.drs || 0;
+        const discountAmt = parseFloat((product.price * (discountPct / 100)).toFixed(2));
+
         const newItem: CartItem = {
           id: Date.now().toString(),
           product: product._id,
@@ -972,11 +1035,15 @@ const Dashboard = () => {
           qty: 1,
           price: discountedPrice,
           stock: product.stock,
+          originalPrice: product.price,
+          discountPct: discountPct,
+          discountAmt: discountAmt,
+          drs: drs,
         };
 
         updateCartItems([...cartItems, newItem]);
         updateSelectedItemId(newItem.id);
-        setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock });
+        setStagingItem({ id: newItem.id, product: newItem.product, name: newItem.name, barcode: newItem.barcode, qty: 1, price: newItem.price, stock: newItem.stock, originalPrice: product.price, discountPct, discountAmt, drs });
 
         notifications.show({
           title: 'Success',
@@ -1051,7 +1118,7 @@ const Dashboard = () => {
                   const cart = carts.find(c => c.id === val);
                   if (cart && cart.selectedItemId) {
                     const item = cart.items.find(i => i.id === cart.selectedItemId);
-                    if (item) setStagingItem({ id: item.id, product: item.product, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price, stock: item.stock });
+                    if (item) setStagingItem({ id: item.id, product: item.product, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price, stock: item.stock, originalPrice: item.originalPrice, discountPct: item.discountPct, discountAmt: item.discountAmt, drs: item.drs });
                     else setStagingItem({ name: '', barcode: '', qty: '', price: '' });
                   } else {
                     setStagingItem({ name: '', barcode: '', qty: '', price: '' });
@@ -1086,7 +1153,7 @@ const Dashboard = () => {
                         bg={selectedItemId === item.id ? customColors.selectedRow : undefined}
                         onClick={() => {
                           updateSelectedItemId(item.id);
-                          setStagingItem({ id: item.id, product: item.product, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price, stock: item.stock });
+                          setStagingItem({ id: item.id, product: item.product, name: item.name, barcode: item.barcode, qty: item.qty, price: item.price, stock: item.stock, originalPrice: item.originalPrice, discountPct: item.discountPct, discountAmt: item.discountAmt, drs: item.drs });
                         }}
                         style={{ cursor: 'pointer' }}
                       >
@@ -1373,7 +1440,7 @@ const Dashboard = () => {
               <Flex gap={8} mt="xs">
                 <Box flex={1}>
                   <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
-                    <Flex h={85}>
+                    <Flex h={totalDRS > 0 ? 105 : 85}>
                       {/* CASH PAY BUTTON */}
                       <Box w="16%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
                         <Flex align="center" justify="center" h="100%">
@@ -1407,6 +1474,16 @@ const Dashboard = () => {
                             />
                           </Flex>
                         </Flex>
+                        {totalDRS > 0 && (
+                          <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                            <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                              <Text size="13px" c="black">DRS</Text>
+                            </Flex>
+                            <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px' }}>
+                              <Text size="14px" c="black">{totalDRS.toFixed(2)}</Text>
+                            </Flex>
+                          </Flex>
+                        )}
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
                             <Text size="13px" c="black">Deposit</Text>
@@ -1557,29 +1634,56 @@ const Dashboard = () => {
                     <th style={{ textAlign: 'left', padding: '10px 5px', fontWeight: 900 }}>DESCRIPTION</th>
                     <th style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>QTY</th>
                     <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>UNIT</th>
+                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>DISC</th>
+                    <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>DRS</th>
                     <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>TOTAL</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lastTransaction.items.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '2px solid #000' }}>
-                      <td style={{ padding: '10px 5px', fontWeight: 900 }}>{item.name}</td>
-                      <td style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>{item.qty}</td>
-                      <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>{item.price.toFixed(2)}</td>
-                      <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>{(item.qty * item.price).toFixed(2)}</td>
-                    </tr>
-                  ))}
+                  {lastTransaction.items.map((item) => {
+                    const originalPrice = item.originalPrice ?? item.price;
+                    const discountPct = item.discountPct ?? 0;
+                    const totalDiscountAmt = (item.discountAmt ?? 0) * item.qty;
+                    const totalDRSAmt = (item.drs ?? 0) * item.qty;
+                    const totalItemAmt = item.qty * item.price + totalDRSAmt;
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '2px solid #000' }}>
+                        <td style={{ padding: '10px 5px', fontWeight: 900 }}>{item.name}</td>
+                        <td style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>{item.qty}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {originalPrice.toFixed(2)}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>
+                          {totalDiscountAmt > 0 ? (discountPct > 0 ? `-${discountPct}% (€${totalDiscountAmt.toFixed(2)})` : `-€${totalDiscountAmt.toFixed(2)}`) : '-'}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>
+                          {totalDRSAmt > 0 ? `€ ${totalDRSAmt.toFixed(2)}` : '-'}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {totalItemAmt.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
               <div style={{ width: '285px', marginLeft: 'auto', fontSize: '16px', fontWeight: 900 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
                   <span>Subtotal:</span>
-                  <span>{lastTransaction.subTotal.toFixed(2)}</span>
+                  <span>€ {lastTransaction.subTotal.toFixed(2)}</span>
                 </div>
+                {lastTransaction.discount && lastTransaction.discount > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', color: '#000' }}>
+                    <span>Flat Discount:</span>
+                    <span>- € {lastTransaction.discount.toFixed(2)}</span>
+                  </div>
+                ) : null}
+                {lastTransaction.totalDRS && lastTransaction.totalDRS > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                    <span>Total DRS:</span>
+                    <span>€ {lastTransaction.totalDRS.toFixed(2)}</span>
+                  </div>
+                ) : null}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', borderTop: '4px solid #000', fontWeight: 900, fontSize: '24px' }}>
                   <span>TOTAL:</span>
-                  <span>{lastTransaction.total.toFixed(2)}</span>
+                  <span>€ {lastTransaction.total.toFixed(2)}</span>
                 </div>
                 {(lastTransaction as any).splitCash !== undefined && (
                   <>

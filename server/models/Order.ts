@@ -8,6 +8,10 @@ export interface IOrderItem {
   vatRate: number;
   vatAmount: number;
   totalPrice: number;
+  discountPct?: number;
+  discountAmt?: number;
+  finalPrice?: number;
+  drs?: number;
 }
 
 export interface IOrder extends Document {
@@ -16,6 +20,7 @@ export interface IOrder extends Document {
   subtotal: number;
   totalVAT: number;
   discount: number;
+  totalDRS?: number;
   total: number;
   paymentMethod: string;
   splitCash?: number;
@@ -37,6 +42,10 @@ const OrderItemSchema = new Schema<IOrderItem>({
   vatRate: { type: Number, required: true },
   vatAmount: { type: Number, required: true },
   totalPrice: { type: Number, required: true },
+  discountPct: { type: Number, default: 0 },
+  discountAmt: { type: Number, default: 0 },
+  finalPrice: { type: Number },
+  drs: { type: Number, default: 0 },
 });
 
 const OrderSchema = new Schema<IOrder>({
@@ -45,6 +54,7 @@ const OrderSchema = new Schema<IOrder>({
   subtotal: { type: Number, required: true },
   totalVAT: { type: Number, required: true },
   discount: { type: Number, required: true, default: 0 },
+  totalDRS: { type: Number, default: 0 },
   total: { type: Number, required: true },
   paymentMethod: { type: String, required: true },
   splitCash: { type: Number, default: null },

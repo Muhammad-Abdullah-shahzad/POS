@@ -145,6 +145,9 @@ const Receipts = () => {
                   <Table.Tr>
                     <Table.Th style={{ fontWeight: 900 }}>Item</Table.Th>
                     <Table.Th style={{ textAlign: 'center', fontWeight: 900 }}>Qty</Table.Th>
+                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Unit</Table.Th>
+                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Disc</Table.Th>
+                    <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>DRS</Table.Th>
                     <Table.Th style={{ textAlign: 'right', fontWeight: 900 }}>Total</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -153,7 +156,14 @@ const Receipts = () => {
                     <Table.Tr key={idx}>
                       <Table.Td style={{ fontWeight: 900 }}>{item.name}</Table.Td>
                       <Table.Td style={{ textAlign: 'center', fontWeight: 900 }}>{item.quantity}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>€ {item.totalPrice.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>€ {(item.price || 0).toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right', fontWeight: 900, color: '#000' }}>
+                        {item.discountAmt > 0 ? (item.discountPct > 0 ? `-${item.discountPct}% (€${item.discountAmt.toFixed(2)})` : `-€${item.discountAmt.toFixed(2)}`) : '-'}
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>
+                        {item.drs > 0 ? `€ ${(item.drs * item.quantity).toFixed(2)}` : '-'}
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right', fontWeight: 900 }}>€ {(item.finalPrice || item.totalPrice).toFixed(2)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -162,6 +172,12 @@ const Receipts = () => {
               <Stack gap={4} align="flex-end">
                 <Text size="md" fw={900}>Subtotal: € {selectedReceipt.subtotal.toFixed(2)}</Text>
                 <Text size="md" fw={900}>Tax: € {selectedReceipt.totalVAT.toFixed(2)}</Text>
+                {selectedReceipt.discount > 0 && (
+                  <Text size="md" fw={900}>Discount: - € {selectedReceipt.discount.toFixed(2)}</Text>
+                )}
+                {selectedReceipt.totalDRS > 0 && (
+                  <Text size="md" fw={900}>Total DRS: € {selectedReceipt.totalDRS.toFixed(2)}</Text>
+                )}
                 <Text size="xl" fw={900} style={{ borderTop: '4px solid #000', paddingTop: 8 }}>TOTAL: € {selectedReceipt.total.toFixed(2)}</Text>
               </Stack>
               

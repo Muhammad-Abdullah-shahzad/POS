@@ -75,7 +75,7 @@ const POS = () => {
   const lastScanRef = useRef<{ barcode: string; time: number }>({ barcode: '', time: 0 });
 
   const {
-    cart, subtotal, totalVAT, totalDiscount, total, lastTransaction,
+    cart, subtotal, totalVAT, totalDiscount, totalDRS, total, lastTransaction,
     addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction,
   } = usePosStore();
 
@@ -237,7 +237,8 @@ const POS = () => {
       const discountPct = Math.max(offerDiscount.pct, catalogDiscountPct);
       const discountLabel = offerDiscount.label;
       const discountAmt = parseFloat((totalPrice * (discountPct / 100)).toFixed(2));
-      const finalPrice = parseFloat((totalPrice - discountAmt).toFixed(2));
+      const drs = product.drs || 0;
+      const finalPrice = parseFloat((totalPrice - discountAmt + drs).toFixed(2));
 
       const existingItem = cart.find(item => item.product === product._id);
       if (existingItem && existingItem.quantity >= product.stock) {
@@ -269,6 +270,7 @@ const POS = () => {
         discountAmt,
         finalPrice,
         discountLabel,
+        drs,
       });
 
       setBarcode('');
@@ -289,6 +291,7 @@ const POS = () => {
         subtotal,
         totalVAT,
         discount: totalDiscount,
+        totalDRS,
         total,
         paymentMethod: 'cash',
       });
@@ -416,6 +419,12 @@ const POS = () => {
                 <Text c="teal" fw={600}>- € {totalDiscount.toFixed(2)}</Text>
               </Group>
             )}
+            {totalDRS > 0 && (
+              <Group justify="space-between" mb="xs">
+                <Text>Total DRS</Text>
+                <Text>€ {totalDRS.toFixed(2)}</Text>
+              </Group>
+            )}
 
             <Divider my="sm" />
 
@@ -534,6 +543,7 @@ const POS = () => {
                   <th style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>QTY</th>
                   <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>UNIT</th>
                   <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>DISC</th>
+                  <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>DRS</th>
                   <th style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>TOTAL</th>
                 </tr>
               </thead>
@@ -544,7 +554,10 @@ const POS = () => {
                     <td style={{ textAlign: 'center', padding: '10px 5px', fontWeight: 900 }}>{item.quantity}</td>
                     <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {item.price.toFixed(2)}</td>
                     <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900, color: '#000' }}>
-                      {item.discountPct > 0 ? `-${item.discountPct}%` : '-'}
+                      {item.discountAmt > 0 ? (item.discountPct > 0 ? `-${item.discountPct}% (€${item.discountAmt.toFixed(2)})` : `-€${item.discountAmt.toFixed(2)}`) : '-'}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>
+                      {item.drs > 0 ? `€ ${(item.drs * item.quantity).toFixed(2)}` : '-'}
                     </td>
                     <td style={{ textAlign: 'right', padding: '10px 5px', fontWeight: 900 }}>€ {item.finalPrice.toFixed(2)}</td>
                   </tr>
@@ -561,6 +574,11 @@ const POS = () => {
               {totalDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', color: '#000' }}>
                   <span>Discount:</span><span>- € {totalDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {totalDRS > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                  <span>Total DRS:</span><span>€ {totalDRS.toFixed(2)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', borderTop: '4px solid #000', fontWeight: 900, fontSize: '24px' }}>

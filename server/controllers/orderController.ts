@@ -13,6 +13,10 @@ type NormalizedOrderItem = {
   vatRate: number;
   vatAmount: number;
   totalPrice: number;
+  discountPct?: number;
+  discountAmt?: number;
+  finalPrice?: number;
+  drs?: number;
 };
 
 const normalizeOrderItems = (items: any[]): NormalizedOrderItem[] => {
@@ -30,6 +34,10 @@ const normalizeOrderItems = (items: any[]): NormalizedOrderItem[] => {
       vatRate: Number(item.vatRate) || 0,
       vatAmount: Number(item.vatAmount) || 0,
       totalPrice: Number(item.totalPrice),
+      discountPct: Number(item.discountPct) || 0,
+      discountAmt: Number(item.discountAmt) || 0,
+      finalPrice: Number(item.finalPrice) || Number(item.totalPrice),
+      drs: Number(item.drs) || 0,
     };
   });
 };
@@ -51,7 +59,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
   const deductedStock = new Map<string, number>();
 
   try {
-    const { items, subtotal, totalVAT, discount, total, paymentMethod, splitCash, splitCard } = req.body;
+    const { items, subtotal, totalVAT, discount, totalDRS, total, paymentMethod, splitCash, splitCard } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
       res.status(400).json(errorResponse('Order must contain at least one item'));
@@ -100,6 +108,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       subtotal,
       totalVAT,
       discount,
+      totalDRS: totalDRS || 0,
       total,
       paymentMethod,
       ...(splitCash != null && { splitCash: Number(splitCash) }),

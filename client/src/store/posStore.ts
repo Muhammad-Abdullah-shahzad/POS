@@ -13,8 +13,9 @@ export interface CartItem {
   totalPrice: number;   // Total after VAT, before discount
   discountPct: number;  // Discount % applied (0 if none)
   discountAmt: number;  // Total discount amount for this quantity
-  finalPrice: number;   // totalPrice - discountAmt
+  finalPrice: number;   // totalPrice - discountAmt + (drs * quantity)
   discountLabel?: string; // Optional label for discount source
+  drs: number;          // Unit DRS
 }
 
 export interface LastTransaction {
@@ -31,6 +32,7 @@ interface POSState {
   subtotal: number;
   totalVAT: number;
   totalDiscount: number;
+  totalDRS: number;
   total: number;
   lastTransaction: LastTransaction | null;
   addToCart: (item: CartItem) => void;
@@ -48,6 +50,7 @@ export const usePosStore = create<POSState>()(
       subtotal: 0,
       totalVAT: 0,
       totalDiscount: 0,
+      totalDRS: 0,
       total: 0,
       lastTransaction: null,
 
@@ -64,7 +67,8 @@ export const usePosStore = create<POSState>()(
               const unitVAT = item.vatAmount / item.quantity;
               const unitTotal = item.totalPrice / item.quantity;
               const unitDiscount = item.discountAmt / item.quantity;
-              const unitFinal = item.finalPrice / item.quantity;
+              const drs = item.drs || 0;
+              const unitFinal = unitTotal - unitDiscount + drs;
               return {
                 ...item,
                 quantity: newQuantity,
@@ -95,7 +99,8 @@ export const usePosStore = create<POSState>()(
               const unitVAT = item.vatAmount / item.quantity;
               const unitTotal = item.totalPrice / item.quantity;
               const unitDiscount = item.discountAmt / item.quantity;
-              const unitFinal = item.finalPrice / item.quantity;
+              const drs = item.drs || 0;
+              const unitFinal = unitTotal - unitDiscount + drs;
               return {
                 ...item,
                 quantity: newQuantity,
@@ -120,7 +125,7 @@ export const usePosStore = create<POSState>()(
       },
 
       clearCart: () => {
-        set({ cart: [], subtotal: 0, totalVAT: 0, totalDiscount: 0, total: 0 });
+        set({ cart: [], subtotal: 0, totalVAT: 0, totalDiscount: 0, totalDRS: 0, total: 0 });
       },
 
       calculateTotals: () => {
@@ -128,12 +133,14 @@ export const usePosStore = create<POSState>()(
         let subtotal = 0;
         let totalVAT = 0;
         let totalDiscount = 0;
+        let totalDRS = 0;
         cart.forEach((item) => {
           subtotal += item.totalPrice - item.vatAmount;
           totalVAT += item.vatAmount;
           totalDiscount += item.discountAmt;
+          totalDRS += (item.drs || 0) * item.quantity;
         });
-        set({ subtotal, totalVAT, totalDiscount, total: subtotal + totalVAT - totalDiscount });
+        set({ subtotal, totalVAT, totalDiscount, totalDRS, total: subtotal + totalVAT - totalDiscount + totalDRS });
       },
 
       setLastTransaction: (tx) => {
@@ -147,6 +154,7 @@ export const usePosStore = create<POSState>()(
         subtotal: state.subtotal,
         totalVAT: state.totalVAT,
         totalDiscount: state.totalDiscount,
+        totalDRS: state.totalDRS,
         total: state.total,
         lastTransaction: state.lastTransaction,
       }),
