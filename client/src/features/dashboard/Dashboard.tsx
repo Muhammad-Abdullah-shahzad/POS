@@ -421,6 +421,7 @@ const Dashboard = () => {
         vatRate: p.vatRate,
         vatType: p.vatType,
         stock: p.stock,
+        drs: p.drs || 0,
       }));
       setProductNameResults(results);
       productNameResultsRef.current = results;
