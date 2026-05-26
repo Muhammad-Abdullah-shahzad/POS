@@ -474,7 +474,7 @@ export const ReportsSubFeatures = () => {
         title: 'Z Report Print Report',
         description: 'End-of-day register detailed itemized transactions.',
         hasChart: 'none',
-        headers: ['Transaction ID', 'Date', 'Product', 'VAT', 'Discount', 'Flat Discount', 'DRS', 'Customer Name'],
+        headers: ['Transaction ID', 'Date', 'Product', 'Total Price', 'VAT', 'Discount', 'Flat Discount', 'DRS', 'Customer Name'],
         mockData: (() => {
           const rows: any[] = [];
           orders.forEach((o) => {
@@ -489,6 +489,7 @@ export const ReportsSubFeatures = () => {
               transactionId: o.invoiceId || 'N/A',
               date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
               product: productNames.length > 30 ? productNames.substring(0, 27) + '...' : productNames,
+              totalPrice: `€ ${(Number(o.total) || 0).toFixed(2)}`,
               vat: `€ ${totalItemVat.toFixed(2)}`,
               discount: `€ ${totalItemDiscount.toFixed(2)}`,
               flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
