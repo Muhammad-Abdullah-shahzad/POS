@@ -117,7 +117,11 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       ...(req.body.customerName && { customerName: req.body.customerName }),
     });
 
-    res.status(201).json(successResponse(order, 'Order completed'));
+    const activeOrdersCount = await Order.countDocuments({ status: { $ne: 'voided' } });
+    const orderObj = order.toObject();
+    orderObj.invoiceId = String(activeOrdersCount);
+
+    res.status(201).json(successResponse(orderObj, 'Order completed'));
   } catch (error: any) {
     if (deductedStock.size > 0) {
       for (const [productId, quantity] of deductedStock) {
@@ -147,7 +151,22 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
     }
 
     const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100);
-    res.json(successResponse(orders));
+    
+    // Map order _ids to their global chronological sequence number among all active orders
+    const allActiveOrders = await Order.find({ status: { $ne: 'voided' } }).sort({ createdAt: 1 }).select('_id');
+    const orderIdToSeqMap = new Map<string, number>();
+    allActiveOrders.forEach((o, index) => {
+      orderIdToSeqMap.set(o._id.toString(), index + 1);
+    });
+
+    const mappedOrders = orders.map(order => {
+      const obj = order.toObject();
+      const seq = orderIdToSeqMap.get(order._id.toString()) || 1;
+      obj.invoiceId = String(seq);
+      return obj;
+    });
+
+    res.json(successResponse(mappedOrders));
   } catch (error: any) {
     res.status(500).json(errorResponse('Server Error', error.message));
   }

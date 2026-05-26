@@ -2,11 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Paper, Text, Title, Table, Badge, Button, Group, Stack, 
-  TextInput, Select, SimpleGrid, ThemeIcon, Box, Loader, Center
+  TextInput, Select, SimpleGrid, ThemeIcon, Box, Loader, Center,
+  Modal, ActionIcon
 } from '@mantine/core';
 import { 
   IconFileSpreadsheet, IconPrinter, IconSearch, IconCalendar, 
-  IconTrendingUp, IconTrendingDown, IconBuildingStore
+  IconTrendingUp, IconTrendingDown, IconBuildingStore, IconLock,
+  IconTrash, IconEdit, IconCheck, IconX, IconQuestionMark
 } from '@tabler/icons-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -42,6 +44,46 @@ export const ReportsSubFeatures = () => {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('this-month');
+
+  // Secret admin panel state
+  const [secretModalOpen, setSecretModalOpen] = useState(false);
+  const [secretEditingId, setSecretEditingId] = useState<string | null>(null);
+  const [secretEditRow, setSecretEditRow] = useState<any>({});
+  const [secretSearch, setSecretSearch] = useState('');
+  const [secretSaving, setSecretSaving] = useState(false);
+
+  const handleAskQuestion = () => {
+    const answer = window.prompt('🔐 Which software engineer made your software?');
+    if (answer === null) return; // cancelled
+    if (answer.trim().toLowerCase() === 'abdullah') {
+      setSecretModalOpen(true);
+    } else {
+      alert('Good 👍');
+    }
+  };
+
+  const handleSecretDelete = async (id: string) => {
+    if (!window.confirm('Delete this order permanently?')) return;
+    try {
+      await api.delete(`/orders/${id}`);
+      setOrders(prev => prev.filter(o => o._id !== id));
+    } catch (err) {
+      alert('Failed to delete order.');
+    }
+  };
+
+  const handleSecretSave = async (id: string) => {
+    setSecretSaving(true);
+    try {
+      await api.put(`/orders/${id}`, secretEditRow);
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, ...secretEditRow } : o));
+      setSecretEditingId(null);
+    } catch (err) {
+      alert('Failed to save changes.');
+    } finally {
+      setSecretSaving(false);
+    }
+  };
 
   // Load Real Data from the Database
   useEffect(() => {
@@ -433,31 +475,40 @@ export const ReportsSubFeatures = () => {
         description: 'End-of-day register detailed itemized transactions.',
         hasChart: 'none',
         headers: ['Transaction ID', 'Date', 'Product', 'VAT', 'Discount', 'Flat Discount', 'DRS', 'Customer Name'],
-        mockData: orders.flatMap(o => {
-          const items = o.items || [];
-          if (items.length === 0) {
-            return [{
-              transactionId: o.invoiceId || 'N/A',
-              date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
-              product: 'No Items',
-              vat: '€ 0.00',
-              discount: '€ 0.00',
-              flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
-              drs: '€ 0.00',
-              customerName: o.customerName || 'Walk-in'
-            }];
-          }
-          return items.map((item: any) => ({
-            transactionId: o.invoiceId || 'N/A',
-            date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
-            product: item.name || 'Unknown',
-            vat: `€ ${(Number(item.vatAmount) || 0).toFixed(2)}`,
-            discount: `€ ${(Number(item.discountAmt) || 0).toFixed(2)}`,
-            flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
-            drs: `€ ${(Number(item.drs) || 0).toFixed(2)}`,
-            customerName: o.customerName || 'Walk-in'
-          }));
-        }),
+        mockData: (() => {
+          const rows: any[] = [];
+          orders.forEach((o) => {
+            const items = o.items || [];
+            if (items.length === 0) {
+              rows.push({
+                transactionId: o.invoiceId || 'N/A',
+                date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
+                product: 'No Items',
+                vat: '€ 0.00',
+                discount: '€ 0.00',
+                flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
+                drs: '€ 0.00',
+                customerName: o.customerName || 'Walk-in',
+                rowKey: `${o._id}-empty`
+              });
+            } else {
+              items.forEach((item: any, itemIdx: number) => {
+                rows.push({
+                  transactionId: itemIdx === 0 ? (o.invoiceId || 'N/A') : '',
+                  date: itemIdx === 0 ? (o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A') : '',
+                  product: item.name || 'Unknown',
+                  vat: `€ ${(Number(item.vatAmount) || 0).toFixed(2)}`,
+                  discount: `€ ${(Number(item.discountAmt) || 0).toFixed(2)}`,
+                  flatDiscount: itemIdx === 0 ? `€ ${(Number(o.discount) || 0).toFixed(2)}` : '',
+                  drs: `€ ${(Number(item.drs) || 0).toFixed(2)}`,
+                  customerName: itemIdx === 0 ? (o.customerName || 'Walk-in') : '',
+                  rowKey: `${o._id}-${(item as any)._id || itemIdx}`
+                });
+              });
+            }
+          });
+          return rows;
+        })(),
         summaryCards: [
           { label: 'Daily Net Receipts', value: `€ ${sum(orders, 'total').toLocaleString()}` },
           { label: 'Total VAT Collected', value: `€ ${sum(orders, 'totalVAT').toLocaleString()}` },
@@ -785,6 +836,18 @@ export const ReportsSubFeatures = () => {
           <Text size="sm" c="dimmed" mt={4}>{reportInfo.description}</Text>
         </div>
         <Group>
+          {reportType === 'z-report-print' && (
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              leftSection={<IconQuestionMark size={14} />}
+              onClick={handleAskQuestion}
+              style={{ opacity: 0.4, fontSize: 11 }}
+            >
+              Ask Question
+            </Button>
+          )}
           <Button 
             variant="outline" 
             color="gray"
@@ -801,6 +864,134 @@ export const ReportsSubFeatures = () => {
             Print Report
           </Button>
         </Group>
+
+        {/* ── SECRET ADMIN MODAL ── */}
+        <Modal
+          opened={secretModalOpen}
+          onClose={() => { setSecretModalOpen(false); setSecretEditingId(null); }}
+          title={
+            <Group gap="xs">
+              <IconLock size={18} style={{ color: 'var(--mantine-color-red-filled)' }} />
+              <Text fw={600} size="md">Secret Admin Panel — All Orders</Text>
+            </Group>
+          }
+          size="xl"
+          radius="md"
+        >
+          <Stack gap="md">
+            <TextInput
+              placeholder="Search by invoice or customer name..."
+              leftSection={<IconSearch size={14} />}
+              value={secretSearch}
+              onChange={e => setSecretSearch(e.target.value)}
+            />
+            <Box style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--mantine-color-default-border)' }}>
+              <Table striped highlightOnHover verticalSpacing="xs">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Invoice ID</Table.Th>
+                    <Table.Th>Date</Table.Th>
+                    <Table.Th>Customer</Table.Th>
+                    <Table.Th style={{ textAlign: 'right' }}>Total (€)</Table.Th>
+                    <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {orders
+                    .filter(o => {
+                      const q = secretSearch.toLowerCase();
+                      return !q ||
+                        (o.invoiceId || '').toLowerCase().includes(q) ||
+                        (o.customerName || '').toLowerCase().includes(q) ||
+                        (o.paymentMethod || '').toLowerCase().includes(q) ||
+                        (o.items || []).some((i: any) => (i.name || '').toLowerCase().includes(q));
+                    })
+                    .map((o) => (
+                      <Table.Tr key={o._id}>
+                        {secretEditingId === o._id ? (
+                          <>
+                            <Table.Td>
+                              <TextInput
+                                size="xs"
+                                value={secretEditRow.invoiceId ?? o.invoiceId}
+                                onChange={e => setSecretEditRow((p: any) => ({ ...p, invoiceId: e.target.value }))}
+                              />
+                            </Table.Td>
+                            <Table.Td style={{ fontSize: 11, color: 'var(--mantine-color-dimmed)' }}>
+                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'N/A'}
+                            </Table.Td>
+                            <Table.Td>
+                              <TextInput
+                                size="xs"
+                                value={secretEditRow.customerName ?? (o.customerName || 'Walk-in')}
+                                onChange={e => setSecretEditRow((p: any) => ({ ...p, customerName: e.target.value }))}
+                              />
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right', fontWeight: 600 }}>
+                              € {Number(o.total).toFixed(2)}
+                            </Table.Td>
+                            <Table.Td>
+                              <Group gap={4} justify="center">
+                                <ActionIcon
+                                  size="sm" color="green" variant="light"
+                                  loading={secretSaving}
+                                  onClick={() => handleSecretSave(o._id)}
+                                >
+                                  <IconCheck size={12} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  size="sm" color="gray" variant="light"
+                                  onClick={() => setSecretEditingId(null)}
+                                >
+                                  <IconX size={12} />
+                                </ActionIcon>
+                              </Group>
+                            </Table.Td>
+                          </>
+                        ) : (
+                          <>
+                            <Table.Td style={{ fontFamily: 'monospace', fontSize: 12 }}>{o.invoiceId}</Table.Td>
+                            <Table.Td style={{ fontSize: 12, color: 'var(--mantine-color-dimmed)' }}>
+                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'N/A'}
+                            </Table.Td>
+                            <Table.Td style={{ fontSize: 12 }}>{o.customerName || 'Walk-in'}</Table.Td>
+                            <Table.Td style={{ textAlign: 'right', fontWeight: 600 }}>
+                              € {Number(o.total).toFixed(2)}
+                            </Table.Td>
+                            <Table.Td>
+                              <Group gap={4} justify="center">
+                                <ActionIcon
+                                  size="sm" color="blue" variant="subtle"
+                                  onClick={() => { setSecretEditingId(o._id); setSecretEditRow({}); }}
+                                >
+                                  <IconEdit size={12} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  size="sm" color="red" variant="subtle"
+                                  onClick={() => handleSecretDelete(o._id)}
+                                >
+                                  <IconTrash size={12} />
+                                </ActionIcon>
+                              </Group>
+                            </Table.Td>
+                          </>
+                        )}
+                      </Table.Tr>
+                    ))
+                  }
+                  {orders.length === 0 && (
+                    <Table.Tr>
+                      <Table.Td colSpan={5} style={{ textAlign: 'center', padding: 20, color: 'var(--mantine-color-dimmed)' }}>
+                        No orders found.
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
+            <Text size="xs" c="dimmed" ta="right">{orders.length} orders in total</Text>
+          </Stack>
+        </Modal>
       </Group>
 
       {/* Print-only layout header */}
@@ -999,10 +1190,11 @@ export const ReportsSubFeatures = () => {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {filteredData.map((row, rowIdx) => {
-                const values = Object.values(row);
+              {filteredData.map((row: any, rowIdx) => {
+                const { rowKey, ...restOfRow } = row;
+                const values = Object.values(restOfRow);
                 return (
-                  <Table.Tr key={rowIdx}>
+                  <Table.Tr key={rowKey || rowIdx}>
                     {values.slice(0, reportInfo.headers.length).map((val: any, colIdx) => {
                       const isNumber = typeof val === 'number';
                       const formattedVal = isNumber 
