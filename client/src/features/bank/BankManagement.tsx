@@ -76,10 +76,6 @@ export default function BankManagement() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
-        <Title order={2}>Bank Management</Title>
-      </Group>
-
       <Paper withBorder radius="md" p="md">
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List>

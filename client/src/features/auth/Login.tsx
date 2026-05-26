@@ -63,16 +63,6 @@ const Login = () => {
     }}>
       <div style={{ width: 360 }}>
 
-        {/* title */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', color: '#bbb', marginBottom: 8 }}>
-            Point of Sale
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#111', letterSpacing: -0.5 }}>
-            Store POS Desktop
-          </div>
-        </div>
-
         {/* role toggle */}
         <Box mb="lg">
           <SegmentedControl
@@ -83,7 +73,7 @@ const Login = () => {
               { label: 'Cashier', value: 'cashier' },
               { label: 'Admin', value: 'admin' },
             ]}
-            color="dark"
+            color="blue"
             size="sm"
             radius="md"
           />
@@ -112,7 +102,7 @@ const Login = () => {
 
           <Button
             fullWidth mt="md" type="submit"
-            loading={loading} color="dark" size="md" radius="md"
+            loading={loading} color="blue" size="md" radius="md"
           >
             {isAdmin ? 'Login as Admin' : 'Login as Cashier'}
           </Button>
