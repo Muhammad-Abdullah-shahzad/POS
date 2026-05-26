@@ -83,8 +83,8 @@ function addColumnIfMissing(db, table, column, definition) {
 function runMigrations(db) {
     const tables = [
         'products', 'categories', 'orders', 'customers', 'employees',
-        'expenses', 'suppliers', 'bank_names', 'bank_accounts', 'bank_cards',
-        'settings', 'users',
+        'expenses', 'expense_categories', 'employee_damages', 'suppliers',
+        'bank_names', 'bank_accounts', 'bank_cards', 'settings', 'users',
     ];
     for (const table of tables) {
         addColumnIfMissing(db, table, 'deletedAt', 'TEXT');

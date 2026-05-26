@@ -28,4 +28,26 @@ export function registerExpenseHandlers(): void {
     );
     return dbGet('SELECT * FROM expenses WHERE _id = $id', { $id: _id });
   });
+
+  // ── Expense Categories ────────────────────────────────────────────────────
+
+  ipcMain.handle('expenseCategories:getAll', () => {
+    return dbAll('SELECT * FROM expense_categories ORDER BY name ASC');
+  });
+
+  ipcMain.handle('expenseCategories:create', (_e, data: Record<string, unknown>) => {
+    const _id = generateLocalId();
+    const ts = now();
+    dbRun(
+      `INSERT OR IGNORE INTO expense_categories (_id, name, createdAt, updatedAt, isSync)
+       VALUES ($id, $name, $createdAt, $updatedAt, 0)`,
+      { $id: _id, $name: v(data.name), $createdAt: ts, $updatedAt: ts }
+    );
+    return dbGet('SELECT * FROM expense_categories WHERE name = $name', { $name: v(data.name) });
+  });
+
+  ipcMain.handle('expenseCategories:delete', (_e, _id: string) => {
+    dbRun('DELETE FROM expense_categories WHERE _id = $id', { $id: _id });
+    return { success: true };
+  });
 }

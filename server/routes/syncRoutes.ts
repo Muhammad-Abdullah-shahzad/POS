@@ -10,16 +10,18 @@
 import express from 'express';
 import { protect } from '../middleware/auth';
 import {
-  syncProducts,    deleteProducts,
-  syncCategories,  deleteCategories,
-  syncOrders,      deleteOrders,
-  syncCustomers,   deleteCustomers,
-  syncEmployees,   deleteEmployees,
-  syncExpenses,    deleteExpenses,
-  syncSuppliers,   deleteSuppliers,
-  syncBankNames,   deleteBankNames,
-  syncBankAccounts,deleteBankAccounts,
-  syncBankCards,   deleteBankCards,
+  syncProducts,            deleteProducts,
+  syncCategories,          deleteCategories,
+  syncOrders,              deleteOrders,
+  syncCustomers,           deleteCustomers,
+  syncEmployees,           deleteEmployees,
+  syncExpenses,            deleteExpenses,
+  syncExpenseCategories,   deleteExpenseCategories,
+  syncEmployeeDamages,     deleteEmployeeDamages,
+  syncSuppliers,           deleteSuppliers,
+  syncBankNames,           deleteBankNames,
+  syncBankAccounts,        deleteBankAccounts,
+  syncBankCards,           deleteBankCards,
   syncSettings,
 } from '../controllers/syncController';
 
@@ -32,6 +34,8 @@ router.post('/orders/sync',                 protect, syncOrders);
 router.post('/customers/sync',              protect, syncCustomers);
 router.post('/employees/sync',              protect, syncEmployees);
 router.post('/expenses/sync',               protect, syncExpenses);
+router.post('/expense-categories/sync',     protect, syncExpenseCategories);
+router.post('/employee-damages/sync',       protect, syncEmployeeDamages);
 router.post('/suppliers/sync',              protect, syncSuppliers);
 router.post('/banks/names/sync',            protect, syncBankNames);
 router.post('/banks/accounts/sync',         protect, syncBankAccounts);
@@ -44,8 +48,10 @@ router.post('/categories/sync/delete',      protect, deleteCategories);
 router.post('/orders/sync/delete',          protect, deleteOrders);
 router.post('/customers/sync/delete',       protect, deleteCustomers);
 router.post('/employees/sync/delete',       protect, deleteEmployees);
-router.post('/expenses/sync/delete',        protect, deleteExpenses);
-router.post('/suppliers/sync/delete',       protect, deleteSuppliers);
+router.post('/expenses/sync/delete',            protect, deleteExpenses);
+router.post('/expense-categories/sync/delete',  protect, deleteExpenseCategories);
+router.post('/employee-damages/sync/delete',    protect, deleteEmployeeDamages);
+router.post('/suppliers/sync/delete',           protect, deleteSuppliers);
 router.post('/banks/names/sync/delete',     protect, deleteBankNames);
 router.post('/banks/accounts/sync/delete',  protect, deleteBankAccounts);
 router.post('/banks/cards/sync/delete',     protect, deleteBankCards);

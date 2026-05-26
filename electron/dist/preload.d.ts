@@ -51,9 +51,20 @@ declare const api: {
         update: (_id: string, data: Record<string, unknown>) => Promise<any>;
         delete: (_id: string) => Promise<any>;
     };
+    employeeDamages: {
+        getAll: () => Promise<any>;
+        create: (data: Record<string, unknown>) => Promise<any>;
+        update: (_id: string, data: Record<string, unknown>) => Promise<any>;
+        delete: (_id: string) => Promise<any>;
+    };
     expenses: {
         getAll: () => Promise<any>;
         create: (data: Record<string, unknown>) => Promise<any>;
+    };
+    expenseCategories: {
+        getAll: () => Promise<any>;
+        create: (data: Record<string, unknown>) => Promise<any>;
+        delete: (_id: string) => Promise<any>;
     };
     suppliers: {
         getAll: () => Promise<any>;
@@ -74,12 +85,17 @@ declare const api: {
         updateQuickProducts: (qp: unknown[]) => Promise<any>;
     };
     sync: {
-        /** Sync all collections to the web server */
+        /** Push local changes + pull server changes (full two-way sync) */
         all: (config: {
             baseUrl: string;
             token: string;
         }) => Promise<any>;
-        /** Sync a single collection */
+        /** Pull only: fetch all server data into local SQLite */
+        pull: (config: {
+            baseUrl: string;
+            token: string;
+        }) => Promise<any>;
+        /** Sync a single collection (push) */
         collection: (config: {
             baseUrl: string;
             token: string;

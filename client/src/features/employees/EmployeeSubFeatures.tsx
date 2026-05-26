@@ -222,8 +222,9 @@ export const SalaryManagement = () => {
 // 2. DAMAGES
 // ==========================================
 interface DamageRow {
-  id: string;
-  employee: string;
+  _id: string;
+  employeeId: string;
+  employeeName: string;
   item: string;
   value: number;
   deduction: number;
@@ -235,63 +236,35 @@ export const Damages = () => {
   const [damages, setDamages] = useState<DamageRow[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [opened, { open, close }] = useDisclosure(false);
 
-  // Form states
-  const [selectedEmp, setSelectedEmp] = useState<string | null>(null);
+  const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
   const [itemName, setItemName] = useState('');
   const [assetValue, setAssetValue] = useState('');
   const [deductionValue, setDeductionValue] = useState('');
   const [status, setStatus] = useState<string | null>('Pending Approval');
 
+  const fetchDamages = async () => {
+    try {
+      const { data } = await api.get('/employee-damages');
+      setDamages(data.data);
+    } catch (error) {
+      console.error('Error fetching damages:', error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const { data } = await api.get('/employees');
-        const emps = data.data;
-        setEmployees(emps);
-
-        if (emps.length > 0) {
-          const initialDamages: DamageRow[] = [
-            { 
-              id: '1', 
-              employee: emps[0].name, 
-              item: 'Barcode Scanner (Wireless)', 
-              value: 4500, 
-              deduction: 1500, 
-              status: 'Deducted', 
-              date: '2026-05-12' 
-            }
-          ];
-          if (emps.length > 1) {
-            initialDamages.push({ 
-              id: '2', 
-              employee: emps[1].name, 
-              item: 'Thermal Printer Cable', 
-              value: 800, 
-              deduction: 800, 
-              status: 'Resolved', 
-              date: '2026-05-15' 
-            });
-          }
-          if (emps.length > 2) {
-            initialDamages.push({ 
-              id: '3', 
-              employee: emps[2].name, 
-              item: 'Display Rack Corner Glass', 
-              value: 8000, 
-              deduction: 2000, 
-              status: 'Pending Approval', 
-              date: '2026-05-18' 
-            });
-          }
-          setDamages(initialDamages);
-        } else {
-          setDamages([]);
-        }
+        const [empsRes] = await Promise.all([
+          api.get('/employees'),
+          fetchDamages(),
+        ]);
+        setEmployees(empsRes.data.data);
       } catch (error) {
-        console.error('Error fetching employees for damages:', error);
+        console.error('Error loading damages page:', error);
       } finally {
         setLoading(false);
       }
@@ -299,42 +272,42 @@ export const Damages = () => {
     loadData();
   }, []);
 
-  const handleReportDamage = () => {
-    if (!selectedEmp || !itemName || !assetValue || !deductionValue || !status) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please fill in all fields.',
-        color: 'red',
-      });
+  const handleReportDamage = async () => {
+    if (!selectedEmpId || !itemName || !assetValue || !deductionValue || !status) {
+      notifications.show({ title: 'Validation Error', message: 'Please fill in all fields.', color: 'red' });
       return;
     }
-
-    const newDamage: DamageRow = {
-      id: Date.now().toString(),
-      employee: selectedEmp,
-      item: itemName,
-      value: parseFloat(assetValue) || 0,
-      deduction: parseFloat(deductionValue) || 0,
-      status: status,
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    setDamages(prev => [newDamage, ...prev]);
-    close();
-
-    // Reset fields
-    setSelectedEmp(null);
-    setItemName('');
-    setAssetValue('');
-    setDeductionValue('');
-    setStatus('Pending Approval');
-
-    notifications.show({
-      title: 'Damage Logged',
-      message: `Asset damage reported successfully for ${selectedEmp}.`,
-      color: 'green',
-      icon: <IconCheck size={16} />,
-    });
+    const emp = employees.find(e => e._id === selectedEmpId);
+    try {
+      setSaving(true);
+      await api.post('/employee-damages', {
+        employeeId:   selectedEmpId,
+        employeeName: emp?.name ?? selectedEmpId,
+        item:         itemName,
+        value:        parseFloat(assetValue) || 0,
+        deduction:    parseFloat(deductionValue) || 0,
+        status,
+        date:         new Date().toISOString().split('T')[0],
+      });
+      close();
+      setSelectedEmpId(null);
+      setItemName('');
+      setAssetValue('');
+      setDeductionValue('');
+      setStatus('Pending Approval');
+      await fetchDamages();
+      notifications.show({
+        title: 'Damage Logged',
+        message: `Asset damage reported for ${emp?.name}.`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
+    } catch (error) {
+      console.error('Error saving damage:', error);
+      notifications.show({ title: 'Error', message: 'Failed to save damage record.', color: 'red' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -352,16 +325,12 @@ export const Damages = () => {
           <Title order={2}>Employee Damages Tracker</Title>
           <Text size="sm" c="dimmed">Track company assets damaged by staff and manage recovery/deductions.</Text>
         </div>
-        <Button 
-          leftSection={<IconAlertTriangle size={16} />} 
+        <Button
+          leftSection={<IconAlertTriangle size={16} />}
           color="red"
           onClick={() => {
             if (employees.length === 0) {
-              notifications.show({
-                title: 'No Employees Registered',
-                message: 'You must add an employee first to report damage.',
-                color: 'red',
-              });
+              notifications.show({ title: 'No Employees Registered', message: 'Add an employee first.', color: 'red' });
               return;
             }
             open();
@@ -391,11 +360,11 @@ export const Damages = () => {
             </Table.Thead>
             <Table.Tbody>
               {damages.map((row) => (
-                <Table.Tr key={row.id}>
-                  <Table.Td fw={500}>{row.employee}</Table.Td>
+                <Table.Tr key={row._id}>
+                  <Table.Td fw={500}>{row.employeeName}</Table.Td>
                   <Table.Td>{row.item}</Table.Td>
-                  <Table.Td>€ {row.value.toLocaleString()}</Table.Td>
-                  <Table.Td>€ {row.deduction.toLocaleString()}</Table.Td>
+                  <Table.Td>€ {Number(row.value).toLocaleString()}</Table.Td>
+                  <Table.Td>€ {Number(row.deduction).toLocaleString()}</Table.Td>
                   <Table.Td>
                     <Badge color={row.status === 'Resolved' ? 'green' : row.status === 'Deducted' ? 'blue' : 'red'} variant="light">
                       {row.status}
@@ -411,31 +380,31 @@ export const Damages = () => {
 
       <Modal opened={opened} onClose={close} title="Report Asset Damage" size="md">
         <Stack gap="sm">
-          <Select 
-            label="Select Employee" 
+          <Select
+            label="Select Employee"
             placeholder="Choose employee..."
-            data={employees.map(emp => emp.name)}
-            value={selectedEmp}
-            onChange={setSelectedEmp}
+            data={employees.map(emp => ({ value: emp._id, label: emp.name }))}
+            value={selectedEmpId}
+            onChange={setSelectedEmpId}
             required
           />
-          <TextInput 
-            label="Item Damaged" 
+          <TextInput
+            label="Item Damaged"
             placeholder="e.g. Wireless Barcode Scanner"
             value={itemName}
             onChange={(e) => setItemName(e.target.value)}
             required
           />
-          <TextInput 
-            label="Asset Value (€)" 
+          <TextInput
+            label="Asset Value (€)"
             type="number"
             placeholder="e.g. 4500"
             value={assetValue}
             onChange={(e) => setAssetValue(e.target.value)}
             required
           />
-          <TextInput 
-            label="Salary Deduction (€)" 
+          <TextInput
+            label="Salary Deduction (€)"
             type="number"
             placeholder="e.g. 1500"
             value={deductionValue}
@@ -450,7 +419,9 @@ export const Damages = () => {
             onChange={setStatus}
             required
           />
-          <Button fullWidth onClick={handleReportDamage} color="red" mt="md">Log Damage Record</Button>
+          <Button fullWidth onClick={handleReportDamage} color="red" mt="md" loading={saving}>
+            Log Damage Record
+          </Button>
         </Stack>
       </Modal>
     </Stack>

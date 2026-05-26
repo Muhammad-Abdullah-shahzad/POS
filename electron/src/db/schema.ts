@@ -118,6 +118,18 @@ CREATE TABLE IF NOT EXISTS employees (
 );
 
 -- ─────────────────────────────────────────────
+-- EXPENSE CATEGORIES
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS expense_categories (
+  localId   INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id       TEXT    UNIQUE,
+  name      TEXT    NOT NULL UNIQUE,
+  createdAt TEXT,
+  updatedAt TEXT,
+  isSync    INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
 -- EXPENSES
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS expenses (
@@ -133,6 +145,24 @@ CREATE TABLE IF NOT EXISTS expenses (
   createdAt     TEXT,
   updatedAt     TEXT,
   isSync        INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
+-- EMPLOYEE DAMAGES
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS employee_damages (
+  localId      INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id          TEXT    UNIQUE,
+  employeeId   TEXT    NOT NULL,
+  employeeName TEXT    NOT NULL,
+  item         TEXT    NOT NULL,
+  value        REAL    NOT NULL DEFAULT 0,
+  deduction    REAL    NOT NULL DEFAULT 0,
+  status       TEXT    NOT NULL DEFAULT 'Pending Approval',
+  date         TEXT    NOT NULL,
+  createdAt    TEXT,
+  updatedAt    TEXT,
+  isSync       INTEGER NOT NULL DEFAULT 0
 );
 
 -- ─────────────────────────────────────────────

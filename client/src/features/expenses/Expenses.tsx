@@ -19,10 +19,7 @@ const Expenses = () => {
   const [categoryOpened, { open: openCategory, close: closeCategory }] = useDisclosure(false);
   const [loading, setLoading] = useState(false);
   const [newCategory, setNewCategory] = useState('');
-  const [customCategories, setCustomCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('customExpenseCategories');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
 
   const fetchExpenses = async () => {
     try {
@@ -33,8 +30,18 @@ const Expenses = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const { data } = await api.get('/expense-categories');
+      setCustomCategories((data.data as { name: string }[]).map(c => c.name));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     fetchExpenses();
+    fetchCategories();
   }, []);
 
   const form = useForm({
@@ -60,13 +67,16 @@ const Expenses = () => {
     }
   };
 
-  const handleAddCategory = () => {
-    if (newCategory.trim()) {
-      const updated = [...customCategories, newCategory.trim()];
-      setCustomCategories(updated);
-      localStorage.setItem('customExpenseCategories', JSON.stringify(updated));
+  const handleAddCategory = async () => {
+    const name = newCategory.trim();
+    if (!name) return;
+    try {
+      await api.post('/expense-categories', { name });
       setNewCategory('');
       closeCategory();
+      fetchCategories();
+    } catch (error) {
+      console.error(error);
     }
   };
 

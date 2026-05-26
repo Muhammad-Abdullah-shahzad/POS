@@ -55,10 +55,23 @@ const api = {
         update: (_id, data) => electron_1.ipcRenderer.invoke('employees:update', _id, data),
         delete: (_id) => electron_1.ipcRenderer.invoke('employees:delete', _id),
     },
+    // ── EMPLOYEE DAMAGES ──────────────────────────────────────────────────────
+    employeeDamages: {
+        getAll: () => electron_1.ipcRenderer.invoke('employeeDamages:getAll'),
+        create: (data) => electron_1.ipcRenderer.invoke('employeeDamages:create', data),
+        update: (_id, data) => electron_1.ipcRenderer.invoke('employeeDamages:update', _id, data),
+        delete: (_id) => electron_1.ipcRenderer.invoke('employeeDamages:delete', _id),
+    },
     // ── EXPENSES ──────────────────────────────────────────────────────────────
     expenses: {
         getAll: () => electron_1.ipcRenderer.invoke('expenses:getAll'),
         create: (data) => electron_1.ipcRenderer.invoke('expenses:create', data),
+    },
+    // ── EXPENSE CATEGORIES ────────────────────────────────────────────────────
+    expenseCategories: {
+        getAll: () => electron_1.ipcRenderer.invoke('expenseCategories:getAll'),
+        create: (data) => electron_1.ipcRenderer.invoke('expenseCategories:create', data),
+        delete: (_id) => electron_1.ipcRenderer.invoke('expenseCategories:delete', _id),
     },
     // ── SUPPLIERS ─────────────────────────────────────────────────────────────
     suppliers: {
@@ -83,9 +96,11 @@ const api = {
     },
     // ── SYNC ──────────────────────────────────────────────────────────────────
     sync: {
-        /** Sync all collections to the web server */
+        /** Push local changes + pull server changes (full two-way sync) */
         all: (config) => electron_1.ipcRenderer.invoke('sync:all', config),
-        /** Sync a single collection */
+        /** Pull only: fetch all server data into local SQLite */
+        pull: (config) => electron_1.ipcRenderer.invoke('sync:pull', config),
+        /** Sync a single collection (push) */
         collection: (config, collection) => electron_1.ipcRenderer.invoke('sync:collection', config, collection),
         /** Get count of unsynced records per collection */
         pendingCounts: () => electron_1.ipcRenderer.invoke('sync:pendingCounts'),

@@ -460,26 +460,51 @@ export const ProductsSubFeatures = () => {
     });
   };
 
-  const handleSavePrices = () => {
-    // In a full production server, we would PATCH /products/:id for each edited product.
-    // For this build, we update the local react state to reflect new pricing and notify the user.
-    setProducts(products.map(p => {
-      if (priceEdits[p._id]) {
-        return {
-          ...p,
-          costPrice: priceEdits[p._id].costPrice,
-          price: priceEdits[p._id].price
-        };
+  const handleSavePrices = async () => {
+    const edited = Object.entries(priceEdits);
+    if (edited.length === 0) return;
+
+    const failed: string[] = [];
+
+    for (const [prodId, { costPrice, price }] of edited) {
+      const product = products.find(p => p._id === prodId);
+      if (!product) continue;
+      try {
+        // Send the full product so the IPC handler (which updates every column) doesn't
+        // null-out fields that aren't included in the payload.
+        await api.patch(`/products/${prodId}`, {
+          ...product,
+          costPrice,
+          price,
+        });
+      } catch {
+        failed.push(product.name);
       }
-      return p;
-    }));
+    }
+
+    // Reflect saved prices in local state
+    setProducts(products.map(p =>
+      priceEdits[p._id]
+        ? { ...p, costPrice: priceEdits[p._id].costPrice, price: priceEdits[p._id].price }
+        : p
+    ));
     setPriceEdits({});
-    notifications.show({
-      title: 'Success',
-      message: 'Product selling prices and cost bases updated successfully',
-      color: 'teal',
-      icon: <IconCheck size={16} />
-    });
+
+    if (failed.length > 0) {
+      notifications.show({
+        title: 'Partially saved',
+        message: `Failed to update: ${failed.join(', ')}`,
+        color: 'orange',
+        icon: <IconX size={16} />,
+      });
+    } else {
+      notifications.show({
+        title: 'Prices saved',
+        message: `${edited.length} product(s) updated and queued for sync`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      });
+    }
   };
 
   // ----------------------------------------------------

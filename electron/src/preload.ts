@@ -62,10 +62,25 @@ const api = {
     delete:  (_id: string)                                    => ipcRenderer.invoke('employees:delete', _id),
   },
 
+  // ── EMPLOYEE DAMAGES ──────────────────────────────────────────────────────
+  employeeDamages: {
+    getAll:  ()                                                 => ipcRenderer.invoke('employeeDamages:getAll'),
+    create:  (data: Record<string, unknown>)                    => ipcRenderer.invoke('employeeDamages:create', data),
+    update:  (_id: string, data: Record<string, unknown>)       => ipcRenderer.invoke('employeeDamages:update', _id, data),
+    delete:  (_id: string)                                      => ipcRenderer.invoke('employeeDamages:delete', _id),
+  },
+
   // ── EXPENSES ──────────────────────────────────────────────────────────────
   expenses: {
     getAll:  ()                                               => ipcRenderer.invoke('expenses:getAll'),
     create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('expenses:create', data),
+  },
+
+  // ── EXPENSE CATEGORIES ────────────────────────────────────────────────────
+  expenseCategories: {
+    getAll:  ()                                               => ipcRenderer.invoke('expenseCategories:getAll'),
+    create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('expenseCategories:create', data),
+    delete:  (_id: string)                                    => ipcRenderer.invoke('expenseCategories:delete', _id),
   },
 
   // ── SUPPLIERS ─────────────────────────────────────────────────────────────
@@ -94,11 +109,15 @@ const api = {
 
   // ── SYNC ──────────────────────────────────────────────────────────────────
   sync: {
-    /** Sync all collections to the web server */
+    /** Push local changes + pull server changes (full two-way sync) */
     all: (config: { baseUrl: string; token: string }) =>
       ipcRenderer.invoke('sync:all', config),
 
-    /** Sync a single collection */
+    /** Pull only: fetch all server data into local SQLite */
+    pull: (config: { baseUrl: string; token: string }) =>
+      ipcRenderer.invoke('sync:pull', config),
+
+    /** Sync a single collection (push) */
     collection: (config: { baseUrl: string; token: string }, collection: string) =>
       ipcRenderer.invoke('sync:collection', config, collection),
 

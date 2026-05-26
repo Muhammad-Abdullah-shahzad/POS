@@ -111,10 +111,26 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().employees.delete(id));
   }
 
+  // ── EMPLOYEE DAMAGES ──────────────────────────────────────────────────────
+  if (resource === 'employee-damages') {
+    if (method === 'get' && !id)                return ok(await eAPI().employeeDamages.getAll());
+    if (method === 'post' && !id)               return ok(await eAPI().employeeDamages.create(body));
+    if ((method === 'put' || method === 'patch') && id)
+                                                return ok(await eAPI().employeeDamages.update(id, body));
+    if (method === 'delete' && id)              return ok(await eAPI().employeeDamages.delete(id));
+  }
+
   // ── EXPENSES ──────────────────────────────────────────────────────────────
   if (resource === 'expenses') {
     if (method === 'get')  return ok(await eAPI().expenses.getAll());
     if (method === 'post') return ok(await eAPI().expenses.create(body));
+  }
+
+  // ── EXPENSE CATEGORIES ────────────────────────────────────────────────────
+  if (resource === 'expense-categories') {
+    if (method === 'get')              return ok(await eAPI().expenseCategories.getAll());
+    if (method === 'post')             return ok(await eAPI().expenseCategories.create(body));
+    if (method === 'delete' && id)     return ok(await eAPI().expenseCategories.delete(id));
   }
 
   // ── SUPPLIERS ─────────────────────────────────────────────────────────────

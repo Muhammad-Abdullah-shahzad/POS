@@ -12,6 +12,7 @@ const orders_1 = require("./ipc/orders");
 const customers_1 = require("./ipc/customers");
 const employees_1 = require("./ipc/employees");
 const expenses_1 = require("./ipc/expenses");
+const employeeDamages_1 = require("./ipc/employeeDamages");
 const suppliers_1 = require("./ipc/suppliers");
 const banks_1 = require("./ipc/banks");
 const settings_1 = require("./ipc/settings");
@@ -54,6 +55,7 @@ electron_1.app.whenReady().then(async () => {
     (0, customers_1.registerCustomerHandlers)();
     (0, employees_1.registerEmployeeHandlers)();
     (0, expenses_1.registerExpenseHandlers)();
+    (0, employeeDamages_1.registerEmployeeDamageHandlers)();
     (0, suppliers_1.registerSupplierHandlers)();
     (0, banks_1.registerBankHandlers)();
     (0, settings_1.registerSettingsHandlers)();

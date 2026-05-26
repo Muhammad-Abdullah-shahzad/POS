@@ -7,6 +7,7 @@ import { registerOrderHandlers }    from './ipc/orders';
 import { registerCustomerHandlers } from './ipc/customers';
 import { registerEmployeeHandlers } from './ipc/employees';
 import { registerExpenseHandlers }  from './ipc/expenses';
+import { registerEmployeeDamageHandlers } from './ipc/employeeDamages';
 import { registerSupplierHandlers } from './ipc/suppliers';
 import { registerBankHandlers }     from './ipc/banks';
 import { registerSettingsHandlers } from './ipc/settings';
@@ -56,6 +57,7 @@ app.whenReady().then(async () => {
   registerCustomerHandlers();
   registerEmployeeHandlers();
   registerExpenseHandlers();
+  registerEmployeeDamageHandlers();
   registerSupplierHandlers();
   registerBankHandlers();
   registerSettingsHandlers();

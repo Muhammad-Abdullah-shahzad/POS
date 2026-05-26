@@ -18,6 +18,8 @@ import Order from '../models/Order';
 import Customer from '../models/Customer';
 import Employee from '../models/Employee';
 import Expense from '../models/Expense';
+import ExpenseCategory from '../models/ExpenseCategory';
+import EmployeeDamage from '../models/EmployeeDamage';
 import Supplier from '../models/Supplier';
 import { BankName, BankAccount, BankCard } from '../models/Bank';
 import Settings from '../models/Settings';
@@ -130,6 +132,28 @@ export const syncExpenses = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+export const syncExpenseCategories = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const records: any[] = req.body;
+    if (!Array.isArray(records)) { res.status(400).json(errorResponse('Expected an array')); return; }
+    const result = await upsertMany(ExpenseCategory, records);
+    res.json(successResponse(result, `Synced ${result.upserted} expense categories`));
+  } catch (err: any) {
+    res.status(500).json(errorResponse('Sync failed', err.message));
+  }
+};
+
+export const syncEmployeeDamages = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const records: any[] = req.body;
+    if (!Array.isArray(records)) { res.status(400).json(errorResponse('Expected an array')); return; }
+    const result = await upsertMany(EmployeeDamage, records);
+    res.json(successResponse(result, `Synced ${result.upserted} employee damages`));
+  } catch (err: any) {
+    res.status(500).json(errorResponse('Sync failed', err.message));
+  }
+};
+
 export const syncSuppliers = async (req: Request, res: Response): Promise<void> => {
   try {
     const records: any[] = req.body;
@@ -230,7 +254,9 @@ export const deleteCategories   = deleteSyncHandler(Category,    'categories');
 export const deleteOrders       = deleteSyncHandler(Order,       'orders');
 export const deleteCustomers    = deleteSyncHandler(Customer,    'customers');
 export const deleteEmployees    = deleteSyncHandler(Employee,    'employees');
-export const deleteExpenses     = deleteSyncHandler(Expense,     'expenses');
+export const deleteExpenses          = deleteSyncHandler(Expense,          'expenses');
+export const deleteExpenseCategories = deleteSyncHandler(ExpenseCategory,  'expense categories');
+export const deleteEmployeeDamages   = deleteSyncHandler(EmployeeDamage,   'employee damages');
 export const deleteSuppliers    = deleteSyncHandler(Supplier,    'suppliers');
 export const deleteBankNames    = deleteSyncHandler(BankName,    'bank names');
 export const deleteBankAccounts = deleteSyncHandler(BankAccount, 'bank accounts');
