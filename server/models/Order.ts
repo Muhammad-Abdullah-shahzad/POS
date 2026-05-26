@@ -31,6 +31,8 @@ export interface IOrder extends Document {
   voidedBy?: mongoose.Types.ObjectId;
   voidedByEmployee?: mongoose.Types.ObjectId;
   voidedByEmployeeName?: string;
+  customerId?: mongoose.Types.ObjectId;
+  customerName?: string;
   createdAt: Date;
 }
 
@@ -65,6 +67,8 @@ const OrderSchema = new Schema<IOrder>({
   voidedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   voidedByEmployee: { type: Schema.Types.ObjectId, ref: 'Employee', default: null },
   voidedByEmployeeName: { type: String, default: null },
+  customerId: { type: Schema.Types.ObjectId, ref: 'Customer', default: null },
+  customerName: { type: String, default: null },
 }, { timestamps: true });
 
 export default mongoose.model<IOrder>('Order', OrderSchema);

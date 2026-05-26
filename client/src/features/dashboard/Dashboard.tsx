@@ -692,6 +692,10 @@ const Dashboard = () => {
         totalDRS,
         total,
         paymentMethod: method.toLowerCase(),
+        ...(activeCart.customerId && {
+          customerId: activeCart.customerId,
+          customerName: activeCart.name
+        }),
       });
       if (data?.data) setOrders(prev => [data.data, ...prev]);
     } catch (err) {
@@ -800,6 +804,10 @@ const Dashboard = () => {
         paymentMethod: 'split',
         splitCash: cashAmt,
         splitCard: cardAmt,
+        ...(activeCart.customerId && {
+          customerId: activeCart.customerId,
+          customerName: activeCart.name
+        }),
       });
       if (data?.data) setOrders(prev => [data.data, ...prev]);
     } catch (err) {

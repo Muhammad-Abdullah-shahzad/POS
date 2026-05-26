@@ -113,6 +113,8 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       paymentMethod,
       ...(splitCash != null && { splitCash: Number(splitCash) }),
       ...(splitCard != null && { splitCard: Number(splitCard) }),
+      ...(req.body.customerId && { customerId: req.body.customerId }),
+      ...(req.body.customerName && { customerName: req.body.customerName }),
     });
 
     res.status(201).json(successResponse(order, 'Order completed'));

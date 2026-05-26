@@ -430,23 +430,38 @@ export const ReportsSubFeatures = () => {
       },
       'z-report-print': {
         title: 'Z Report Print Report',
-        description: 'End-of-day register closing summary, tax collections, and drawer logs.',
+        description: 'End-of-day register detailed itemized transactions.',
         hasChart: 'none',
-        headers: ['Parameter / Register Account', 'Recorded Amount'],
-        mockData: [
-          { parameter: 'Date/Time Generated', value: new Date().toLocaleString() },
-          { parameter: 'Open Cash Balance', value: '€ 20,000' },
-          { parameter: 'Total Cash Sales', value: `€ ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total').toLocaleString()}` },
-          { parameter: 'Total Card/POS Sales', value: `€ ${sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() !== 'cash'), 'total').toLocaleString()}` },
-          { parameter: 'Total VAT Collected', value: `€ ${sum(orders, 'totalVAT').toLocaleString()}` },
-          { parameter: 'Total General Refunds', value: '€ 0' },
-          { parameter: 'Net Sales Invoiced', value: `€ ${sum(orders, 'total').toLocaleString()}` },
-          { parameter: 'Final Drawer Cash Status', value: `€ ${(20000 + sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total')).toLocaleString()}` },
-        ],
+        headers: ['Transaction ID', 'Date', 'Product', 'VAT', 'Discount', 'Flat Discount', 'DRS', 'Customer Name'],
+        mockData: orders.flatMap(o => {
+          const items = o.items || [];
+          if (items.length === 0) {
+            return [{
+              transactionId: o.invoiceId || 'N/A',
+              date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
+              product: 'No Items',
+              vat: '€ 0.00',
+              discount: '€ 0.00',
+              flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
+              drs: '€ 0.00',
+              customerName: o.customerName || 'Walk-in'
+            }];
+          }
+          return items.map((item: any) => ({
+            transactionId: o.invoiceId || 'N/A',
+            date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
+            product: item.name || 'Unknown',
+            vat: `€ ${(Number(item.vatAmount) || 0).toFixed(2)}`,
+            discount: `€ ${(Number(item.discountAmt) || 0).toFixed(2)}`,
+            flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
+            drs: `€ ${(Number(item.drs) || 0).toFixed(2)}`,
+            customerName: o.customerName || 'Walk-in'
+          }));
+        }),
         summaryCards: [
           { label: 'Daily Net Receipts', value: `€ ${sum(orders, 'total').toLocaleString()}` },
-          { label: 'Z-Report Serial', value: `Z-${new Date().toISOString().slice(0, 10)}-01` },
-          { label: 'Drawer Status', value: orders.length > 0 ? 'Verified' : 'Empty Drawer', isPositive: orders.length > 0 },
+          { label: 'Total VAT Collected', value: `€ ${sum(orders, 'totalVAT').toLocaleString()}` },
+          { label: 'Total Flat Discounts', value: `€ ${sum(orders, 'discount').toLocaleString()}`, isNegative: true },
         ]
       },
       'sales-analysis': {
