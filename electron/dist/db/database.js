@@ -56,7 +56,7 @@ async function initDb() {
                 return path_1.default.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'sql.js', 'dist', filename);
             }
             // Development: WASM lives next to the sql.js package in node_modules
-            return path_1.default.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', filename);
+            return path_1.default.join(__dirname, '..', '..', 'node_modules', 'sql.js', 'dist', filename);
         },
     });
     dbPath = path_1.default.join(electron_1.app.getPath('userData'), 'pos_local.db');

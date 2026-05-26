@@ -1,17 +1,17 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { initDb, saveDb } from './db/database';
-import { registerProductHandlers }  from './ipc/products';
+import { registerProductHandlers } from './ipc/products';
 import { registerCategoryHandlers } from './ipc/categories';
-import { registerOrderHandlers }    from './ipc/orders';
+import { registerOrderHandlers } from './ipc/orders';
 import { registerCustomerHandlers } from './ipc/customers';
 import { registerEmployeeHandlers } from './ipc/employees';
-import { registerExpenseHandlers }  from './ipc/expenses';
+import { registerExpenseHandlers } from './ipc/expenses';
 import { registerEmployeeDamageHandlers } from './ipc/employeeDamages';
 import { registerSupplierHandlers } from './ipc/suppliers';
-import { registerBankHandlers }     from './ipc/banks';
+import { registerBankHandlers } from './ipc/banks';
 import { registerSettingsHandlers } from './ipc/settings';
-import { registerSyncHandlers }     from './sync/syncManager';
+import { registerSyncHandlers } from './sync/syncManager';
 import { registerAuthHandlers, seedDefaultAdmin } from './ipc/auth';
 
 let mainWindow: BrowserWindow | null = null;

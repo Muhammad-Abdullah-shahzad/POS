@@ -52,7 +52,7 @@ export async function initDb(): Promise<Database> {
         );
       }
       // Development: WASM lives next to the sql.js package in node_modules
-      return path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', filename);
+      return path.join(__dirname, '..', '..', 'node_modules', 'sql.js', 'dist', filename);
     },
   });
 

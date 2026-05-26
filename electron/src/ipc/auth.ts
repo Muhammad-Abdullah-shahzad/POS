@@ -76,24 +76,32 @@ function generateToken(userId: string, role: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function seedDefaultAdmin(): void {
-  const existing = dbGet('SELECT _id FROM users LIMIT 1');
-  if (existing) return; // already seeded
+  const usersToSeed = [
+    { name: 'Admin', email: 'admin@pos.com', password: 'admin123', role: 'admin' },
+    { name: 'Manager', email: 'manager@pos.com', password: 'manager123', role: 'manager' },
+    { name: 'Cashier', email: 'cashier@pos.com', password: 'cashier123', role: 'cashier' },
+  ];
 
-  const _id = generateLocalId();
-  const ts  = now();
-  dbRun(
-    `INSERT INTO users (_id, name, email, passwordHash, role, createdAt, updatedAt, isSync)
-     VALUES ($id, $name, $email, $passwordHash, $role, $ts, $ts, 0)`,
-    {
-      $id:           _id,
-      $name:         'Admin',
-      $email:        'admin@pos.com',
-      $passwordHash: hashPassword('admin123'),
-      $role:         'admin',
-      $ts:           ts,
+  for (const u of usersToSeed) {
+    const existing = dbGet('SELECT _id FROM users WHERE email = $email', { $email: u.email });
+    if (!existing) {
+      const _id = generateLocalId();
+      const ts  = now();
+      dbRun(
+        `INSERT INTO users (_id, name, email, passwordHash, role, createdAt, updatedAt, isSync)
+         VALUES ($id, $name, $email, $passwordHash, $role, $ts, $ts, 0)`,
+        {
+          $id:           _id,
+          $name:         u.name,
+          $email:        u.email,
+          $passwordHash: hashPassword(u.password),
+          $role:         u.role,
+          $ts:           ts,
+        }
+      );
+      console.log(`[Auth] Default user seeded  →  ${u.email} / ${u.password} (${u.role})`);
     }
-  );
-  console.log('[Auth] Default admin seeded  →  admin@pos.com / admin123');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

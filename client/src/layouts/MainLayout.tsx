@@ -17,6 +17,7 @@ import {
 import type { TablerIcon } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 import { usePosStore } from '../store/posStore';
+import SyncButton from '../features/sync/SyncButton';
 
 const MainLayout = () => {
   const [opened, { toggle }] = useDisclosure();
@@ -151,10 +152,10 @@ const MainLayout = () => {
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <Burger opened={desktopOpened} onClick={toggleDesktop} visibleFrom="sm" size="sm" />
-            <Title order={3} c="blue">Store POS</Title>
           </Group>
           <Group>
             {!isMobile && <Title order={6}>Welcome, {user.name}</Title>}
+            <SyncButton />
             <Button variant="light" color="red" size="xs" onClick={handleLogout} leftSection={<IconLogout size={16} />}>
               Logout
             </Button>

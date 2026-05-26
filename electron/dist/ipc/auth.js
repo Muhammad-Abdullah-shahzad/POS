@@ -72,21 +72,28 @@ function generateToken(userId, role) {
 // Seed default admin on first launch
 // ─────────────────────────────────────────────────────────────────────────────
 function seedDefaultAdmin() {
-    const existing = (0, database_1.dbGet)('SELECT _id FROM users LIMIT 1');
-    if (existing)
-        return; // already seeded
-    const _id = (0, database_1.generateLocalId)();
-    const ts = (0, database_1.now)();
-    (0, database_1.dbRun)(`INSERT INTO users (_id, name, email, passwordHash, role, createdAt, updatedAt, isSync)
-     VALUES ($id, $name, $email, $passwordHash, $role, $ts, $ts, 0)`, {
-        $id: _id,
-        $name: 'Admin',
-        $email: 'admin@pos.com',
-        $passwordHash: hashPassword('admin123'),
-        $role: 'admin',
-        $ts: ts,
-    });
-    console.log('[Auth] Default admin seeded  →  admin@pos.com / admin123');
+    const usersToSeed = [
+        { name: 'Admin', email: 'admin@pos.com', password: 'admin123', role: 'admin' },
+        { name: 'Manager', email: 'manager@pos.com', password: 'manager123', role: 'manager' },
+        { name: 'Cashier', email: 'cashier@pos.com', password: 'cashier123', role: 'cashier' },
+    ];
+    for (const u of usersToSeed) {
+        const existing = (0, database_1.dbGet)('SELECT _id FROM users WHERE email = $email', { $email: u.email });
+        if (!existing) {
+            const _id = (0, database_1.generateLocalId)();
+            const ts = (0, database_1.now)();
+            (0, database_1.dbRun)(`INSERT INTO users (_id, name, email, passwordHash, role, createdAt, updatedAt, isSync)
+         VALUES ($id, $name, $email, $passwordHash, $role, $ts, $ts, 0)`, {
+                $id: _id,
+                $name: u.name,
+                $email: u.email,
+                $passwordHash: hashPassword(u.password),
+                $role: u.role,
+                $ts: ts,
+            });
+            console.log(`[Auth] Default user seeded  →  ${u.email} / ${u.password} (${u.role})`);
+        }
+    }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // IPC handlers

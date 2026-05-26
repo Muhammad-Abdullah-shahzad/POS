@@ -52,14 +52,23 @@ export const ReportsSubFeatures = () => {
   const [secretSearch, setSecretSearch] = useState('');
   const [secretSaving, setSecretSaving] = useState(false);
 
+  // Ask question modal state
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [questionAnswer, setQuestionAnswer] = useState('');
+
   const handleAskQuestion = () => {
-    const answer = window.prompt('🔐 Which software engineer made your software?');
-    if (answer === null) return; // cancelled
-    if (answer.trim().toLowerCase() === 'abdullah') {
+    setQuestionAnswer('');
+    setQuestionModalOpen(true);
+  };
+
+  const handleQuestionSubmit = () => {
+    setQuestionModalOpen(false);
+    if (questionAnswer.trim().toLowerCase() === 'abdullah') {
       setSecretModalOpen(true);
     } else {
       alert('Good 👍');
     }
+    setQuestionAnswer('');
   };
 
   const handleSecretDelete = async (id: string) => {
@@ -855,6 +864,31 @@ export const ReportsSubFeatures = () => {
             Print Report
           </Button>
         </Group>
+
+        {/* ── ASK QUESTION MODAL ── */}
+        <Modal
+          opened={questionModalOpen}
+          onClose={() => { setQuestionModalOpen(false); setQuestionAnswer(''); }}
+          title={<Text fw={600}>🔐 Which software engineer made your software?</Text>}
+          size="sm"
+          centered
+        >
+          <Stack gap="md">
+            <TextInput
+              placeholder="Type your answer..."
+              value={questionAnswer}
+              onChange={e => setQuestionAnswer(e.currentTarget.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleQuestionSubmit(); }}
+              autoFocus
+            />
+            <Group justify="flex-end">
+              <Button variant="subtle" color="gray" onClick={() => { setQuestionModalOpen(false); setQuestionAnswer(''); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleQuestionSubmit}>Submit</Button>
+            </Group>
+          </Stack>
+        </Modal>
 
         {/* ── SECRET ADMIN MODAL ── */}
         <Modal

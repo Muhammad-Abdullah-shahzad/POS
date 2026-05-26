@@ -22,7 +22,19 @@ function ok(data: unknown, message = 'OK') {
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
 async function route(method: Method, url: string, body?: any): Promise<any> {
-  const parts = url.replace(/^\//, '').split('/');
+  const [pathPart, queryPart] = url.split('?');
+
+  const queryParams: Record<string, string> = {};
+  if (queryPart) {
+    const searchParams = new URLSearchParams(queryPart);
+    searchParams.forEach((val, key) => {
+      queryParams[key] = val;
+    });
+  }
+
+  const mergedBody = { ...queryParams, ...body };
+
+  const parts = pathPart.replace(/^\//, '').split('/');
   const resource = parts[0];   // e.g. "products"
   const id       = parts[1];   // e.g. "abc123"  or "barcode" or "sync"
   const sub      = parts[2];   // e.g. "stock"
@@ -30,19 +42,19 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
   // ── PRODUCTS ──────────────────────────────────────────────────────────────
   if (resource === 'products') {
     if (method === 'get' && !id)
-      return ok(await eAPI().products.getAll());
+      return ok(await eAPI().products.getAll(mergedBody?.search));
 
     if (method === 'get' && id === 'barcode')
       return ok(await eAPI().products.getByBarcode(sub));
 
     if (method === 'post' && !id)
-      return ok(await eAPI().products.create(body));
+      return ok(await eAPI().products.create(mergedBody));
 
     if ((method === 'patch' || method === 'put') && id && sub === 'stock')
-      return ok(await eAPI().products.updateStock(id, body.quantity));
+      return ok(await eAPI().products.updateStock(id, mergedBody.quantity));
 
     if ((method === 'patch' || method === 'put') && id && !sub)
-      return ok(await eAPI().products.update(id, body));
+      return ok(await eAPI().products.update(id, mergedBody));
 
     if (method === 'delete' && id)
       return ok(await eAPI().products.delete(id));
@@ -51,9 +63,9 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
   // ── CATEGORIES ────────────────────────────────────────────────────────────
   if (resource === 'categories') {
     if (method === 'get')   return ok(await eAPI().categories.getAll());
-    if (method === 'post')  return ok(await eAPI().categories.create(body));
+    if (method === 'post')  return ok(await eAPI().categories.create(mergedBody));
     if ((method === 'put' || method === 'patch') && id)
-      return ok(await eAPI().categories.update(id, body));
+      return ok(await eAPI().categories.update(id, mergedBody));
     if (method === 'delete' && id)
       return ok(await eAPI().categories.delete(id));
   }
@@ -64,20 +76,20 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().orders.getVoided());
 
     if (method === 'get' && !id) {
-      const { month, year } = body || {};
+      const { month, year } = mergedBody || {};
       return ok(await eAPI().orders.getAll(month, year));
     }
 
     if (method === 'post' && !id)
-      return ok(await eAPI().orders.create(body));
+      return ok(await eAPI().orders.create(mergedBody));
 
     // void = DELETE /:id
     if (method === 'delete' && id)
       return ok(await eAPI().orders.void(
         id,
-        body?.reason || 'No reason provided',
-        body?.employeeId,
-        body?.employeeName,
+        mergedBody?.reason || 'No reason provided',
+        mergedBody?.employeeId,
+        mergedBody?.employeeName,
       ));
   }
 
@@ -86,13 +98,13 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
     if (method === 'get' && !id)
       return ok(await eAPI().customers.getAll());
     if (method === 'post' && !id)
-      return ok(await eAPI().customers.create(body));
+      return ok(await eAPI().customers.create(mergedBody));
     if ((method === 'put' || method === 'patch') && id && !sub)
-      return ok(await eAPI().customers.update(id, body));
+      return ok(await eAPI().customers.update(id, mergedBody));
     if (method === 'delete' && id)
       return ok(await eAPI().customers.delete(id));
     if (method === 'post' && id && sub === 'transaction')
-      return ok(await eAPI().customers.updateStats(id, body.amount));
+      return ok(await eAPI().customers.updateStats(id, mergedBody.amount));
     if (method === 'post' && id && sub === 'reset-points')
       return ok(await eAPI().customers.resetPoints(id));
   }
@@ -100,9 +112,9 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
   // ── EMPLOYEES ─────────────────────────────────────────────────────────────
   if (resource === 'employees') {
     if (method === 'get')   return ok(await eAPI().employees.getAll());
-    if (method === 'post')  return ok(await eAPI().employees.create(body));
+    if (method === 'post')  return ok(await eAPI().employees.create(mergedBody));
     if ((method === 'put' || method === 'patch') && id)
-      return ok(await eAPI().employees.update(id, body));
+      return ok(await eAPI().employees.update(id, mergedBody));
     if (method === 'delete' && id)
       return ok(await eAPI().employees.delete(id));
   }
@@ -110,39 +122,39 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
   // ── EMPLOYEE DAMAGES ──────────────────────────────────────────────────────
   if (resource === 'employee-damages') {
     if (method === 'get' && !id)                return ok(await eAPI().employeeDamages.getAll());
-    if (method === 'post' && !id)               return ok(await eAPI().employeeDamages.create(body));
+    if (method === 'post' && !id)               return ok(await eAPI().employeeDamages.create(mergedBody));
     if ((method === 'put' || method === 'patch') && id)
-                                                return ok(await eAPI().employeeDamages.update(id, body));
+                                                return ok(await eAPI().employeeDamages.update(id, mergedBody));
     if (method === 'delete' && id)              return ok(await eAPI().employeeDamages.delete(id));
   }
 
   // ── EXPENSES ──────────────────────────────────────────────────────────────
   if (resource === 'expenses') {
     if (method === 'get')  return ok(await eAPI().expenses.getAll());
-    if (method === 'post') return ok(await eAPI().expenses.create(body));
+    if (method === 'post') return ok(await eAPI().expenses.create(mergedBody));
   }
 
   // ── EXPENSE CATEGORIES ────────────────────────────────────────────────────
   if (resource === 'expense-categories') {
     if (method === 'get')              return ok(await eAPI().expenseCategories.getAll());
-    if (method === 'post')             return ok(await eAPI().expenseCategories.create(body));
+    if (method === 'post')             return ok(await eAPI().expenseCategories.create(mergedBody));
     if (method === 'delete' && id)     return ok(await eAPI().expenseCategories.delete(id));
   }
 
   // ── SUPPLIERS ─────────────────────────────────────────────────────────────
   if (resource === 'suppliers') {
     if (method === 'get')  return ok(await eAPI().suppliers.getAll());
-    if (method === 'post') return ok(await eAPI().suppliers.create(body));
+    if (method === 'post') return ok(await eAPI().suppliers.create(mergedBody));
   }
 
   // ── BANKS ─────────────────────────────────────────────────────────────────
   if (resource === 'banks') {
     if (method === 'get'  && id === 'names')    return ok(await eAPI().banks.getNames());
-    if (method === 'post' && id === 'names')    return ok(await eAPI().banks.addName(body));
+    if (method === 'post' && id === 'names')    return ok(await eAPI().banks.addName(mergedBody));
     if (method === 'get'  && id === 'accounts') return ok(await eAPI().banks.getAccounts());
-    if (method === 'post' && id === 'accounts') return ok(await eAPI().banks.addAccount(body));
+    if (method === 'post' && id === 'accounts') return ok(await eAPI().banks.addAccount(mergedBody));
     if (method === 'get'  && id === 'cards')    return ok(await eAPI().banks.getCards());
-    if (method === 'post' && id === 'cards')    return ok(await eAPI().banks.addCard(body));
+    if (method === 'post' && id === 'cards')    return ok(await eAPI().banks.addCard(mergedBody));
   }
 
   // ── SETTINGS ──────────────────────────────────────────────────────────────
@@ -150,11 +162,11 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
     if (method === 'get'  && id === 'quick-products')
       return ok(await eAPI().settings.getQuickProducts());
     if ((method === 'put' || method === 'patch') && id === 'quick-products')
-      return ok(await eAPI().settings.updateQuickProducts(body));
+      return ok(await eAPI().settings.updateQuickProducts(mergedBody));
     if (method === 'get'  && !id)
       return ok(await eAPI().settings.get());
     if ((method === 'put' || method === 'patch') && !id)
-      return ok(await eAPI().settings.update(body));
+      return ok(await eAPI().settings.update(mergedBody));
   }
 
   // ── DASHBOARD / ANALYTICS — return empty stubs offline ───────────────────
