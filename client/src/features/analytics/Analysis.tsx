@@ -71,10 +71,6 @@ const Analysis = () => {
 
   return (
     <Stack gap="xs" p="xs" style={{ height: 'calc(100vh - 100px)', overflow: 'hidden' }}>
-      <Group justify="space-between" px="xs">
-        <Title order={3}>Store Analysis</Title>
-      </Group>
-
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs" verticalSpacing="xs" style={{ flex: 1 }}>
         {/* Row 1, Col 1: Trend */}
         <Paper withBorder p="sm" radius="md" shadow="xs" style={{ display: 'flex', flexDirection: 'column' }}>
