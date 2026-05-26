@@ -181,6 +181,20 @@ const Dashboard = () => {
   const [calculatorValue, setCalculatorValue] = useState('0');
   const [quickProducts, setQuickProducts] = useState<QuickProductButton[]>(() => loadQuickProducts());
 
+  // Helper to find a customer match across several fields (case‑insensitive)
+  const findCustomerMatch = (val: string) => {
+    const trimmed = val.trim();
+    const lowered = trimmed.toLowerCase();
+    return dbCustomers.find(c =>
+      `${c.name} (${c.contactNum1})`.toLowerCase() === lowered ||
+      c.name.toLowerCase() === lowered ||
+      c.contactNum1 === trimmed ||
+      (c.contactNum2 && c.contactNum2 === trimmed) ||
+      (c.email && c.email.toLowerCase() === lowered) ||
+      (c.eircode && c.eircode.toLowerCase() === lowered)
+    );
+  };
+
   // Split payment state
   const [splitModalOpened, setSplitModalOpened] = useState(false);
   const [splitCashAmount, setSplitCashAmount] = useState<number | string>('');
@@ -1209,37 +1223,95 @@ const Dashboard = () => {
                           value={activeCart.customerId ? `${activeCart.name} (${activeCart.customerPhone})` : (activeCart.name.startsWith('CUSTOMER ') ? '' : activeCart.name)}
                           data={dbCustomers.map(c => `${c.name} (${c.contactNum1})`)}
                           onChange={(val) => {
-                            // Check if it matches a customer in the db
-                            const matched = dbCustomers.find(c => `${c.name} (${c.contactNum1})` === val);
-                            setCarts(prev => prev.map(c => {
-                              if (c.id === activeCartId) {
-                                if (matched) {
+                            const matched = findCustomerMatch(val);
+                            setCarts(prev =>
+                              prev.map(c => {
+                                if (c.id === activeCartId) {
+                                  if (matched) {
+                                    return {
+                                      ...c,
+                                      name: matched.name,
+                                      customerId: matched._id,
+                                      customerPhone: matched.contactNum1,
+                                    };
+                                  }
+                                  return {
+                                    ...c,
+                                    name: val || `CUSTOMER ${c.id.replace('customer', '')}`,
+                                    customerId: undefined,
+                                    customerPhone: undefined,
+                                  };
+                                }
+                                return c;
+                              })
+                            );
+                          }}
+                          onOptionSubmit={(val) => {
+                            const matched = findCustomerMatch(val);
+                            if (matched) {
+                              setCarts(prev => prev.map(c => {
+                                if (c.id === activeCartId) {
                                   return {
                                     ...c,
                                     name: matched.name,
                                     customerId: matched._id,
                                     customerPhone: matched.contactNum1
                                   };
-                                } else {
+                                }
+                                return c;
+                              }));
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const typedVal = e.target.value.trim();
+                            if (!typedVal) return;
+                            const matched = findCustomerMatch(typedVal);
+                            if (matched) {
+                              setCarts(prev => prev.map(c => {
+                                if (c.id === activeCartId) {
                                   return {
                                     ...c,
-                                    name: val || `CUSTOMER ${c.id.replace('customer', '')}`,
-                                    customerId: undefined,
-                                    customerPhone: undefined
+                                    name: matched.name,
+                                    customerId: matched._id,
+                                    customerPhone: matched.contactNum1
                                   };
                                 }
-                              }
-                              return c;
-                            }));
+                                return c;
+                              }));
+                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               const typedVal = (e.target as HTMLInputElement).value.trim();
                               if (!typedVal) return;
-                              const matched = dbCustomers.find(c => `${c.name} (${c.contactNum1})` === typedVal || c.name.toLowerCase() === typedVal.toLowerCase());
-                              if (!matched) {
-                                setQuickSaveName(typedVal);
-                                setQuickSavePhone('');
+                              const matched = findCustomerMatch(typedVal);
+                              if (matched) {
+                                setCarts(prev => prev.map(c => {
+                                  if (c.id === activeCartId) {
+                                    return {
+                                      ...c,
+                                      name: matched.name,
+                                      customerId: matched._id,
+                                      customerPhone: matched.contactNum1
+                                    };
+                                  }
+                                  return c;
+                                }));
+                                notifications.show({
+                                  title: 'Customer Selected',
+                                  message: `Linked ${matched.name} to cart.`,
+                                  color: 'green',
+                                  autoClose: 2000
+                                });
+                              } else {
+                                const isPhone = /^[+\d\s-]{4,}$/.test(typedVal);
+                                if (isPhone) {
+                                  setQuickSaveName('');
+                                  setQuickSavePhone(typedVal);
+                                } else {
+                                  setQuickSaveName(typedVal);
+                                  setQuickSavePhone('');
+                                }
                                 setQuickSaveModalOpened(true);
                               }
                             }

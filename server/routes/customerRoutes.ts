@@ -12,7 +12,7 @@ import { protect } from '../middleware/auth';
 const router = express.Router();
 
 router.route('/')
-  .get(protect, getCustomers)
+  .get(getCustomers)
   .post(protect, createCustomer);
 
 router.route('/:id')
