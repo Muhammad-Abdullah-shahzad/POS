@@ -32,7 +32,7 @@ function createWindow() {
         },
         title: 'POS Desktop',
     });
-    const isDev = process.env.NODE_ENV === 'development' || !electron_1.app.isPackaged;
+    const isDev = !electron_1.app.isPackaged;
     if (isDev) {
         mainWindow.loadURL('http://localhost:5173');
         mainWindow.webContents.openDevTools();
