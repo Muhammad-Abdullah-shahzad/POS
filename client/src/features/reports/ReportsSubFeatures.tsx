@@ -479,33 +479,23 @@ export const ReportsSubFeatures = () => {
           const rows: any[] = [];
           orders.forEach((o) => {
             const items = o.items || [];
-            if (items.length === 0) {
-              rows.push({
-                transactionId: o.invoiceId || 'N/A',
-                date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
-                product: 'No Items',
-                vat: '€ 0.00',
-                discount: '€ 0.00',
-                flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
-                drs: '€ 0.00',
-                customerName: o.customerName || 'Walk-in',
-                rowKey: `${o._id}-empty`
-              });
-            } else {
-              items.forEach((item: any, itemIdx: number) => {
-                rows.push({
-                  transactionId: itemIdx === 0 ? (o.invoiceId || 'N/A') : '',
-                  date: itemIdx === 0 ? (o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A') : '',
-                  product: item.name || 'Unknown',
-                  vat: `€ ${(Number(item.vatAmount) || 0).toFixed(2)}`,
-                  discount: `€ ${(Number(item.discountAmt) || 0).toFixed(2)}`,
-                  flatDiscount: itemIdx === 0 ? `€ ${(Number(o.discount) || 0).toFixed(2)}` : '',
-                  drs: `€ ${(Number(item.drs) || 0).toFixed(2)}`,
-                  customerName: itemIdx === 0 ? (o.customerName || 'Walk-in') : '',
-                  rowKey: `${o._id}-${(item as any)._id || itemIdx}`
-                });
-              });
-            }
+            
+            const totalItemVat = items.reduce((sum: number, item: any) => sum + (Number(item.vatAmount) || 0), 0);
+            const totalItemDiscount = items.reduce((sum: number, item: any) => sum + (Number(item.discountAmt) || 0), 0);
+            const totalItemDrs = items.reduce((sum: number, item: any) => sum + (Number(item.drs) || 0), 0);
+            const productNames = items.map((i: any) => i.name).join(', ') || 'No Items';
+
+            rows.push({
+              transactionId: o.invoiceId || 'N/A',
+              date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
+              product: productNames.length > 30 ? productNames.substring(0, 27) + '...' : productNames,
+              vat: `€ ${totalItemVat.toFixed(2)}`,
+              discount: `€ ${totalItemDiscount.toFixed(2)}`,
+              flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
+              drs: `€ ${totalItemDrs.toFixed(2)}`,
+              customerName: o.customerName || 'Walk-in',
+              rowKey: o._id || o.invoiceId
+            });
           });
           return rows;
         })(),
