@@ -38,7 +38,9 @@ function createWindow() {
         mainWindow.webContents.openDevTools();
     }
     else {
-        mainWindow.loadFile(path_1.default.join(__dirname, '../../client/dist/index.html'));
+        // In the packaged app, client/dist is copied into resources/ by electron-builder
+        // via the extraResources config in package.json.
+        mainWindow.loadFile(path_1.default.join(process.resourcesPath, 'client', 'dist', 'index.html'));
     }
     mainWindow.on('closed', () => { mainWindow = null; });
 }

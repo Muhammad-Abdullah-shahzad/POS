@@ -66,6 +66,17 @@ interface ElectronAPI {
     getAll: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;
   };
+  expenseCategories: {
+    getAll: () => Promise<any[]>;
+    create: (data: Record<string, unknown>) => Promise<any>;
+    delete: (_id: string) => Promise<{ success: boolean }>;
+  };
+  employeeDamages: {
+    getAll: () => Promise<any[]>;
+    create: (data: Record<string, unknown>) => Promise<any>;
+    update: (_id: string, data: Record<string, unknown>) => Promise<any>;
+    delete: (_id: string) => Promise<{ success: boolean }>;
+  };
   suppliers: {
     getAll: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;
@@ -85,9 +96,10 @@ interface ElectronAPI {
     updateQuickProducts: (qp: unknown[]) => Promise<any[]>;
   };
   sync: {
-    all: (config: SyncConfig) => Promise<SyncSummary>;
-    collection: (config: SyncConfig, collection: string) => Promise<SyncResult>;
-    pendingCounts: () => Promise<Record<string, number>>;
+    all:          (config: SyncConfig) => Promise<SyncSummary>;
+    pull:         (config: SyncConfig) => Promise<SyncSummary>;
+    collection:   (config: SyncConfig, collection: string) => Promise<SyncResult>;
+    pendingCounts:() => Promise<Record<string, number>>;
   };
 }
 

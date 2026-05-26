@@ -36,7 +36,25 @@ let dbPath: string = '';
 export async function initDb(): Promise<Database> {
   if (db) return db;
 
-  SQL = await initSqlJs();
+  // In the packaged app, the .wasm file is unpacked from the asar archive into
+  // app.asar.unpacked (configured via asarUnpack in electron/package.json).
+  // locateFile tells sql.js exactly where to find it in both modes.
+  SQL = await initSqlJs({
+    locateFile: (filename: string) => {
+      if (app.isPackaged) {
+        return path.join(
+          process.resourcesPath,
+          'app.asar.unpacked',
+          'node_modules',
+          'sql.js',
+          'dist',
+          filename
+        );
+      }
+      // Development: WASM lives next to the sql.js package in node_modules
+      return path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', filename);
+    },
+  });
 
   dbPath = path.join(app.getPath('userData'), 'pos_local.db');
   console.log('[DB] SQLite path:', dbPath);

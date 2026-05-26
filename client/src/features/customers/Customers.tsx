@@ -191,7 +191,7 @@ const Customers = () => {
       </Group>
 
       {/* Summary cards */}
-      <Grid mb="lg" gutter="sm">
+      <Grid mb="lg">
         {[
           { label: 'Total Customers', value: customers.length },
           { label: 'Total Revenue',   value: `€ ${totalRevenue.toLocaleString('en', { minimumFractionDigits: 2 })}` },
@@ -312,7 +312,7 @@ const Customers = () => {
           </Paper>
         )}
 
-        <Grid gutter="sm">
+        <Grid>
           <Grid.Col span={12}>
             <TextInput label="Customer Name *" placeholder="Full name" required
               leftSection={<IconUser size={14} />} value={form.name}

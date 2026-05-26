@@ -17,10 +17,6 @@ function ok(data: unknown, message = 'OK') {
   return { data: { success: true, data, message } };
 }
 
-function parseId(url: string): string {
-  return url.split('/').filter(Boolean).pop()!;
-}
-
 // ─── route table ─────────────────────────────────────────────────────────────
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';

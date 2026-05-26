@@ -8,8 +8,11 @@
     "start": "electron .",
     "dev:tsc": "tsc -w",
     "dev:electron": "electron .",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist":       "npm run build && electron-builder",
+    "dist:win":   "npm run build && electron-builder --win",
+    "dist:mac":   "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "pack":       "npm run build && electron-builder --dir"
   },
   "keywords": [],
   "author": "",
@@ -29,21 +32,50 @@
   "build": {
     "appId": "com.pos.desktop",
     "productName": "POS Desktop",
+
     "directories": {
       "output": "release"
     },
+
     "files": [
       "dist/**/*",
       "node_modules/**/*"
     ],
+
+    "extraResources": [
+      {
+        "from": "../client/dist",
+        "to":   "client/dist",
+        "filter": ["**/*"]
+      }
+    ],
+
+    "asarUnpack": [
+      "node_modules/sql.js/dist/sql-wasm.wasm"
+    ],
+
     "mac": {
-      "category": "public.app-category.business"
+      "category": "public.app-category.business",
+      "target": [
+        { "target": "dmg", "arch": ["universal"] }
+      ]
     },
+
     "win": {
       "target": "nsis"
     },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "POS Desktop"
+    },
+
     "linux": {
-      "target": "AppImage"
+      "target": ["AppImage", "deb"],
+      "category": "Office"
     }
   }
 }
