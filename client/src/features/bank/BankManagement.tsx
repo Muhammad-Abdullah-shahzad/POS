@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Tabs, Table, Button, Group, Title, Modal, TextInput, Select, Paper, Stack } from '@mantine/core';
+import { Tabs, Table, Button, Group, Modal, TextInput, Select, Paper, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';

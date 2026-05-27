@@ -42,6 +42,7 @@ function createWindow() {
         // via the extraResources config in package.json.
         mainWindow.loadFile(path_1.default.join(process.resourcesPath, 'client', 'dist', 'index.html'));
     }
+    mainWindow.webContents.openDevTools();
     mainWindow.on('closed', () => { mainWindow = null; });
 }
 electron_1.app.whenReady().then(async () => {

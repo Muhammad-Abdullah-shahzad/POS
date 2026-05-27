@@ -42,7 +42,7 @@ function createWindow(): void {
       path.join(process.resourcesPath, 'client', 'dist', 'index.html')
     );
   }
-
+  mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 

@@ -27,9 +27,10 @@ export default function SyncButton() {
 
   const isExpired = (result: SyncSummary) =>
     result.results.some((r) =>
-      r.errors.some(
-        (e) => e.toLowerCase().includes('token') || e.toLowerCase().includes('unauthorized')
-      )
+      r.errors.some((e) => {
+        const lower = e.toLowerCase();
+        return lower.includes('token') || lower.includes('unauthorized') || lower.includes('authentication');
+      })
     );
 
   const runSync = async (token: string, mode: SyncMode) => {

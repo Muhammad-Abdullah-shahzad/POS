@@ -74,7 +74,10 @@ async function syncTable(
       result.synced = rows.length;
     }
   } catch (err: any) {
-    result.errors.push(err?.response?.data?.message || err.message || 'Unknown error');
+    const msg = typeof err?.response?.data?.data === 'string'
+      ? err.response.data.data
+      : (err?.response?.data?.message || err.message || 'Unknown error');
+    result.errors.push(msg);
   }
   return result;
 }
@@ -214,7 +217,10 @@ async function pullTable(
       }
     }
   } catch (err: any) {
-    result.errors.push(err?.response?.data?.message || err.message || 'Unknown error');
+    const msg = typeof err?.response?.data?.data === 'string'
+      ? err.response.data.data
+      : (err?.response?.data?.message || err.message || 'Unknown error');
+    result.errors.push(msg);
   }
   return result;
 }

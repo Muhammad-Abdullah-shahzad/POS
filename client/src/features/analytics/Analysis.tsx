@@ -1,4 +1,4 @@
-import { SimpleGrid, Paper, Title, Text, Group, Stack } from '@mantine/core';
+import { SimpleGrid, Paper, Text, Group, Stack } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import {

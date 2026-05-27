@@ -67,7 +67,10 @@ async function syncTable(table, endpoint, client, transform) {
         }
     }
     catch (err) {
-        result.errors.push(err?.response?.data?.message || err.message || 'Unknown error');
+        const msg = typeof err?.response?.data?.data === 'string'
+            ? err.response.data.data
+            : (err?.response?.data?.message || err.message || 'Unknown error');
+        result.errors.push(msg);
     }
     return result;
 }
@@ -176,7 +179,10 @@ async function pullTable(table, fetchEndpoint, client, serialize) {
         }
     }
     catch (err) {
-        result.errors.push(err?.response?.data?.message || err.message || 'Unknown error');
+        const msg = typeof err?.response?.data?.data === 'string'
+            ? err.response.data.data
+            : (err?.response?.data?.message || err.message || 'Unknown error');
+        result.errors.push(msg);
     }
     return result;
 }
