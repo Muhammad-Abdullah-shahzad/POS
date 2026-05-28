@@ -520,10 +520,10 @@ const POS = () => {
       {/* Printable Receipt */}
       <div className="print-only" style={{ display: 'none' }}>
         <div ref={componentRef}>
-          <div id="printable-receipt" style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '28px', fontWeight: 900, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+          <div id="printable-receipt" style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '56px', fontWeight: 900, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '1px solid #000', paddingBottom: '12px' }}>
-              <h1 style={{ margin: '0 0 4px', fontSize: '48px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
-              <p style={{ margin: '2px 0', fontSize: '28px', color: '#555' }}>Phone: +1 234 567 8900</p>
+              <h1 style={{ margin: '0 0 4px', fontSize: '96px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
+              <p style={{ margin: '2px 0', fontSize: '56px', color: '#555' }}>Phone: +1 234 567 8900</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', fontSize: '10px', color: '#333' }}>
               <div>
@@ -535,7 +535,7 @@ const POS = () => {
                 <p style={{ margin: '2px 0' }}><strong>STATUS:</strong> PAID</p>
               </div>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '18px', fontSize: '22px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '18px', fontSize: '44px' }}>
               <thead>
                 <tr style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', lineHeight: '2' }}>
                   <th style={{ width: '50%', textAlign: 'left', padding: '4px 0', fontWeight: 'bold' }}>ITEM</th>
@@ -584,13 +584,13 @@ const POS = () => {
                   <span>Total DRS:</span><span style={{ whiteSpace: 'nowrap' }}>€ {totalDRS.toFixed(2)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '30px', color: '#000' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '60px', color: '#000' }}>
                 <span>TOTAL:</span><span style={{ whiteSpace: 'nowrap' }}>€ {total.toFixed(2)}</span>
               </div>
             </div>
             <div style={{ marginTop: '24px', textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '10px' }}>
-              <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>THANK YOU FOR SHOPPING!</p>
-              <p style={{ margin: '3px 0 0', fontSize: '20px', color: '#555' }}>Please visit us again soon.</p>
+              <p style={{ margin: '0', fontSize: '48px', fontWeight: 'bold' }}>THANK YOU FOR SHOPPING!</p>
+              <p style={{ margin: '3px 0 0', fontSize: '40px', color: '#555' }}>Please visit us again soon.</p>
             </div>
           </div>
         </div>
