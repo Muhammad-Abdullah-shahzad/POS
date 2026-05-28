@@ -169,9 +169,20 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().settings.update(mergedBody));
   }
 
-  // ── DASHBOARD / ANALYTICS — return empty stubs offline ───────────────────
+  // ── ANALYTICS ─────────────────────────────────────────────────────────────
+  if (resource === 'analytics') {
+    if (id === 'monthly-summary')
+      return ok(await eAPI().analytics.monthlySummary(mergedBody?.months ? Number(mergedBody.months) : undefined));
+    if (id === 'top-products')
+      return ok(await eAPI().analytics.topProducts(mergedBody?.limit ? Number(mergedBody.limit) : undefined));
+    if (id === 'payment-methods')
+      return ok(await eAPI().analytics.paymentMethods());
+    if (id === 'expense-categories')
+      return ok(await eAPI().analytics.expenseCategories());
+  }
+
+  // ── DASHBOARD ─────────────────────────────────────────────────────────────
   if (resource === 'dashboard') return ok({});
-  if (resource === 'analytics') return ok([]);
 
   throw new Error(`[localApi] Unhandled route: ${method.toUpperCase()} /${url}`);
 }

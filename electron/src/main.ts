@@ -13,6 +13,7 @@ import { registerBankHandlers } from './ipc/banks';
 import { registerSettingsHandlers } from './ipc/settings';
 import { registerSyncHandlers } from './sync/syncManager';
 import { registerAuthHandlers, seedDefaultAdmin } from './ipc/auth';
+import { registerAnalyticsHandlers } from './ipc/analytics';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -66,6 +67,7 @@ app.whenReady().then(async () => {
   registerBankHandlers();
   registerSettingsHandlers();
   registerSyncHandlers();
+  registerAnalyticsHandlers();
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
   ipcMain.handle('app:getPlatform', () => process.platform);

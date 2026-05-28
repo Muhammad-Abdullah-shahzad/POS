@@ -107,6 +107,14 @@ const api = {
     updateQuickProducts:(qp: unknown[])                       => ipcRenderer.invoke('settings:updateQuickProducts', qp),
   },
 
+  // ── ANALYTICS ─────────────────────────────────────────────────────────────
+  analytics: {
+    monthlySummary:    (months?: number)  => ipcRenderer.invoke('analytics:monthlySummary', months),
+    topProducts:       (limit?: number)   => ipcRenderer.invoke('analytics:topProducts', limit),
+    paymentMethods:    ()                 => ipcRenderer.invoke('analytics:paymentMethods'),
+    expenseCategories: ()                 => ipcRenderer.invoke('analytics:expenseCategories'),
+  },
+
   // ── SYNC ──────────────────────────────────────────────────────────────────
   sync: {
     /** Push local changes + pull server changes (full two-way sync) */

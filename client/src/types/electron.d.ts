@@ -95,6 +95,12 @@ interface ElectronAPI {
     getQuickProducts: () => Promise<any[]>;
     updateQuickProducts: (qp: unknown[]) => Promise<any[]>;
   };
+  analytics: {
+    monthlySummary:    (months?: number) => Promise<any>;
+    topProducts:       (limit?: number)  => Promise<any[]>;
+    paymentMethods:    ()                => Promise<any[]>;
+    expenseCategories: ()                => Promise<any[]>;
+  };
   sync: {
     all:          (config: SyncConfig) => Promise<SyncSummary>;
     pull:         (config: SyncConfig) => Promise<SyncSummary>;
