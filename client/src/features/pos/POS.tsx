@@ -520,7 +520,7 @@ const POS = () => {
       {/* Printable Receipt */}
       <div className="print-only" style={{ display: 'none' }}>
         <div ref={componentRef}>
-          <div id="printable-receipt" style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '12px', fontWeight: 500, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+          <div id="printable-receipt" style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '12px', fontWeight: 800, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '1px solid #000', paddingBottom: '12px' }}>
               <h1 style={{ margin: '0 0 4px', fontSize: '20px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
               <p style={{ margin: '2px 0', fontSize: '11px', color: '#555' }}>Phone: +1 234 567 8900</p>
