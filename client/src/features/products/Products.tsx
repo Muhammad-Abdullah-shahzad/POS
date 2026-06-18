@@ -5,7 +5,8 @@ import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto, IconEdit } from '@tabler/icons-react';
+import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto, IconEdit, IconPrinter } from '@tabler/icons-react';
+import JsBarcode from 'jsbarcode';
 
 interface Product {
   _id: string;
@@ -236,6 +237,71 @@ const Products = () => {
 
   const uniqueCategories = Array.from(new Set([...customCategories, ...products.map(p => p.category)])).filter(Boolean);
 
+  const printProductReceipt = (product: Product) => {
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    try {
+      JsBarcode(svg, product.barcode || product.sku || product.name, {
+        format: 'CODE128',
+        width: 2,
+        height: 60,
+        displayValue: true,
+        fontSize: 12,
+        margin: 8,
+      });
+    } catch {
+      svg.setAttribute('width', '200');
+      svg.setAttribute('height', '60');
+    }
+    const barcodeHtml = svg.outerHTML;
+
+    const win = window.open('', '_blank', 'width=320,height=480');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Product Label</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: flex-start; padding: 16px; background: #fff; }
+    .receipt { width: 240px; border: 1px dashed #999; padding: 14px 12px; text-align: center; }
+    .store-name { font-size: 14px; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
+    .divider { border: none; border-top: 1px dashed #999; margin: 8px 0; }
+    .product-name { font-size: 13px; font-weight: bold; margin-bottom: 6px; word-break: break-word; }
+    .barcode-wrap { margin: 8px auto; display: flex; justify-content: center; }
+    .barcode-wrap svg { max-width: 100%; }
+    .row { display: flex; justify-content: space-between; font-size: 12px; margin: 3px 0; }
+    .label { color: #555; }
+    .value { font-weight: bold; }
+    .price-big { font-size: 20px; font-weight: bold; margin: 6px 0 2px; }
+    @media print {
+      body { padding: 0; }
+      .receipt { border: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="store-name">PRODUCT LABEL</div>
+    <hr class="divider"/>
+    <div class="product-name">${product.name}</div>
+    <div class="barcode-wrap">${barcodeHtml}</div>
+    <hr class="divider"/>
+    <div class="price-big">€ ${product.price.toFixed(2)}</div>
+    <div class="row"><span class="label">Cost Price:</span><span class="value">€ ${product.costPrice.toFixed(2)}</span></div>
+    <div class="row"><span class="label">Discount (DRS):</span><span class="value">€ ${(product.drs || 0).toFixed(2)}</span></div>
+    <div class="row"><span class="label">VAT:</span><span class="value">${product.vatRate}% (${product.vatType})</span></div>
+    <div class="row"><span class="label">Category:</span><span class="value">${product.category}</span></div>
+    <hr class="divider"/>
+    <div style="font-size:10px;color:#888;margin-top:4px;">SKU: ${product.sku || '-'}</div>
+  </div>
+  <script>window.onload = function(){ window.print(); window.close(); }<\/script>
+</body>
+</html>`);
+    win.document.close();
+  };
+
   const openEdit = (product: Product) => {
     setEditingProduct(product);
     setImageFile(null);
@@ -324,6 +390,15 @@ const Products = () => {
                 <Table.Td fw={700} c={p.stock < 10 ? 'red' : 'inherit'}>{p.stock}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
+                    <Button
+                      size="compact-xs"
+                      variant="light"
+                      color="teal"
+                      leftSection={<IconPrinter size={13} />}
+                      onClick={() => printProductReceipt(p)}
+                    >
+                      Print
+                    </Button>
                     <Button
                       size="compact-xs"
                       variant="light"

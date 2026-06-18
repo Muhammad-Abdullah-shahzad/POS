@@ -528,7 +528,6 @@ const POS = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', fontSize: '10px', color: '#333' }}>
               <div>
                 <p style={{ margin: '2px 0' }}><strong>CUSTOMER:</strong> Walk-in Customer</p>
-                <p style={{ margin: '2px 0' }}><strong>DATE:</strong> {new Date().toLocaleString()}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ margin: '2px 0' }}><strong>RECEIPT #:</strong> REC-{Date.now().toString().slice(-6)}</p>

@@ -20,6 +20,7 @@
     "@tabler/icons-react": "^3.44.0",
     "axios": "^1.16.0",
     "dayjs": "^1.11.20",
+    "jsbarcode": "^3.12.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.75.0",

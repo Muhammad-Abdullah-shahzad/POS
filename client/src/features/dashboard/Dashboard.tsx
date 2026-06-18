@@ -5,7 +5,7 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
-import { IconCalculator, IconCheck } from '@tabler/icons-react';
+import { IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../../services/api';
 import { fetchQuickProducts, loadQuickProducts, type QuickProductButton } from '../products/QuickProducts';
@@ -177,7 +177,6 @@ const Dashboard = () => {
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
   const [enablePrinting, setEnablePrinting] = useState(true);
-  const [calculatorOpened, setCalculatorOpened] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState('0');
   const [quickProducts, setQuickProducts] = useState<QuickProductButton[]>(() => loadQuickProducts());
 
@@ -1474,16 +1473,6 @@ const Dashboard = () => {
                       checked={enablePrinting}
                       onChange={(e) => setEnablePrinting(e.currentTarget.checked)}
                     />
-                    <ActionIcon
-                      aria-label="Open calculator"
-                      title="Calculator"
-                      variant="filled"
-                      color="orange"
-                      size="lg"
-                      onClick={() => setCalculatorOpened(true)}
-                    >
-                      <IconCalculator size={22} />
-                    </ActionIcon>
                   </Flex>
                   <Grid >
                     {[
@@ -1506,6 +1495,30 @@ const Dashboard = () => {
                       </Grid.Col>
                     ))}
                   </Grid>
+
+                  {/* Inline Calculator */}
+                  <Box mt="xs" p={6} style={{ border: `1px solid ${customColors.border}`, borderRadius: 4, backgroundColor: '#f0f0f0' }}>
+                    <Box mb={4} p="4px 8px" style={{ background: '#222', borderRadius: 3, textAlign: 'right' }}>
+                      <Text size="20px" fw={700} c="white" style={{ minHeight: 28, wordBreak: 'break-all', letterSpacing: 1 }}>
+                        {calculatorValue}
+                      </Text>
+                    </Box>
+                    <SimpleGrid cols={4} spacing={4}>
+                      {['C', 'Back', '/', 'x', '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '=', '0', '.', '(', ')'].map(key => (
+                        <Button
+                          key={key}
+                          h={32}
+                          p={0}
+                          variant={key === '=' ? 'filled' : 'light'}
+                          color={key === '=' ? 'green' : key === 'C' ? 'red' : 'orange'}
+                          onClick={() => handleCalculatorInput(key)}
+                          style={{ fontSize: '13px', fontWeight: 700, borderRadius: 3 }}
+                        >
+                          {key}
+                        </Button>
+                      ))}
+                    </SimpleGrid>
+                  </Box>
 
                 </Grid.Col>
               </Grid>
@@ -1910,36 +1923,6 @@ const Dashboard = () => {
             </Button>
           </Flex>
         </Flex>
-      </Modal>
-
-      <Modal
-        opened={calculatorOpened}
-        onClose={() => setCalculatorOpened(false)}
-        title={<Text fw={800}>Calculator</Text>}
-        centered
-        size="xs"
-      >
-        <Paper withBorder p="sm" mb="sm" bg="#f8f9fa">
-          <Text size="28px" fw={800} ta="right" style={{ minHeight: 42, wordBreak: 'break-all' }}>
-            {calculatorValue}
-          </Text>
-        </Paper>
-        <SimpleGrid cols={4} spacing="xs">
-          {['C', 'Back', '/', 'x', '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '=', '0', '.', '(', ')'].map(key => (
-            <Button
-              key={key}
-              h={46}
-              variant={key === '=' ? 'filled' : 'light'}
-              color={key === '=' ? 'green' : key === 'C' ? 'red' : 'orange'}
-              onClick={() => handleCalculatorInput(key)}
-            >
-              {key}
-            </Button>
-          ))}
-        </SimpleGrid>
-        <Button fullWidth variant="subtle" color="gray" mt="md" onClick={() => setCalculatorOpened(false)}>
-          Close
-        </Button>
       </Modal>
 
       <Modal opened={returnPopupOpened} onClose={() => { setReturnPopupOpened(false); setDepositInput(''); }} title={<Text size="xl" fw="bold" c="dark">Change / Return Amount</Text>} centered>
