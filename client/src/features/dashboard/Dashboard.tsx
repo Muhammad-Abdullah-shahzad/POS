@@ -563,7 +563,20 @@ const Dashboard = () => {
   };
 
   const handleQuantityChange = (delta: number) => {
-    setStagingItem(prev => ({ ...prev, qty: Math.max(1, (Number(prev.qty) || 0) + delta) }));
+    const newQty = Math.max(1, (Number(stagingItem.qty) || 0) + delta);
+    setStagingItem(prev => ({ ...prev, qty: newQty }));
+    if (selectedItemId) {
+      updateCartItems(prev => prev.map(item => item.id === selectedItemId ? { ...item, qty: newQty } : item));
+    }
+  };
+
+  // Set the quantity of the currently staged/selected product directly (quantity number pad)
+  const handleSetQuantity = (n: number) => {
+    if (!stagingItem.name) return;
+    setStagingItem(prev => ({ ...prev, qty: n }));
+    if (selectedItemId) {
+      updateCartItems(prev => prev.map(item => item.id === selectedItemId ? { ...item, qty: n } : item));
+    }
   };
 
   const handlePriceChange = (val: string) => {
@@ -1438,7 +1451,12 @@ const Dashboard = () => {
                             if (val === '') setStagingItem(p => ({ ...p, qty: '' }));
                             else {
                               const pVal = parseInt(val);
-                              if (!isNaN(pVal)) setStagingItem(p => ({ ...p, qty: pVal }));
+                              if (!isNaN(pVal)) {
+                                setStagingItem(p => ({ ...p, qty: pVal }));
+                                if (selectedItemId) {
+                                  updateCartItems(prev => prev.map(item => item.id === selectedItemId ? { ...item, qty: pVal } : item));
+                                }
+                              }
                             }
                           }} styles={{ input: { borderRadius: 0, height: 24, minHeight: 24 } }} />
                         </Flex>
@@ -1461,6 +1479,25 @@ const Dashboard = () => {
                         </Flex>
                       </fieldset>
                     </Box>
+                  </Paper>
+
+                  {/* QUANTITY NUMBER PAD — sets the quantity of the selected/staged product */}
+                  <Paper withBorder mt="xs" p="xs" style={{ border: `2px solid ${customColors.border}`, borderRadius: 0 }} bg={customColors.bg}>
+                    <Text size="12px" fw="bold" mb={6} ta="center">Quantity</Text>
+                    <SimpleGrid cols={3} spacing={6}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                        <Button
+                          key={n}
+                          style={btnStyle}
+                          h={36}
+                          p={0}
+                          disabled={!stagingItem.name}
+                          onClick={() => handleSetQuantity(n)}
+                        >
+                          <Text size="16px" fw="bold">{n}</Text>
+                        </Button>
+                      ))}
+                    </SimpleGrid>
                   </Paper>
                 </Grid.Col>
 
