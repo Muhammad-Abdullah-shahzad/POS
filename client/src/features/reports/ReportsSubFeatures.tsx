@@ -869,7 +869,7 @@ export const ReportsSubFeatures = () => {
         <Modal
           opened={questionModalOpen}
           onClose={() => { setQuestionModalOpen(false); setQuestionAnswer(''); }}
-          title={<Text fw={600}>🔐 Which software engineer made your software?</Text>}
+          title={<Text fw={600}>Which software engineer made your software?</Text>}
           size="sm"
           centered
         >

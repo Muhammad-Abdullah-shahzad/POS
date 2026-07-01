@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconCheck } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
+import JsBarcode from 'jsbarcode';
 import api from '../../services/api';
 import { fetchQuickProducts, loadQuickProducts, type QuickProductButton } from '../products/QuickProducts';
 import SyncButton from '../sync/SyncButton';
@@ -135,6 +136,35 @@ const Dashboard = () => {
   const [transactionNo, setTransactionNo] = useState<number>(1);
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
 
+  // Daily transaction counter — number of transactions made today. Resets to 0 each new day.
+  const todayKey = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  const [dailyTxnCount, setDailyTxnCount] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('dailyTxnCount');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.date === todayKey()) return parsed.count || 0;
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
+
+  // Increment the daily counter, auto-resetting if the day has rolled over since the last sale.
+  const incrementDailyTxn = () => {
+    const today = todayKey();
+    let current = 0;
+    try {
+      const raw = localStorage.getItem('dailyTxnCount');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.date === today) current = parsed.count || 0;
+      }
+    } catch { /* ignore */ }
+    const next = current + 1;
+    localStorage.setItem('dailyTxnCount', JSON.stringify({ date: today, count: next }));
+    setDailyTxnCount(next);
+  };
+
   const [stagingItem, setStagingItem] = useState<StagingItem>({ name: '', barcode: '', qty: '', price: '' });
 
   const [apiCategories, setApiCategories] = useState<{ name: string; vatRate: number; vatType: string; loyaltyPoints?: number }[]>([]);
@@ -176,6 +206,17 @@ const Dashboard = () => {
   const [openTillModalOpened, setOpenTillModalOpened] = useState(false);
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
   const [payBillMethod, setPayBillMethod] = useState<string>('MIXED');
+  // Edit Detail (cart line item) state
+  const [editDetailModalOpened, setEditDetailModalOpened] = useState(false);
+  const [editDetailForm, setEditDetailForm] = useState<{
+    name: string;
+    barcode: string;
+    qty: number | string;
+    originalPrice: number | string;
+    discountPct: number | string;
+    drs: number | string;
+  }>({ name: '', barcode: '', qty: 1, originalPrice: 0, discountPct: 0, drs: 0 });
+  const [editDetailLoading, setEditDetailLoading] = useState(false);
   const [enablePrinting, setEnablePrinting] = useState(true);
   const [calculatorValue, setCalculatorValue] = useState('0');
   const [quickProducts, setQuickProducts] = useState<QuickProductButton[]>(() => loadQuickProducts());
@@ -482,6 +523,52 @@ const Dashboard = () => {
     contentRef: componentRef,
   });
 
+  // Barcode label printing (product name on top, barcode below)
+  const barcodePrintRef = useRef<HTMLDivElement>(null);
+  const barcodeSvgRef = useRef<SVGSVGElement>(null);
+  const [barcodeItem, setBarcodeItem] = useState<{ name: string; barcode: string } | null>(null);
+  const handlePrintBarcode = useReactToPrint({ contentRef: barcodePrintRef });
+
+  // Render the barcode SVG whenever a new item is queued for printing, then print.
+  useEffect(() => {
+    if (!barcodeItem || !barcodeSvgRef.current) return;
+    try {
+      JsBarcode(barcodeSvgRef.current, barcodeItem.barcode, {
+        format: 'CODE128',
+        width: 2,
+        height: 70,
+        displayValue: true,
+        fontSize: 16,
+        margin: 10,
+        textMargin: 4,
+      });
+    } catch (err) {
+      console.error('Failed to render barcode', err);
+      notifications.show({ title: 'Invalid Barcode', message: 'Could not generate a barcode for this value.', color: 'red' });
+      return;
+    }
+    const t = setTimeout(() => handlePrintBarcode(), 120);
+    return () => clearTimeout(t);
+  }, [barcodeItem]);
+
+  const printSelectedBarcode = () => {
+    if (!selectedItemId) {
+      notifications.show({ title: 'No Product Selected', message: 'Select a product in the cart first.', color: 'yellow' });
+      return;
+    }
+    const item = cartItems.find(i => i.id === selectedItemId);
+    if (!item) {
+      notifications.show({ title: 'No Product Selected', message: 'Select a product in the cart first.', color: 'yellow' });
+      return;
+    }
+    if (!item.barcode || !item.barcode.trim()) {
+      notifications.show({ title: 'No Barcode', message: 'This product has no barcode to print.', color: 'yellow' });
+      return;
+    }
+    // New object reference each time so re-printing the same product re-triggers the effect.
+    setBarcodeItem({ name: item.name, barcode: item.barcode.trim() });
+  };
+
   const activeCart = carts.find(c => c.id === activeCartId)!;
   const cartItems = activeCart.items;
   const selectedItemId = activeCart.selectedItemId;
@@ -586,6 +673,114 @@ const Dashboard = () => {
     }
     const parsedPrice = parseFloat(val);
     setStagingItem(prev => ({ ...prev, price: isNaN(parsedPrice) ? '' : parsedPrice }));
+  };
+
+  // Open the Edit Detail modal pre-filled with the currently selected cart line item
+  const openEditDetailModal = () => {
+    if (!selectedItemId) {
+      notifications.show({ title: 'No Product Selected', message: 'Select a product in the cart first.', color: 'yellow' });
+      return;
+    }
+    const item = cartItems.find(i => i.id === selectedItemId);
+    if (!item) {
+      notifications.show({ title: 'No Product Selected', message: 'Select a product in the cart first.', color: 'yellow' });
+      return;
+    }
+    setEditDetailForm({
+      name: item.name,
+      barcode: item.barcode,
+      qty: item.qty,
+      originalPrice: item.originalPrice ?? item.price,
+      discountPct: item.discountPct ?? 0,
+      drs: item.drs ?? 0,
+    });
+    setEditDetailModalOpened(true);
+  };
+
+  // Persist the edited details back into the selected cart line item AND the product catalog (DB)
+  const handleSaveEditDetail = async () => {
+    if (!selectedItemId) return;
+    const name = String(editDetailForm.name).trim();
+    if (!name) {
+      notifications.show({ title: 'Name Required', message: 'Product name cannot be empty.', color: 'red' });
+      return;
+    }
+    const item = cartItems.find(i => i.id === selectedItemId);
+    const barcode = String(editDetailForm.barcode).trim();
+    const qty = Math.max(1, Number(editDetailForm.qty) || 1);
+    const originalPrice = Math.max(0, Number(editDetailForm.originalPrice) || 0);
+    const discountPct = Math.min(100, Math.max(0, Number(editDetailForm.discountPct) || 0));
+    const drs = Math.max(0, Number(editDetailForm.drs) || 0);
+    const discountAmt = parseFloat((originalPrice * (discountPct / 100)).toFixed(2));
+    const price = parseFloat((originalPrice * (1 - discountPct / 100)).toFixed(2));
+
+    setEditDetailLoading(true);
+    try {
+      // 1) Persist catalog fields to the DB (name, barcode, unit price, DRS deposit).
+      //    qty is a per-sale value and is NOT a product attribute, so it is not sent.
+      const productId = item?.product;
+      if (productId) {
+        await api.patch(`/products/${productId}`, {
+          name,
+          barcode,
+          price: originalPrice,
+          drs,
+        });
+      }
+
+      // 2) Persist the per-product discount to localStorage so it survives refresh / re-scan,
+      //    matching how the catalog discount is read back in (productDiscounts map by product id).
+      if (productId) {
+        const saved = localStorage.getItem('productDiscounts');
+        const productDiscounts = saved ? JSON.parse(saved) : {};
+        if (discountPct > 0) productDiscounts[productId] = discountPct;
+        else delete productDiscounts[productId];
+        localStorage.setItem('productDiscounts', JSON.stringify(productDiscounts));
+      }
+
+      // 3) Update the in-memory cart line so the UI reflects the change immediately.
+      updateCartItems(prev => prev.map(it => it.id === selectedItemId ? {
+        ...it,
+        name,
+        barcode,
+        qty,
+        originalPrice,
+        discountPct,
+        discountAmt,
+        price,
+        drs,
+      } : it));
+
+      // Keep the staging row in sync so the bottom panel reflects the edit
+      setStagingItem(prev => prev.id === selectedItemId ? {
+        ...prev,
+        name,
+        barcode,
+        qty,
+        originalPrice,
+        discountPct,
+        discountAmt,
+        price,
+        drs,
+      } : prev);
+
+      setEditDetailModalOpened(false);
+      notifications.show({
+        title: 'Details Updated',
+        message: productId ? `${name} saved to catalog.` : `${name} updated for this sale.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err: any) {
+      console.error('Failed to save product details', err);
+      notifications.show({
+        title: 'Error Saving Details',
+        message: err.response?.data?.message || err.message || 'Could not update the product.',
+        color: 'red',
+      });
+    } finally {
+      setEditDetailLoading(false);
+    }
   };
 
   const handleCalculatorInput = (input: string) => {
@@ -745,6 +940,7 @@ const Dashboard = () => {
 
     setLastTransaction(newTransaction);
     setTransactionNo(prev => prev + 1);
+    incrementDailyTxn();
 
     // Auto-print receipt if Enable Printing is checked and payment is CASH
     if (enablePrinting && method === 'CASH') {
@@ -848,6 +1044,7 @@ const Dashboard = () => {
 
     setLastTransaction(newTransaction);
     setTransactionNo(prev => prev + 1);
+    incrementDailyTxn();
 
     if (enablePrinting) {
       setTimeout(() => handlePrint(), 100);
@@ -1719,8 +1916,9 @@ const Dashboard = () => {
                 <Box w="15%">
                   <Flex direction="column" gap={4} h="100%">
                     <Button style={btnStyle} flex={1.5}><Text size="xl" fw="normal">+</Text></Button>
-                    <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>EDIT DETAILS</Text></Button>
+                    <Button style={btnStyle} flex={1.5} px={2} onClick={openEditDetailModal}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>EDIT DETAILS</Text></Button>
                     <Button style={btnStyle} flex={1.5} px={2}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>EDIT PRICE</Text></Button>
+                    <Button style={{ ...btnStyle, backgroundColor: '#4a8c6f' }} flex={1.5} px={2} onClick={printSelectedBarcode}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>PRINT BARCODE</Text></Button>
                     <Button style={{ ...btnStyle, backgroundColor: '#c96263' }} flex={1} px={2}><Text size="12px" fw="bold" style={{ whiteSpace: 'normal', lineHeight: 1 }}>CLOSE<br />(Ctrl + X)</Text></Button>
                   </Flex>
                 </Box>
@@ -1729,6 +1927,18 @@ const Dashboard = () => {
           </Grid.Col>
         </Grid>
       </Box>
+
+      {/* Printable Barcode Label */}
+      <div style={{ display: 'none' }}>
+        <div ref={barcodePrintRef}>
+          {barcodeItem && (
+            <div style={{ textAlign: 'center', padding: '12px 16px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '8px', lineHeight: 1.2 }}>{barcodeItem.name}</div>
+              <svg ref={barcodeSvgRef} />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Printable Receipt */}
       <div style={{ display: 'none' }}>
@@ -1968,6 +2178,10 @@ const Dashboard = () => {
           <Text size="48px" fw={900} c={returnAmount >= 0 ? 'green.7' : 'red.7'}>
             {returnAmount >= 0 ? `€ ${returnAmount.toFixed(2)}` : `-€ ${Math.abs(returnAmount).toFixed(2)}`}
           </Text>
+          <Box mt="lg" px="xl" py="sm" style={{ backgroundColor: '#f1f3f5', borderRadius: '8px', textAlign: 'center', minWidth: '220px' }}>
+            <Text size="11px" c="dimmed" fw={600} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Transactions</Text>
+            <Text size="32px" fw={900} c="dark">{dailyTxnCount}</Text>
+          </Box>
           <Button mt="xl" size="lg" fullWidth color="blue" onClick={() => { setReturnPopupOpened(false); setDepositInput(''); }}>
             OK (Next Customer)
           </Button>
@@ -2358,6 +2572,189 @@ const Dashboard = () => {
               }}
             >
               Register & Add
+            </Button>
+          </Flex>
+        </Flex>
+      </Modal>
+
+      {/* EDIT PRODUCT DETAILS MODAL */}
+      <Modal
+        opened={editDetailModalOpened}
+        onClose={() => setEditDetailModalOpened(false)}
+        title={
+          <Flex align="center" gap="xs">
+            <Text size="lg" fw={800} c="white" style={{ letterSpacing: '0.5px' }}>
+              Edit Product Details
+            </Text>
+          </Flex>
+        }
+        centered
+        size="lg"
+        styles={{
+          content: {
+            backgroundColor: '#2e4a58',
+            border: '3px solid #7ec8e3',
+            borderRadius: '6px',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
+            color: '#ffffff'
+          },
+          header: {
+            backgroundColor: '#243b47',
+            color: '#ffffff',
+            borderBottom: '2px solid #7ec8e3',
+            paddingBottom: '12px'
+          },
+          body: { padding: '24px' },
+          close: { color: '#ffffff' }
+        }}
+      >
+        <Flex direction="column" gap="md">
+          <TextInput
+            label={
+              <Flex align="center" gap={4}>
+                <Text size="sm" fw={700} c="white">Product Name</Text>
+                <Text size="sm" c="#ff6b6b" fw={900}>*</Text>
+              </Flex>
+            }
+            placeholder="Product name"
+            value={String(editDetailForm.name)}
+            onChange={(e) => setEditDetailForm(prev => ({ ...prev, name: e.target.value }))}
+            required
+            size="md"
+            styles={{
+              input: {
+                borderRadius: '4px',
+                height: '44px',
+                fontSize: '15px',
+                fontWeight: 600,
+                border: String(editDetailForm.name).trim() ? '2px solid #7ec8e3' : '2px solid #ff6b6b',
+                backgroundColor: '#1e3340',
+                color: '#ffffff',
+              }
+            }}
+          />
+
+          <SimpleGrid cols={2} spacing="sm">
+            <TextInput
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">Barcode</Text>}
+              placeholder="Barcode"
+              value={String(editDetailForm.barcode)}
+              onChange={(e) => setEditDetailForm(prev => ({ ...prev, barcode: e.target.value }))}
+              styles={{
+                input: {
+                  borderRadius: '3px', height: '38px',
+                  backgroundColor: '#1a2e3a', color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }
+              }}
+            />
+            <NumberInput
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">Quantity</Text>}
+              value={editDetailForm.qty}
+              onChange={(val) => setEditDetailForm(prev => ({ ...prev, qty: val }))}
+              min={1}
+              styles={{
+                input: {
+                  borderRadius: '3px', height: '38px',
+                  backgroundColor: '#1a2e3a', color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }
+              }}
+            />
+          </SimpleGrid>
+
+          <SimpleGrid cols={3} spacing="sm">
+            <NumberInput
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">Unit Price (€)</Text>}
+              value={editDetailForm.originalPrice}
+              onChange={(val) => setEditDetailForm(prev => ({ ...prev, originalPrice: val }))}
+              min={0}
+              decimalScale={2}
+              styles={{
+                input: {
+                  borderRadius: '3px', height: '38px',
+                  backgroundColor: '#1a2e3a', color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }
+              }}
+            />
+            <NumberInput
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">Discount (%)</Text>}
+              value={editDetailForm.discountPct}
+              onChange={(val) => setEditDetailForm(prev => ({ ...prev, discountPct: val }))}
+              min={0}
+              max={100}
+              styles={{
+                input: {
+                  borderRadius: '3px', height: '38px',
+                  backgroundColor: '#1a2e3a', color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }
+              }}
+            />
+            <NumberInput
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">DRS Deposit (€)</Text>}
+              value={editDetailForm.drs}
+              onChange={(val) => setEditDetailForm(prev => ({ ...prev, drs: val }))}
+              min={0}
+              decimalScale={2}
+              styles={{
+                input: {
+                  borderRadius: '3px', height: '38px',
+                  backgroundColor: '#1a2e3a', color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }
+              }}
+            />
+          </SimpleGrid>
+
+          {/* LIVE PRICE PREVIEW */}
+          {(() => {
+            const qty = Math.max(1, Number(editDetailForm.qty) || 1);
+            const op = Math.max(0, Number(editDetailForm.originalPrice) || 0);
+            const pct = Math.min(100, Math.max(0, Number(editDetailForm.discountPct) || 0));
+            const drs = Math.max(0, Number(editDetailForm.drs) || 0);
+            const unit = op * (1 - pct / 100);
+            const lineTotal = unit * qty + drs * qty;
+            return (
+              <Box style={{ background: 'rgba(126,200,227,0.12)', border: '1px solid rgba(126,200,227,0.4)', borderRadius: '6px', padding: '12px' }}>
+                <Flex justify="space-between" mb={4}>
+                  <Text size="xs" c="rgba(255,255,255,0.7)">Discounted Unit Price</Text>
+                  <Text size="xs" fw={700} c="white">€ {unit.toFixed(2)}</Text>
+                </Flex>
+                <Flex justify="space-between">
+                  <Text size="sm" fw={700} c="#7ec8e3">Line Total ({qty} × )</Text>
+                  <Text size="sm" fw={800} c="#7ec8e3">€ {lineTotal.toFixed(2)}</Text>
+                </Flex>
+              </Box>
+            );
+          })()}
+
+          <Flex gap="sm" mt="sm" justify="flex-end">
+            <Button
+              variant="outline"
+              size="sm"
+              styles={{ root: { borderColor: 'rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.7)', borderRadius: '4px' } }}
+              onClick={() => setEditDetailModalOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              loading={editDetailLoading}
+              disabled={!String(editDetailForm.name).trim()}
+              onClick={handleSaveEditDetail}
+              style={{
+                backgroundColor: String(editDetailForm.name).trim() ? customColors.orangeBtn : 'rgba(100,100,100,0.5)',
+                color: '#ffffff',
+                border: '2px solid #ffffff',
+                borderRadius: '4px',
+                fontWeight: 700,
+                letterSpacing: '0.5px',
+                minWidth: '130px'
+              }}
+            >
+              Save Changes
             </Button>
           </Flex>
         </Flex>

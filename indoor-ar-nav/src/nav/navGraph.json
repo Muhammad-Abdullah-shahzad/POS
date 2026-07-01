@@ -1,0 +1,23 @@
+{
+  "originNodeId": "entrance",
+  "nodes": [
+    { "id": "entrance", "label": "Main Entrance", "x": 0, "z": 0, "floor": 1 },
+    { "id": "lobby", "label": "Lobby", "x": 2, "z": 0, "floor": 1 },
+    { "id": "hallway-1", "label": "Hallway A", "x": 2, "z": 4, "floor": 1 },
+    { "id": "cafe", "label": "Café", "x": 6, "z": 4, "floor": 1 },
+    { "id": "hallway-2", "label": "Hallway B", "x": 2, "z": 8, "floor": 1 },
+    { "id": "restroom", "label": "Restrooms", "x": -2, "z": 8, "floor": 1 },
+    { "id": "elevator", "label": "Elevator", "x": 2, "z": 12, "floor": 1 },
+    { "id": "meeting-room", "label": "Meeting Room 1", "x": 6, "z": 12, "floor": 1 }
+  ],
+  "edges": [
+    { "from": "entrance", "to": "lobby" },
+    { "from": "lobby", "to": "hallway-1" },
+    { "from": "hallway-1", "to": "cafe" },
+    { "from": "hallway-1", "to": "hallway-2" },
+    { "from": "hallway-2", "to": "restroom" },
+    { "from": "hallway-2", "to": "elevator" },
+    { "from": "elevator", "to": "meeting-room" }
+  ],
+  "destinations": ["cafe", "restroom", "meeting-room"]
+}
