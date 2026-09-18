@@ -1,19 +1,23 @@
-import express from 'express';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { analyticsQuery } from '../validators/catalogValidators';
 import {
-  getRevenueTrend,
-  getTopProducts,
-  getPaymentMethodBreakdown,
   getExpenseCategoryBreakdown,
   getMonthlySummary,
+  getPaymentMethodBreakdown,
+  getRevenueTrend,
+  getTopProducts,
 } from '../controllers/analyticsController';
-import { protect, authorize } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/revenue-trend', protect, authorize('admin', 'manager'), getRevenueTrend);
-router.get('/top-products', protect, authorize('admin', 'manager'), getTopProducts);
-router.get('/payment-methods', protect, authorize('admin', 'manager'), getPaymentMethodBreakdown);
-router.get('/expense-categories', protect, authorize('admin', 'manager'), getExpenseCategoryBreakdown);
-router.get('/monthly-summary', protect, authorize('admin', 'manager'), getMonthlySummary);
+router.use(authenticate, authorize('admin', 'manager'), validate({ query: analyticsQuery }));
+
+router.get('/revenue-trend', getRevenueTrend);
+router.get('/top-products', getTopProducts);
+router.get('/payment-methods', getPaymentMethodBreakdown);
+router.get('/expense-categories', getExpenseCategoryBreakdown);
+router.get('/monthly-summary', getMonthlySummary);
 
 export default router;

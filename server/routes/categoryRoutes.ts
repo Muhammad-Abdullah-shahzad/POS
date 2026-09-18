@@ -1,15 +1,24 @@
-import express from 'express';
-import { getCategories, createCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
-import { protect } from '../middleware/auth';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
+import { createCategorySchema, updateCategorySchema } from '../validators/catalogValidators';
+import {
+  createCategory,
+  deleteCategory,
+  getCategories,
+  updateCategory,
+} from '../controllers/categoryController';
 
-const router = express.Router();
+const router = Router();
 
-router.route('/')
-  .get(getCategories)
-  .post(protect, createCategory);
+router.use(authenticate);
 
-router.route('/:id')
-  .put(protect, updateCategory)
-  .delete(protect, deleteCategory);
+router.route('/').get(getCategories).post(validate({ body: createCategorySchema }), createCategory);
+
+router
+  .route('/:id')
+  .put(validate({ params: idParam, body: updateCategorySchema }), updateCategory)
+  .delete(authorize('admin', 'manager'), validate({ params: idParam }), deleteCategory);
 
 export default router;

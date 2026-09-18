@@ -1,14 +1,21 @@
-import express from 'express';
-import { getSettings, getQuickProducts, updateQuickProducts, updateSettings } from '../controllers/settingsController';
-import { protect, authorize } from '../middleware/auth';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { quickProductsSchema, updateSettingsSchema } from '../validators/catalogValidators';
+import {
+  getQuickProducts,
+  getSettings,
+  updateQuickProducts,
+  updateSettings,
+} from '../controllers/settingsController';
 
-const router = express.Router();
+const router = Router();
+const staff = authorize('admin', 'manager', 'cashier');
 
-router.get('/quick-products', protect, getQuickProducts);
-router.put('/quick-products', protect, authorize('admin', 'manager', 'cashier'), updateQuickProducts);
+router.use(authenticate);
 
-router.route('/')
-  .get(getSettings)
-  .put(protect, authorize('admin', 'manager', 'cashier'), updateSettings);
+router.route('/quick-products').get(getQuickProducts).put(staff, validate({ body: quickProductsSchema }), updateQuickProducts);
+
+router.route('/').get(getSettings).put(authorize('admin', 'manager'), validate({ body: updateSettingsSchema }), updateSettings);
 
 export default router;

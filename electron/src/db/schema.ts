@@ -260,7 +260,7 @@ CREATE TABLE IF NOT EXISTS pending_deletes (
 );
 
 -- ─────────────────────────────────────────────
--- USERS  (local auth)
+-- USERS  (cached copies of server accounts, so the till can sign in offline)
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
   localId      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -269,8 +269,18 @@ CREATE TABLE IF NOT EXISTS users (
   email        TEXT    NOT NULL UNIQUE,
   passwordHash TEXT    NOT NULL,
   role         TEXT    NOT NULL DEFAULT 'cashier',
+  tenantId     TEXT,
   createdAt    TEXT,
   updatedAt    TEXT,
-  isSync       INTEGER NOT NULL DEFAULT 0
+  isSync       INTEGER NOT NULL DEFAULT 1
+);
+
+-- ─────────────────────────────────────────────
+-- APP META  (device claim and the encrypted server session)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS app_meta (
+  key       TEXT PRIMARY KEY,
+  value     TEXT,
+  updatedAt TEXT
 );
 `;

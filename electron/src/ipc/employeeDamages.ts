@@ -1,13 +1,13 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, softDelete, v } from '../db/database';
 
 export function registerEmployeeDamageHandlers(): void {
 
-  ipcMain.handle('employeeDamages:getAll', () => {
+  handleLicensed('employeeDamages:getAll', () => {
     return dbAll('SELECT * FROM employee_damages WHERE deletedAt IS NULL ORDER BY date DESC');
   });
 
-  ipcMain.handle('employeeDamages:create', (_e, data: Record<string, unknown>) => {
+  handleLicensed('employeeDamages:create', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -31,7 +31,7 @@ export function registerEmployeeDamageHandlers(): void {
     return dbGet('SELECT * FROM employee_damages WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('employeeDamages:update', (_e, _id: string, data: Record<string, unknown>) => {
+  handleLicensed('employeeDamages:update', (_e, _id: string, data: Record<string, unknown>) => {
     const ts = now();
     dbRun(
       `UPDATE employee_damages
@@ -42,7 +42,7 @@ export function registerEmployeeDamageHandlers(): void {
     return dbGet('SELECT * FROM employee_damages WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('employeeDamages:delete', (_e, _id: string) => {
+  handleLicensed('employeeDamages:delete', (_e, _id: string) => {
     softDelete('employee_damages', _id);
     return { success: true };
   });

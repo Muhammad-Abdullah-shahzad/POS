@@ -3,11 +3,6 @@
  * Matches the API exposed in electron/src/preload.ts.
  */
 
-interface SyncConfig {
-  baseUrl: string;
-  token: string;
-}
-
 interface SyncResult {
   collection: string;
   synced: number;
@@ -21,12 +16,60 @@ interface SyncSummary {
   totalErrors: number;
 }
 
+interface DesktopUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'manager' | 'cashier';
+  tenantId: string;
+  tenantName: string;
+}
+
+/** What the main process knows about the licence, from the cached key and the clock. */
+interface DesktopLicenseStatus {
+  state: 'active' | 'expired' | 'missing' | 'invalid';
+  expiresAt: string | null;
+  daysLeft: number | null;
+  message: string;
+  checkedAt: string;
+}
+
+interface DesktopLoginResult {
+  success: boolean;
+  message?: string;
+  data: {
+    user: DesktopUser;
+    accessToken: string;
+    refreshToken: string;
+    /** True when the till authenticated against its local cache. */
+    offline: boolean;
+    license: DesktopLicenseStatus;
+  };
+}
+
+interface DesktopRegisterInput {
+  companyName: string;
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
+interface DeviceInfo {
+  claimed: boolean;
+  tenantId: string | null;
+  tenantName: string | null;
+}
+
 interface ElectronAPI {
   auth: {
-    login:          (email: string, password: string) => Promise<{ success: boolean; message?: string; data: { token: string; user: { id: string; name: string; role: string } } }>;
-    register:       (data: { name: string; email: string; password: string; role: string }) => Promise<{ success: boolean; message?: string; data?: any }>;
+    login:          (email: string, password: string) => Promise<DesktopLoginResult>;
+    register:       (input: DesktopRegisterInput) => Promise<DesktopLoginResult>;
+    logout:         () => Promise<{ success: boolean }>;
     getUsers:       () => Promise<any[]>;
     changePassword: (userId: string, oldPassword: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
+    getDevice:      () => Promise<DeviceInfo>;
+    resetDevice:    () => Promise<{ success: boolean }>;
   };
   products: {
     getAll: (search?: string) => Promise<any[]>;
@@ -101,10 +144,15 @@ interface ElectronAPI {
     paymentMethods:    ()                => Promise<any[]>;
     expenseCategories: ()                => Promise<any[]>;
   };
+  license: {
+    status:   () => Promise<DesktopLicenseStatus>;
+    activate: (key: string) => Promise<{ success: boolean; message: string; data: DesktopLicenseStatus }>;
+    refresh:  () => Promise<DesktopLicenseStatus & { offline: boolean }>;
+  };
   sync: {
-    all:          (config: SyncConfig) => Promise<SyncSummary>;
-    pull:         (config: SyncConfig) => Promise<SyncSummary>;
-    collection:   (config: SyncConfig, collection: string) => Promise<SyncResult>;
+    all:          () => Promise<SyncSummary>;
+    pull:         () => Promise<SyncSummary>;
+    collection:   (collection: string) => Promise<SyncResult>;
     pendingCounts:() => Promise<Record<string, number>>;
   };
 }

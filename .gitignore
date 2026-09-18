@@ -4,12 +4,10 @@
 dist
 .env
 .env.dev
-.env.example
 dist
 node_modules
 .env
 .env.dev
-.env.example
 release 
 electron/dist
 electron/out

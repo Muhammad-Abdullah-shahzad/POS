@@ -1,0 +1,5 @@
+{
+  "_comment": "Shipped inside the packaged app. apiBaseUrl is the POS API without a trailing slash; licensePublicKey is the LICENSE_PUBLIC_KEY printed by `npm run license:keys` in server/. Neither is secret. During development electron/.env (WEB_API_URL, LICENSE_PUBLIC_KEY) overrides these.",
+  "apiBaseUrl": "http://localhost:5000/api",
+  "licensePublicKey": "MCowBQYDK2VwAyEAY65faGTIuH7N8N51BpnaimLAgZvZW218WDazzOm0GSA="
+}

@@ -1,25 +1,41 @@
-import express from 'express';
-import { 
-  getCustomers, 
-  createCustomer, 
-  updateCustomer, 
-  deleteCustomer, 
-  updateCustomerStats,
-  resetLoyaltyPoints
+import { Router } from 'express';
+import { authenticate } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
+import {
+  createCustomerSchema,
+  customerTransactionSchema,
+  searchQuery,
+  updateCustomerSchema,
+} from '../validators/catalogValidators';
+import {
+  createCustomer,
+  deleteCustomer,
+  getCustomers,
+  recordCustomerTransaction,
+  resetLoyaltyPoints,
+  updateCustomer,
 } from '../controllers/customerController';
-import { protect } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-router.route('/')
-  .get(getCustomers)
-  .post(protect, createCustomer);
+router.use(authenticate);
 
-router.route('/:id')
-  .put(protect, updateCustomer)
-  .delete(protect, deleteCustomer);
+router
+  .route('/')
+  .get(validate({ query: searchQuery }), getCustomers)
+  .post(validate({ body: createCustomerSchema }), createCustomer);
 
-router.post('/:id/transaction', protect, updateCustomerStats);
-router.post('/:id/reset-points', protect, resetLoyaltyPoints);
+router
+  .route('/:id')
+  .put(validate({ params: idParam, body: updateCustomerSchema }), updateCustomer)
+  .delete(validate({ params: idParam }), deleteCustomer);
+
+router.post(
+  '/:id/transaction',
+  validate({ params: idParam, body: customerTransactionSchema }),
+  recordCustomerTransaction
+);
+router.post('/:id/reset-points', validate({ params: idParam }), resetLoyaltyPoints);
 
 export default router;

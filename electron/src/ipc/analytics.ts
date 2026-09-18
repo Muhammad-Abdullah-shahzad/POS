@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll } from '../db/database';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -16,7 +16,7 @@ function monthLabel(key: string): string {
 
 export function registerAnalyticsHandlers(): void {
   // ── monthly-summary ────────────────────────────────────────────────────────
-  ipcMain.handle('analytics:monthlySummary', (_e, months = 6) => {
+  handleLicensed('analytics:monthlySummary', (_e, months = 6) => {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - months + 1);
     cutoff.setDate(1);
@@ -69,7 +69,7 @@ export function registerAnalyticsHandlers(): void {
   });
 
   // ── top-products ───────────────────────────────────────────────────────────
-  ipcMain.handle('analytics:topProducts', (_e, limit = 10) => {
+  handleLicensed('analytics:topProducts', (_e, limit = 10) => {
     const orders = dbAll(
       `SELECT items FROM orders
        WHERE status != 'voided' AND (deletedAt IS NULL OR deletedAt = '')`
@@ -95,7 +95,7 @@ export function registerAnalyticsHandlers(): void {
   });
 
   // ── payment-methods ────────────────────────────────────────────────────────
-  ipcMain.handle('analytics:paymentMethods', () => {
+  handleLicensed('analytics:paymentMethods', () => {
     const rows = dbAll(
       `SELECT paymentMethod, COUNT(*) as count, SUM(total) as total
        FROM orders
@@ -107,7 +107,7 @@ export function registerAnalyticsHandlers(): void {
   });
 
   // ── expense-categories ─────────────────────────────────────────────────────
-  ipcMain.handle('analytics:expenseCategories', () => {
+  handleLicensed('analytics:expenseCategories', () => {
     const rows = dbAll(
       `SELECT category, SUM(amount) as total, COUNT(*) as count
        FROM expenses

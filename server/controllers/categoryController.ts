@@ -1,47 +1,32 @@
 import { Request, Response } from 'express';
+import { successResponse } from '../core/apiResponse';
+import { asyncHandler } from '../core/asyncHandler';
+import { NotFoundError } from '../core/errors';
 import Category from '../models/Category';
-import { successResponse, errorResponse } from '../utils/response';
 
-export const getCategories = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const categories = await Category.find();
-    res.json(successResponse(categories));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+export const getCategories = asyncHandler(async (_req: Request, res: Response) => {
+  const categories = await Category.find().sort({ name: 1 });
+  res.json(successResponse(categories));
+});
 
-export const createCategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const category = await Category.create(req.body);
-    res.status(201).json(successResponse(category, 'Category created successfully'));
-  } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
-  }
-};
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+  const category = await Category.create(req.body);
+  res.status(201).json(successResponse(category, 'Category created'));
+});
 
-export const updateCategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!category) {
-      res.status(404).json(errorResponse('Category not found'));
-      return;
-    }
-    res.json(successResponse(category, 'Category updated successfully'));
-  } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
-  }
-};
+export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
+  const category = await Category.findByIdAndUpdate(req.params.id, req.body, {
+    returnDocument: 'after',
+    runValidators: true,
+  });
+  if (!category) throw new NotFoundError('Category');
 
-export const deleteCategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const category = await Category.findByIdAndDelete(req.params.id);
-    if (!category) {
-      res.status(404).json(errorResponse('Category not found'));
-      return;
-    }
-    res.json(successResponse(null, 'Category deleted successfully'));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+  res.json(successResponse(category, 'Category updated'));
+});
+
+export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
+  const category = await Category.findByIdAndDelete(req.params.id);
+  if (!category) throw new NotFoundError('Category');
+
+  res.json(successResponse(null, 'Category deleted'));
+});

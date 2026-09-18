@@ -1,6 +1,6 @@
 import {
   Grid, Paper, Text, Flex, TextInput, Table, Tabs, Select, Button,
-  Box, Checkbox, Modal, SimpleGrid, NumberInput, Divider, Autocomplete, ActionIcon
+  Box, Checkbox, Modal, SimpleGrid, NumberInput, Divider, Autocomplete
 } from '@mantine/core';
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';

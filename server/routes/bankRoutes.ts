@@ -1,19 +1,35 @@
-import express from 'express';
-import { getBankNames, addBankName, getBankAccounts, addBankAccount, getBankCards, addBankCard } from '../controllers/bankController';
-import { protect, authorize } from '../middleware/auth';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
+import { bankAccountSchema, bankCardSchema, bankNameSchema } from '../validators/catalogValidators';
+import {
+  addBankAccount,
+  addBankCard,
+  addBankName,
+  deleteBankAccount,
+  deleteBankCard,
+  deleteBankName,
+  getBankAccounts,
+  getBankCards,
+  getBankNames,
+} from '../controllers/bankController';
 
-const router = express.Router();
+const router = Router();
+const managers = authorize('admin', 'manager');
 
-router.route('/names')
-  .get(protect, getBankNames)
-  .post(protect, authorize('admin', 'manager'), addBankName);
+router.use(authenticate);
 
-router.route('/accounts')
-  .get(protect, getBankAccounts)
-  .post(protect, authorize('admin', 'manager'), addBankAccount);
+router.route('/names').get(getBankNames).post(managers, validate({ body: bankNameSchema }), addBankName);
+router.delete('/names/:id', managers, validate({ params: idParam }), deleteBankName);
 
-router.route('/cards')
-  .get(protect, getBankCards)
-  .post(protect, authorize('admin', 'manager'), addBankCard);
+router
+  .route('/accounts')
+  .get(getBankAccounts)
+  .post(managers, validate({ body: bankAccountSchema }), addBankAccount);
+router.delete('/accounts/:id', managers, validate({ params: idParam }), deleteBankAccount);
+
+router.route('/cards').get(getBankCards).post(managers, validate({ body: bankCardSchema }), addBankCard);
+router.delete('/cards/:id', managers, validate({ params: idParam }), deleteBankCard);
 
 export default router;

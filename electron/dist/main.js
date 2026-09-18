@@ -18,6 +18,8 @@ const banks_1 = require("./ipc/banks");
 const settings_1 = require("./ipc/settings");
 const syncManager_1 = require("./sync/syncManager");
 const auth_1 = require("./ipc/auth");
+const analytics_1 = require("./ipc/analytics");
+const license_1 = require("./ipc/license");
 let mainWindow = null;
 function createWindow() {
     mainWindow = new electron_1.BrowserWindow({
@@ -42,14 +44,11 @@ function createWindow() {
         // via the extraResources config in package.json.
         mainWindow.loadFile(path_1.default.join(process.resourcesPath, 'client', 'dist', 'index.html'));
     }
-    mainWindow.webContents.openDevTools();
     mainWindow.on('closed', () => { mainWindow = null; });
 }
 electron_1.app.whenReady().then(async () => {
     // sql.js init is async — must await before registering handlers
     await (0, database_1.initDb)();
-    // Seed default admin user if no users exist yet
-    (0, auth_1.seedDefaultAdmin)();
     // Register all IPC handlers
     (0, auth_1.registerAuthHandlers)();
     (0, products_1.registerProductHandlers)();
@@ -63,6 +62,11 @@ electron_1.app.whenReady().then(async () => {
     (0, banks_1.registerBankHandlers)();
     (0, settings_1.registerSettingsHandlers)();
     (0, syncManager_1.registerSyncHandlers)();
+    (0, analytics_1.registerAnalyticsHandlers)();
+    (0, license_1.registerLicenseHandlers)();
+    // Picks up a renewed licence while the till is open, so a paid customer is
+    // never stuck on the lock screen waiting for a restart.
+    (0, license_1.startLicenseRefreshLoop)();
     electron_1.ipcMain.handle('app:getVersion', () => electron_1.app.getVersion());
     electron_1.ipcMain.handle('app:getPlatform', () => process.platform);
     createWindow();

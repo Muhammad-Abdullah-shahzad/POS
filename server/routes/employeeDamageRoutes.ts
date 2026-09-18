@@ -1,20 +1,31 @@
-import express from 'express';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
 import {
-  getEmployeeDamages,
+  createEmployeeDamageSchema,
+  updateEmployeeDamageSchema,
+} from '../validators/catalogValidators';
+import {
   createEmployeeDamage,
-  updateEmployeeDamage,
   deleteEmployeeDamage,
+  getEmployeeDamages,
+  updateEmployeeDamage,
 } from '../controllers/employeeDamageController';
-import { protect, authorize } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
+const managers = authorize('admin', 'manager');
 
-router.route('/')
-  .get(protect, authorize('admin', 'manager', 'cashier'), getEmployeeDamages)
-  .post(protect, authorize('admin', 'manager'), createEmployeeDamage);
+router.use(authenticate);
 
-router.route('/:id')
-  .patch(protect, authorize('admin', 'manager'), updateEmployeeDamage)
-  .delete(protect, authorize('admin', 'manager'), deleteEmployeeDamage);
+router
+  .route('/')
+  .get(getEmployeeDamages)
+  .post(managers, validate({ body: createEmployeeDamageSchema }), createEmployeeDamage);
+
+router
+  .route('/:id')
+  .patch(managers, validate({ params: idParam, body: updateEmployeeDamageSchema }), updateEmployeeDamage)
+  .delete(managers, validate({ params: idParam }), deleteEmployeeDamage);
 
 export default router;

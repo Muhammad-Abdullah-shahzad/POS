@@ -10,11 +10,19 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 const api = {
   // ── AUTH ──────────────────────────────────────────────────────────────────
+  // Staff accounts are created on the server by a company admin. `register`
+  // creates a brand new company (and its first admin) from the till.
   auth: {
-    login:          (email: string, password: string)                                          => ipcRenderer.invoke('auth:login', email, password),
-    register:       (data: { name: string; email: string; password: string; role: string })    => ipcRenderer.invoke('auth:register', data),
-    getUsers:       ()                                                                         => ipcRenderer.invoke('auth:getUsers'),
-    changePassword: (userId: string, oldPassword: string, newPassword: string)                => ipcRenderer.invoke('auth:changePassword', userId, oldPassword, newPassword),
+    login:          (email: string, password: string)                          => ipcRenderer.invoke('auth:login', email, password),
+    register:       (input: { companyName: string; name: string; email: string; password: string; phone?: string }) =>
+                                                                                  ipcRenderer.invoke('auth:register', input),
+    logout:         ()                                                         => ipcRenderer.invoke('auth:logout'),
+    getUsers:       ()                                                         => ipcRenderer.invoke('auth:getUsers'),
+    changePassword: (userId: string, oldPassword: string, newPassword: string) => ipcRenderer.invoke('auth:changePassword', userId, oldPassword, newPassword),
+    /** Which company this till is registered to. */
+    getDevice:      ()                                                         => ipcRenderer.invoke('auth:getDevice'),
+    /** Clear local data so the till can be handed to a different company. */
+    resetDevice:    ()                                                         => ipcRenderer.invoke('auth:resetDevice'),
   },
 
   // ── PRODUCTS ──────────────────────────────────────────────────────────────
@@ -115,23 +123,32 @@ const api = {
     expenseCategories: ()                 => ipcRenderer.invoke('analytics:expenseCategories'),
   },
 
+  // ── LICENCE ───────────────────────────────────────────────────────────────
+  // The key is verified in the main process against the public key baked into
+  // this build, so the till can lock or unlock with no connection at all.
+  license: {
+    /** Current state from the cached key and the clock. */
+    status:   ()            => ipcRenderer.invoke('license:status'),
+    /** Apply a key the operator sent. Works offline. */
+    activate: (key: string) => ipcRenderer.invoke('license:activate', key),
+    /** Ask the server for the latest licence (after a renewal), then re-check. */
+    refresh:  ()            => ipcRenderer.invoke('license:refresh'),
+  },
+
   // ── SYNC ──────────────────────────────────────────────────────────────────
+  // Server credentials stay in the main process, so none of these take a token.
   sync: {
-    /** Push local changes + pull server changes (full two-way sync) */
-    all: (config: { baseUrl: string; token: string }) =>
-      ipcRenderer.invoke('sync:all', config),
+    /** Push local changes, then pull the server's. */
+    all: () => ipcRenderer.invoke('sync:all'),
 
-    /** Pull only: fetch all server data into local SQLite */
-    pull: (config: { baseUrl: string; token: string }) =>
-      ipcRenderer.invoke('sync:pull', config),
+    /** Pull only: fetch server data into local SQLite. */
+    pull: () => ipcRenderer.invoke('sync:pull'),
 
-    /** Sync a single collection (push) */
-    collection: (config: { baseUrl: string; token: string }, collection: string) =>
-      ipcRenderer.invoke('sync:collection', config, collection),
+    /** Push a single collection. */
+    collection: (collection: string) => ipcRenderer.invoke('sync:collection', collection),
 
-    /** Get count of unsynced records per collection */
-    pendingCounts: () =>
-      ipcRenderer.invoke('sync:pendingCounts'),
+    /** Count of records waiting to be pushed, per collection. */
+    pendingCounts: () => ipcRenderer.invoke('sync:pendingCounts'),
   },
 };
 

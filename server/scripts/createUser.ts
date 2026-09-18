@@ -1,39 +1,42 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
-import User from '../models/User';
+/**
+ * Add a staff login to an existing company.
+ *
+ *   npm run user:create -- \
+ *     --tenant corner-shop \
+ *     --name "Sean Kelly" \
+ *     --email sean@cornershop.ie \
+ *     --password "choose-a-strong-one" \
+ *     --role cashier
+ */
+import { runAsTenant } from '../core/tenantContext';
+import User, { USER_ROLES, UserRole, hashPassword } from '../models/User';
+import { findTenantBySlug, parseArgs, requireArg, runScript } from './lib/runScript';
 
-dotenv.config();
+runScript('createUser', async () => {
+  const args = parseArgs();
 
-const createUser = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/store_pos');
-    console.log('MongoDB Connected');
+  const tenant = await findTenantBySlug(requireArg(args, 'tenant'));
+  const email = requireArg(args, 'email').toLowerCase();
+  const role = (typeof args.role === 'string' ? args.role : 'cashier') as UserRole;
 
-    const existing = await User.findOne({ email: 'deviction@gmail.com' });
-    if (existing) {
-      console.log('User already exists, updating password...');
-      const salt = await bcrypt.genSalt(10);
-      existing.passwordHash = await bcrypt.hash('12345678', salt);
-      await existing.save();
-      console.log('Password updated successfully.');
-    } else {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('12345678', salt);
-      await User.create({
-        name: 'Deviction',
-        email: 'deviction@gmail.com',
-        passwordHash,
-        role: 'admin',
-      });
-      console.log('User created: deviction@gmail.com / 12345678');
-    }
-
-    process.exit(0);
-  } catch (error) {
-    console.error('Error:', error);
-    process.exit(1);
+  if (!USER_ROLES.includes(role)) {
+    throw new Error(`Role must be one of: ${USER_ROLES.join(', ')}`);
   }
-};
 
-createUser();
+  const existing = await User.findOne({ email });
+  if (existing) throw new Error(`${email} already has an account`);
+
+  const passwordHash = await hashPassword(requireArg(args, 'password'));
+
+  const user = await runAsTenant(tenant._id.toString(), () =>
+    User.create({
+      tenantId: tenant._id,
+      name: requireArg(args, 'name'),
+      email,
+      role,
+      passwordHash,
+    })
+  );
+
+  process.stdout.write(`\n  Created ${user.email} (${user.role}) for ${tenant.name}\n\n`);
+});

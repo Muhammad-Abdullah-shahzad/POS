@@ -1,13 +1,13 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
 
 export function registerCustomerHandlers(): void {
 
-  ipcMain.handle('customers:getAll', () => {
+  handleLicensed('customers:getAll', () => {
     return dbAll('SELECT * FROM customers WHERE deletedAt IS NULL ORDER BY name ASC');
   });
 
-  ipcMain.handle('customers:create', (_e, data: Record<string, unknown>) => {
+  handleLicensed('customers:create', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -33,7 +33,7 @@ export function registerCustomerHandlers(): void {
     return dbGet('SELECT * FROM customers WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('customers:update', (_e, _id: string, data: Record<string, unknown>) => {
+  handleLicensed('customers:update', (_e, _id: string, data: Record<string, unknown>) => {
     dbRun(
       `UPDATE customers SET
          name=$name, contactNum1=$c1, contactNum2=$c2, email=$email,
@@ -56,12 +56,12 @@ export function registerCustomerHandlers(): void {
     return dbGet('SELECT * FROM customers WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('customers:delete', (_e, _id: string) => {
+  handleLicensed('customers:delete', (_e, _id: string) => {
     softDelete('customers', _id);
     return { success: true };
   });
 
-  ipcMain.handle('customers:updateStats', (_e, _id: string, amount: number) => {
+  handleLicensed('customers:updateStats', (_e, _id: string, amount: number) => {
     const ts = now();
     dbRun(
       `UPDATE customers SET timesVisited = timesVisited + 1, totalAmount = totalAmount + $amount,
@@ -71,7 +71,7 @@ export function registerCustomerHandlers(): void {
     return dbGet('SELECT * FROM customers WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('customers:resetPoints', (_e, _id: string) => {
+  handleLicensed('customers:resetPoints', (_e, _id: string) => {
     dbRun(
       `UPDATE customers SET loyaltyPoints=0, updatedAt=$ts, isSync=0 WHERE _id=$id AND deletedAt IS NULL`,
       { $id: _id, $ts: now() }

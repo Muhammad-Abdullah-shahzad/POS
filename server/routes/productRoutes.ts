@@ -1,39 +1,48 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
 import {
-  getProducts,
+  barcodeParam,
+  createProductSchema,
+  productSearchQuery,
+  stockAdjustmentSchema,
+  updateProductSchema,
+} from '../validators/productValidators';
+import { productImageUpload } from '../services/productImageService';
+import {
   createProduct,
+  deleteProduct,
   getProductByBarcode,
+  getProducts,
   updateProduct,
   updateStock,
-  deleteProduct,
-  upload,
 } from '../controllers/productController';
-import { protect, authorize } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
+const staff = authorize('admin', 'manager', 'cashier');
 
-const productUpload = (req: Request, res: Response, next: NextFunction) => {
-  upload.single('image')(req, res, (err) => {
-    if (err) {
-      console.error('Multer error:', err.message);
-      res.status(400).json({ success: false, data: null, message: err.message });
-      return;
-    }
+router.use(authenticate);
 
-    console.log('Product upload parsed:', {
-      contentType: req.headers['content-type'],
-      file: req.file?.filename || null,
-      bodyKeys: Object.keys(req.body || {}),
-    });
-    next();
-  });
-};
+router
+  .route('/')
+  .get(validate({ query: productSearchQuery }), getProducts)
+  // The image must be parsed before validation, because multipart form fields
+  // only exist on the request once multer has read the stream.
+  .post(staff, productImageUpload.single('image'), validate({ body: createProductSchema }), createProduct);
 
-router.get('/', protect, getProducts);
-router.post('/', protect, authorize('admin', 'manager', 'cashier'), productUpload, createProduct);
-router.get('/barcode/:barcode', protect, getProductByBarcode);
-router.patch('/:id/stock', protect, authorize('admin', 'manager', 'cashier'), updateStock);
-router.patch('/:id', protect, authorize('admin', 'manager', 'cashier'), productUpload, updateProduct);
-router.delete('/:id', protect, authorize('admin', 'manager', 'cashier'), deleteProduct);
+router.get('/barcode/:barcode', validate({ params: barcodeParam }), getProductByBarcode);
+
+router.patch('/:id/stock', staff, validate({ params: idParam, body: stockAdjustmentSchema }), updateStock);
+
+router
+  .route('/:id')
+  .patch(
+    staff,
+    productImageUpload.single('image'),
+    validate({ params: idParam, body: updateProductSchema }),
+    updateProduct
+  )
+  .delete(authorize('admin', 'manager'), validate({ params: idParam }), deleteProduct);
 
 export default router;

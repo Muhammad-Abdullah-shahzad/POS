@@ -1,9 +1,17 @@
-import express from 'express';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { dashboardQuery } from '../validators/catalogValidators';
 import { getDashboardStats } from '../controllers/dashboardController';
-import { protect, authorize } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/stats', protect, authorize('admin', 'manager'), getDashboardStats);
+router.get(
+  '/stats',
+  authenticate,
+  authorize('admin', 'manager'),
+  validate({ query: dashboardQuery }),
+  getDashboardStats
+);
 
 export default router;

@@ -1,184 +1,303 @@
 /**
- * auth.ts — Local authentication IPC handlers
+ * Sign up and sign in on the till.
  *
- * Uses Node's built-in crypto (pbkdf2) for password hashing.
- * No native addons — works on any Node version.
+ * The server is the authority on who may sign in and which company they belong
+ * to, so the till always tries it first. When the shop has no connection it
+ * falls back to the credentials cached from the last successful sign in, which
+ * keeps the till usable through an outage without letting it invent access it
+ * was never granted.
  *
- * Default admin seeded on first launch:
- *   email:    admin@pos.com
- *   password: admin123
- *   role:     admin
+ * The till never mints its own API tokens. Every token it holds was issued by
+ * the server, which is what stops a desktop build from claiming another
+ * company's data. The licence that arrives with each sign in is cached so the
+ * till can keep checking it offline.
  */
-
 import { ipcMain } from 'electron';
-import crypto from 'crypto';
+import axios from 'axios';
+import { config } from '../config';
+import { isNetworkFailure } from '../api/serverClient';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v } from '../db/database';
+import {
+  StoredUser,
+  claimDevice,
+  clearSession,
+  getDeviceInfo,
+  getSession,
+  hashPassword,
+  saveSession,
+  verifyPassword,
+} from '../auth/session';
+import { DesktopLicenseStatus, getLicenseStatus, storeLicenseFromServer } from '../license/licenseStore';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Crypto helpers  (pbkdf2 — no bcrypt, no native compilation)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ITERATIONS = 100_000;
-const KEY_LEN    = 64;
-const DIGEST     = 'sha512';
-
-function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, ITERATIONS, KEY_LEN, DIGEST).toString('hex');
-  return `${salt}:${hash}`;
+interface LoginSuccess {
+  success: true;
+  data: {
+    user: StoredUser;
+    accessToken: string;
+    refreshToken: string;
+    /** True when the till authenticated against its local cache. */
+    offline: boolean;
+    license: DesktopLicenseStatus;
+  };
 }
 
-function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(':');
-  if (!salt || !hash) return false;
-  const attempt = crypto.pbkdf2Sync(password, salt, ITERATIONS, KEY_LEN, DIGEST).toString('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(attempt, 'hex'));
-  } catch {
-    return false;
-  }
+interface LoginFailure {
+  success: false;
+  message: string;
 }
 
-/** 
- * Standard JWT signed with HS256 to be compatible with the remote web server.
- * The remote server uses process.env.JWT_SECRET || 'your_jwt_secret_key' 
- */
-function base64url(str: string | Buffer): string {
-  return (typeof str === 'string' ? Buffer.from(str) : str)
-    .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+type LoginResult = LoginSuccess | LoginFailure;
+
+export interface RegisterInput {
+  companyName: string;
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
 }
 
-function generateToken(userId: string, role: string): string {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + (30 * 24 * 60 * 60); // 30 days
-  const payload = { id: userId, role, iat, exp };
-  
-  const encodedHeader = base64url(JSON.stringify(header));
-  const encodedPayload = base64url(JSON.stringify(payload));
-  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-  
-  // Must match the server's secret for sync to work
-  const secret = process.env.JWT_SECRET || 'your_jwt_secret_key';
-  
-  const signature = crypto.createHmac('sha256', secret)
-                          .update(unsignedToken)
-                          .digest();
-                          
-  return `${unsignedToken}.${base64url(signature)}`;
+/** The session payload every server sign in style endpoint returns. */
+interface ServerSession {
+  user: StoredUser;
+  accessToken: string;
+  refreshToken: string;
+  license?: { key?: string | null } | null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Seed default admin on first launch
-// ─────────────────────────────────────────────────────────────────────────────
+const failure = (message: string): LoginFailure => ({ success: false, message });
 
-export function seedDefaultAdmin(): void {
-  const usersToSeed = [
-    { name: 'Admin', email: 'admin@pos.com', password: 'admin123', role: 'admin' },
-    { name: 'Manager', email: 'manager@pos.com', password: 'manager123', role: 'manager' },
-    { name: 'Cashier', email: 'cashier@pos.com', password: 'cashier123', role: 'cashier' },
-  ];
+/** Keep a local copy of the account so the till can sign in without a connection. */
+function cacheUser(user: StoredUser, password: string): void {
+  const timestamp = now();
+  const existing = dbGet('SELECT localId FROM users WHERE email = $email', { $email: user.email });
 
-  for (const u of usersToSeed) {
-    const existing = dbGet('SELECT _id FROM users WHERE email = $email', { $email: u.email });
-    if (!existing) {
-      const _id = generateLocalId();
-      const ts  = now();
-      dbRun(
-        `INSERT INTO users (_id, name, email, passwordHash, role, createdAt, updatedAt, isSync)
-         VALUES ($id, $name, $email, $passwordHash, $role, $ts, $ts, 0)`,
-        {
-          $id:           _id,
-          $name:         u.name,
-          $email:        u.email,
-          $passwordHash: hashPassword(u.password),
-          $role:         u.role,
-          $ts:           ts,
-        }
-      );
-      console.log(`[Auth] Default user seeded  →  ${u.email} / ${u.password} (${u.role})`);
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// IPC handlers
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function registerAuthHandlers(): void {
-
-  // ── LOGIN ─────────────────────────────────────────────────────────────────
-  ipcMain.handle('auth:login', (_e, email: string, password: string) => {
-    const user = dbGet('SELECT * FROM users WHERE email = $email', { $email: email }) as any;
-
-    if (!user) {
-      return { success: false, message: 'Invalid credentials' };
-    }
-
-    if (!verifyPassword(password, user.passwordHash as string)) {
-      return { success: false, message: 'Invalid credentials' };
-    }
-
-    const token = generateToken(user._id as string, user.role as string);
-
-    return {
-      success: true,
-      data: {
-        token,
-        user: { id: user._id, name: user.name, role: user.role },
-      },
-    };
-  });
-
-  // ── REGISTER ──────────────────────────────────────────────────────────────
-  ipcMain.handle('auth:register', (_e, data: { name: string; email: string; password: string; role: string }) => {
-    const existing = dbGet('SELECT _id FROM users WHERE email = $email', { $email: data.email });
-    if (existing) {
-      return { success: false, message: 'User already exists' };
-    }
-
-    const _id = generateLocalId();
-    const ts  = now();
+  if (existing) {
     dbRun(
-      `INSERT INTO users (_id, name, email, passwordHash, role, createdAt, updatedAt, isSync)
-       VALUES ($id, $name, $email, $passwordHash, $role, $ts, $ts, 0)`,
+      `UPDATE users
+          SET _id = $id, name = $name, role = $role, tenantId = $tenantId,
+              passwordHash = $hash, updatedAt = $ts, isSync = 1
+        WHERE email = $email`,
       {
-        $id:           _id,
-        $name:         v(data.name),
-        $email:        v(data.email),
-        $passwordHash: hashPassword(data.password),
-        $role:         v(data.role ?? 'cashier'),
-        $ts:           ts,
+        $id: user.id,
+        $name: v(user.name),
+        $role: v(user.role),
+        $tenantId: user.tenantId,
+        $hash: hashPassword(password),
+        $ts: timestamp,
+        $email: user.email,
       }
     );
+    return;
+  }
 
-    return {
-      success: true,
-      data: { id: _id, name: data.name, role: data.role ?? 'cashier' },
-    };
+  dbRun(
+    `INSERT INTO users (_id, name, email, passwordHash, role, tenantId, createdAt, updatedAt, isSync)
+     VALUES ($id, $name, $email, $hash, $role, $tenantId, $ts, $ts, 1)`,
+    {
+      $id: user.id || generateLocalId(),
+      $name: v(user.name),
+      $email: user.email,
+      $hash: hashPassword(password),
+      $role: v(user.role),
+      $tenantId: user.tenantId,
+      $ts: timestamp,
+    }
+  );
+}
+
+/**
+ * Everything that happens once the server has accepted a sign in or a sign up:
+ * claim the till for the company, cache the account for offline use, keep the
+ * tokens and the licence.
+ */
+function completeServerSignIn(session: ServerSession, password: string): LoginResult {
+  const { user, accessToken, refreshToken, license } = session;
+
+  const storedUser: StoredUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    tenantId: user.tenantId,
+    tenantName: user.tenantName,
+  };
+
+  // A till serves one shop. Signing a second company in would mix their
+  // offline records together, so it is refused with an explicit way out.
+  if (!claimDevice(storedUser.tenantId, storedUser.tenantName)) {
+    const device = getDeviceInfo();
+    return failure(
+      `This till is registered to ${device.tenantName}. Reset the device before signing in with a different company.`
+    );
+  }
+
+  cacheUser(storedUser, password);
+  saveSession({ user: storedUser, accessToken, refreshToken });
+  storeLicenseFromServer(license);
+
+  return {
+    success: true,
+    data: { user: storedUser, accessToken, refreshToken, offline: false, license: getLicenseStatus() },
+  };
+}
+
+async function signInWithServer(email: string, password: string): Promise<LoginResult> {
+  const response = await axios.post(
+    `${config.apiBaseUrl}/auth/login`,
+    { email, password },
+    { timeout: 15_000 }
+  );
+
+  return completeServerSignIn(response.data.data as ServerSession, password);
+}
+
+async function registerWithServer(input: RegisterInput): Promise<LoginResult> {
+  const response = await axios.post(`${config.apiBaseUrl}/auth/register`, input, { timeout: 20_000 });
+
+  return completeServerSignIn(response.data.data as ServerSession, input.password);
+}
+
+function signInOffline(email: string, password: string): LoginResult {
+  const row = dbGet('SELECT * FROM users WHERE email = $email', { $email: email }) as any;
+
+  if (!row || !verifyPassword(password, String(row.passwordHash))) {
+    return failure('Cannot reach the server, and these details do not match this till.');
+  }
+
+  const device = getDeviceInfo();
+  if (device.tenantId && row.tenantId && row.tenantId !== device.tenantId) {
+    return failure(`This till is registered to ${device.tenantName}.`);
+  }
+
+  const session = getSession();
+
+  const user: StoredUser = {
+    id: String(row._id),
+    name: String(row.name),
+    email: String(row.email),
+    role: String(row.role),
+    tenantId: String(row.tenantId ?? device.tenantId ?? ''),
+    tenantName: device.tenantName ?? 'Offline',
+  };
+
+  // The cached tokens may already have expired; sync refreshes them once the
+  // connection is back. Until then the till runs entirely on local data, and
+  // the cached licence decides whether it may run at all.
+  return {
+    success: true,
+    data: {
+      user,
+      accessToken: session?.accessToken ?? '',
+      refreshToken: session?.refreshToken ?? '',
+      offline: true,
+      license: getLicenseStatus(),
+    },
+  };
+}
+
+const serverMessage = (error: any, fallback: string): string => error?.response?.data?.message ?? fallback;
+
+export function registerAuthHandlers(): void {
+  ipcMain.handle('auth:login', async (_event, email: string, password: string): Promise<LoginResult> => {
+    const normalisedEmail = String(email ?? '').trim().toLowerCase();
+
+    if (!normalisedEmail || !password) return failure('Enter your email and password');
+
+    try {
+      return await signInWithServer(normalisedEmail, password);
+    } catch (error: any) {
+      if (isNetworkFailure(error)) {
+        console.warn('[Auth] Server unreachable, falling back to the cached sign in');
+        return signInOffline(normalisedEmail, password);
+      }
+
+      return failure(serverMessage(error, 'Sign in failed'));
+    }
   });
 
-  // ── GET ALL USERS ─────────────────────────────────────────────────────────
-  ipcMain.handle('auth:getUsers', () => {
-    return dbAll('SELECT _id, name, email, role, createdAt FROM users ORDER BY name ASC');
-  });
-
-  // ── CHANGE PASSWORD ───────────────────────────────────────────────────────
-  ipcMain.handle('auth:changePassword', (_e, userId: string, oldPassword: string, newPassword: string) => {
-    const user = dbGet('SELECT * FROM users WHERE _id = $id', { $id: userId }) as any;
-    if (!user) return { success: false, message: 'User not found' };
-
-    if (!verifyPassword(oldPassword, user.passwordHash as string)) {
-      return { success: false, message: 'Current password is incorrect' };
+  /** Create a new company from the till. Needs a connection, by nature. */
+  ipcMain.handle('auth:register', async (_event, input: RegisterInput): Promise<LoginResult> => {
+    const email = String(input?.email ?? '').trim().toLowerCase();
+    if (!email || !input?.password || !input?.companyName || !input?.name) {
+      return failure('Fill in the company name, your name, email and password');
     }
 
-    dbRun(
-      `UPDATE users SET passwordHash=$hash, updatedAt=$ts, isSync=0 WHERE _id=$id`,
-      { $hash: hashPassword(newPassword), $ts: now(), $id: userId }
-    );
+    try {
+      return await registerWithServer({ ...input, email });
+    } catch (error: any) {
+      if (isNetworkFailure(error)) {
+        return failure('Creating an account needs an internet connection');
+      }
+
+      return failure(serverMessage(error, 'Sign up failed'));
+    }
+  });
+
+  ipcMain.handle('auth:logout', () => {
+    clearSession();
     return { success: true };
   });
+
+  /** Staff accounts on this till, for pickers and reports. */
+  ipcMain.handle('auth:getUsers', () =>
+    dbAll('SELECT _id, name, email, role, createdAt FROM users ORDER BY name ASC')
+  );
+
+  ipcMain.handle('auth:getDevice', () => getDeviceInfo());
+
+  /**
+   * Hand the till over to a different company.
+   *
+   * Everything local belongs to the current company, so it is removed rather
+   * than left behind for the next one to inherit. The licence lives in
+   * app_meta and goes with it.
+   */
+  ipcMain.handle('auth:resetDevice', () => {
+    const tables = [
+      'products', 'categories', 'orders', 'customers', 'employees',
+      'expenses', 'expense_categories', 'employee_damages', 'suppliers',
+      'bank_names', 'bank_accounts', 'bank_cards', 'settings', 'users',
+      'pending_deletes',
+    ];
+
+    for (const table of tables) {
+      dbRun(`DELETE FROM ${table}`);
+    }
+
+    dbRun('DELETE FROM app_meta');
+    clearSession();
+
+    return { success: true };
+  });
+
+  /**
+   * Password changes go to the server, because that is where the credential
+   * actually lives. The local copy is refreshed so offline sign in keeps
+   * working with the new password.
+   */
+  ipcMain.handle(
+    'auth:changePassword',
+    async (_event, _userId: string, currentPassword: string, newPassword: string) => {
+      const session = getSession();
+      if (!session) return { success: false, message: 'Sign in again before changing your password' };
+
+      try {
+        await axios.post(
+          `${config.apiBaseUrl}/auth/change-password`,
+          { currentPassword, newPassword },
+          { headers: { Authorization: `Bearer ${session.accessToken}` }, timeout: 15_000 }
+        );
+
+        cacheUser(session.user, newPassword);
+        clearSession();
+
+        return { success: true, message: 'Password changed. Please sign in again.' };
+      } catch (error: any) {
+        if (isNetworkFailure(error)) {
+          return { success: false, message: 'A password change needs an internet connection' };
+        }
+        return { success: false, message: serverMessage(error, 'Could not change the password') };
+      }
+    }
+  );
 }

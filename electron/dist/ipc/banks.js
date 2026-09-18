@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerBankHandlers = registerBankHandlers;
-const electron_1 = require("electron");
+const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
 function registerBankHandlers() {
     // ── BANK NAMES ────────────────────────────────────────────────────────────
-    electron_1.ipcMain.handle('banks:getNames', () => {
+    (0, licenseGuard_1.handleLicensed)('banks:getNames', () => {
         return (0, database_1.dbAll)('SELECT * FROM bank_names WHERE deletedAt IS NULL ORDER BY name ASC');
     });
-    electron_1.ipcMain.handle('banks:addName', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('banks:addName', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO bank_names (_id, name, createdAt, updatedAt, isSync)
@@ -16,10 +16,10 @@ function registerBankHandlers() {
         return (0, database_1.dbGet)('SELECT * FROM bank_names WHERE _id = $id', { $id: _id });
     });
     // ── BANK ACCOUNTS ─────────────────────────────────────────────────────────
-    electron_1.ipcMain.handle('banks:getAccounts', () => {
+    (0, licenseGuard_1.handleLicensed)('banks:getAccounts', () => {
         return (0, database_1.dbAll)('SELECT * FROM bank_accounts WHERE deletedAt IS NULL ORDER BY accountName ASC');
     });
-    electron_1.ipcMain.handle('banks:addAccount', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('banks:addAccount', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO bank_accounts (_id, bankName, type, accountName, iban, bic, createdAt, updatedAt, isSync)
@@ -36,10 +36,10 @@ function registerBankHandlers() {
         return (0, database_1.dbGet)('SELECT * FROM bank_accounts WHERE _id = $id', { $id: _id });
     });
     // ── BANK CARDS ────────────────────────────────────────────────────────────
-    electron_1.ipcMain.handle('banks:getCards', () => {
+    (0, licenseGuard_1.handleLicensed)('banks:getCards', () => {
         return (0, database_1.dbAll)('SELECT * FROM bank_cards WHERE deletedAt IS NULL ORDER BY cardName ASC');
     });
-    electron_1.ipcMain.handle('banks:addCard', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('banks:addCard', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO bank_cards (_id, bankName, accountName, type, cardNumber, cardName, expiryDate, createdAt, updatedAt, isSync)

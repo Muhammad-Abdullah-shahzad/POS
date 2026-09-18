@@ -1,77 +1,48 @@
-// POS Server Entry Point
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import dotenv from 'dotenv';
-import { connectDB } from './config/db';
+/**
+ * Process entry point: connect, listen, and shut down cleanly.
+ */
+import { createApp } from './app';
+import { env } from './config/env';
+import { connectDB, disconnectDB } from './config/db';
+import { logger } from './core/logger';
 
-dotenv.config();
+async function bootstrap(): Promise<void> {
+  await connectDB();
 
-const app = express();
+  const server = createApp().listen(env.port, () => {
+    logger.info({ port: env.port, env: env.nodeEnv }, 'POS API listening');
+  });
 
-// Middleware
-app.use(cors());
+  // Finish in-flight requests before closing the database, so a deploy or a
+  // container restart never cuts a sale in half.
+  const shutdown = (signal: string) => {
+    logger.info({ signal }, 'Shutting down');
 
-// Request logger for debugging
-app.use((req, res, next) => {
-  if (req.path.includes('/products')) {
-    console.log(`\n📨 Incoming ${req.method} ${req.path}`);
-    console.log('   Content-Type:', req.headers['content-type']);
-  }
-  next();
-});
+    server.close(async () => {
+      await disconnectDB();
+      process.exit(0);
+    });
 
-app.use(express.json());
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  };
 
-// Serve uploaded product images
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 
-// Database
-connectDB();
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'Unhandled promise rejection');
+  });
 
-// Routes Placeholder
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Server is running', version: '2.0-with-logging' });
-});
+  process.on('uncaughtException', (error) => {
+    logger.fatal({ err: error }, 'Uncaught exception, exiting');
+    process.exit(1);
+  });
+}
 
-import authRoutes from './routes/authRoutes';
-import productRoutes from './routes/productRoutes';
-import orderRoutes from './routes/orderRoutes';
-import expenseRoutes from './routes/expenseRoutes';
-import expenseCategoryRoutes from './routes/expenseCategoryRoutes';
-import employeeDamageRoutes from './routes/employeeDamageRoutes';
-import dashboardRoutes from './routes/dashboardRoutes';
-import analyticsRoutes from './routes/analyticsRoutes';
-import supplierRoutes from './routes/supplierRoutes';
-import employeeRoutes from './routes/employeeRoutes';
-import bankRoutes from './routes/bankRoutes';
-import customerRoutes from './routes/customerRoutes';
-import categoryRoutes from './routes/categoryRoutes';
-import settingsRoutes from './routes/settingsRoutes';
-import syncRoutes from './routes/syncRoutes';
-
-// Import Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/expense-categories', expenseCategoryRoutes);
-app.use('/api/employee-damages', employeeDamageRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/suppliers', supplierRoutes);
-app.use('/api/employees', employeeRoutes);
-app.use('/api/banks', bankRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/settings', settingsRoutes);
-
-// Sync routes (used by Electron desktop app)
-app.use('/api', syncRoutes);
-
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+bootstrap().catch((error) => {
+  logger.fatal({ err: error }, 'Failed to start the server');
+  process.exit(1);
 });

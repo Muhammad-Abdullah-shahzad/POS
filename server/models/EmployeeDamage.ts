@@ -1,23 +1,37 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
+import { tenantScopePlugin } from './plugins/tenantScope';
 
-export interface IEmployeeDamage extends Document {
+export const DAMAGE_STATUSES = ['Pending Approval', 'Deducted', 'Resolved'] as const;
+export type DamageStatus = (typeof DAMAGE_STATUSES)[number];
+
+export interface IEmployeeDamage extends Document<Types.ObjectId> {
+  tenantId: Types.ObjectId;
   employeeId: string;
   employeeName: string;
   item: string;
   value: number;
   deduction: number;
-  status: 'Pending Approval' | 'Deducted' | 'Resolved';
+  status: DamageStatus;
   date: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const EmployeeDamageSchema: Schema = new Schema({
-  employeeId:   { type: String, required: true },
-  employeeName: { type: String, required: true },
-  item:         { type: String, required: true },
-  value:        { type: Number, required: true, default: 0 },
-  deduction:    { type: Number, required: true, default: 0 },
-  status:       { type: String, enum: ['Pending Approval', 'Deducted', 'Resolved'], default: 'Pending Approval' },
-  date:         { type: String, required: true },
-}, { timestamps: true });
+const EmployeeDamageSchema = new Schema<IEmployeeDamage>(
+  {
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    item: { type: String, required: true },
+    value: { type: Number, required: true, default: 0, min: 0 },
+    deduction: { type: Number, required: true, default: 0, min: 0 },
+    status: { type: String, enum: DAMAGE_STATUSES, default: 'Pending Approval' },
+    date: { type: String, required: true },
+  },
+  { timestamps: true }
+);
 
-export default mongoose.model<IEmployeeDamage>('EmployeeDamage', EmployeeDamageSchema);
+EmployeeDamageSchema.plugin(tenantScopePlugin);
+EmployeeDamageSchema.index({ tenantId: 1, date: -1 });
+
+export const EmployeeDamage = mongoose.model<IEmployeeDamage>('EmployeeDamage', EmployeeDamageSchema);
+export default EmployeeDamage;

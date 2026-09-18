@@ -1,13 +1,13 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
 
 export function registerEmployeeHandlers(): void {
 
-  ipcMain.handle('employees:getAll', () => {
+  handleLicensed('employees:getAll', () => {
     return dbAll('SELECT * FROM employees WHERE deletedAt IS NULL ORDER BY name ASC');
   });
 
-  ipcMain.handle('employees:create', (_e, data: Record<string, unknown>) => {
+  handleLicensed('employees:create', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -23,7 +23,7 @@ export function registerEmployeeHandlers(): void {
     return dbGet('SELECT * FROM employees WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('employees:update', (_e, _id: string, data: Record<string, unknown>) => {
+  handleLicensed('employees:update', (_e, _id: string, data: Record<string, unknown>) => {
     dbRun(
       `UPDATE employees SET name=$name, contactNo=$contactNo, emailId=$emailId,
        address=$address, role=$role, gender=$gender, dob=$dob,
@@ -38,7 +38,7 @@ export function registerEmployeeHandlers(): void {
     return dbGet('SELECT * FROM employees WHERE _id = $id', { $id: _id });
   });
 
-  ipcMain.handle('employees:delete', (_e, _id: string) => {
+  handleLicensed('employees:delete', (_e, _id: string) => {
     softDelete('employees', _id);
     return { success: true };
   });

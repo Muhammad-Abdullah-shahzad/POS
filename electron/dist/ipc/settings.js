@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerSettingsHandlers = registerSettingsHandlers;
-const electron_1 = require("electron");
+const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
 function registerSettingsHandlers() {
     const ensureSettings = () => {
@@ -12,14 +12,14 @@ function registerSettingsHandlers() {
             (0, database_1.dbRun)(`INSERT INTO settings (_id, createdAt, updatedAt, isSync) VALUES ($id, $ts, $ts, 0)`, { $id: _id, $ts: ts });
         }
     };
-    electron_1.ipcMain.handle('settings:get', () => {
+    (0, licenseGuard_1.handleLicensed)('settings:get', () => {
         ensureSettings();
         const row = (0, database_1.dbGet)('SELECT * FROM settings LIMIT 1');
         if (!row)
             return null;
         return { ...row, quickProducts: JSON.parse(row.quickProducts || '[]') };
     });
-    electron_1.ipcMain.handle('settings:update', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('settings:update', (_e, data) => {
         ensureSettings();
         (0, database_1.dbRun)(`UPDATE settings SET
          shopName=$shopName, shopAddress=$shopAddress, shopPhone=$shopPhone,
@@ -45,12 +45,12 @@ function registerSettingsHandlers() {
         const row = (0, database_1.dbGet)('SELECT * FROM settings LIMIT 1');
         return { ...row, quickProducts: JSON.parse(row?.quickProducts || '[]') };
     });
-    electron_1.ipcMain.handle('settings:getQuickProducts', () => {
+    (0, licenseGuard_1.handleLicensed)('settings:getQuickProducts', () => {
         ensureSettings();
         const row = (0, database_1.dbGet)('SELECT quickProducts FROM settings LIMIT 1');
         return JSON.parse(row?.quickProducts || '[]');
     });
-    electron_1.ipcMain.handle('settings:updateQuickProducts', (_e, quickProducts) => {
+    (0, licenseGuard_1.handleLicensed)('settings:updateQuickProducts', (_e, quickProducts) => {
         ensureSettings();
         (0, database_1.dbRun)(`UPDATE settings SET quickProducts=$qp, updatedAt=$ts, isSync=0`, { $qp: JSON.stringify(quickProducts), $ts: (0, database_1.now)() });
         return quickProducts;

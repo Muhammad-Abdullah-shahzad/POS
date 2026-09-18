@@ -37,7 +37,8 @@
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "app.config.json"
     ],
     "extraResources": [
       {

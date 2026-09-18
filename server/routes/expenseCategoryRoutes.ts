@@ -1,14 +1,24 @@
-import express from 'express';
-import { getExpenseCategories, createExpenseCategory, deleteExpenseCategory } from '../controllers/expenseCategoryController';
-import { protect, authorize } from '../middleware/auth';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
+import { expenseCategorySchema } from '../validators/catalogValidators';
+import {
+  createExpenseCategory,
+  deleteExpenseCategory,
+  getExpenseCategories,
+} from '../controllers/expenseCategoryController';
 
-const router = express.Router();
+const router = Router();
+const managers = authorize('admin', 'manager');
 
-router.route('/')
-  .get(protect, authorize('admin', 'manager', 'cashier'), getExpenseCategories)
-  .post(protect, authorize('admin', 'manager'), createExpenseCategory);
+router.use(authenticate);
 
-router.route('/:id')
-  .delete(protect, authorize('admin', 'manager'), deleteExpenseCategory);
+router
+  .route('/')
+  .get(getExpenseCategories)
+  .post(managers, validate({ body: expenseCategorySchema }), createExpenseCategory);
+
+router.delete('/:id', managers, validate({ params: idParam }), deleteExpenseCategory);
 
 export default router;

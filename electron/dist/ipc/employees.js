@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerEmployeeHandlers = registerEmployeeHandlers;
-const electron_1 = require("electron");
+const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
 function registerEmployeeHandlers() {
-    electron_1.ipcMain.handle('employees:getAll', () => {
+    (0, licenseGuard_1.handleLicensed)('employees:getAll', () => {
         return (0, database_1.dbAll)('SELECT * FROM employees WHERE deletedAt IS NULL ORDER BY name ASC');
     });
-    electron_1.ipcMain.handle('employees:create', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('employees:create', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO employees (_id, name, contactNo, emailId, address, role, gender, dob, createdAt, updatedAt, isSync)
@@ -19,7 +19,7 @@ function registerEmployeeHandlers() {
         });
         return (0, database_1.dbGet)('SELECT * FROM employees WHERE _id = $id', { $id: _id });
     });
-    electron_1.ipcMain.handle('employees:update', (_e, _id, data) => {
+    (0, licenseGuard_1.handleLicensed)('employees:update', (_e, _id, data) => {
         (0, database_1.dbRun)(`UPDATE employees SET name=$name, contactNo=$contactNo, emailId=$emailId,
        address=$address, role=$role, gender=$gender, dob=$dob,
        updatedAt=$ts, isSync=0 WHERE _id=$id AND deletedAt IS NULL`, {
@@ -30,7 +30,7 @@ function registerEmployeeHandlers() {
         });
         return (0, database_1.dbGet)('SELECT * FROM employees WHERE _id = $id', { $id: _id });
     });
-    electron_1.ipcMain.handle('employees:delete', (_e, _id) => {
+    (0, licenseGuard_1.handleLicensed)('employees:delete', (_e, _id) => {
         (0, database_1.softDelete)('employees', _id);
         return { success: true };
     });

@@ -100,6 +100,9 @@ function runMigrations(db) {
     for (const table of tables) {
         addColumnIfMissing(db, table, 'deletedAt', 'TEXT');
     }
+    // The till belongs to one company; the column records which, so a database
+    // copied between machines can be recognised rather than silently reused.
+    addColumnIfMissing(db, 'users', 'tenantId', 'TEXT');
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // Persist to disk

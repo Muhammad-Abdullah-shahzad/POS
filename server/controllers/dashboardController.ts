@@ -1,45 +1,60 @@
 import { Request, Response } from 'express';
-import Order from '../models/Order';
+import { successResponse } from '../core/apiResponse';
+import { asyncHandler } from '../core/asyncHandler';
 import Expense from '../models/Expense';
+import Order from '../models/Order';
 import Product from '../models/Product';
-import { successResponse, errorResponse } from '../utils/response';
 
-export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { month } = req.query;
-    let orderQuery: any = {};
-    let expenseQuery: any = {};
+const LOW_STOCK_THRESHOLD = 10;
 
-    if (month && typeof month === 'string') {
-      const startDate = new Date(`${month}-01T00:00:00.000Z`);
-      const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
-      
-      orderQuery.createdAt = { $gte: startDate, $lte: endDate };
-      expenseQuery.date = { $gte: startDate, $lte: endDate };
-    }
+/** Start and end of a calendar month given as `YYYY-MM`. */
+function monthRange(month: string): { start: Date; end: Date } {
+  const [year, monthIndex] = month.split('-').map(Number);
+  return {
+    start: new Date(year, monthIndex - 1, 1),
+    end: new Date(year, monthIndex, 1),
+  };
+}
 
-    const orders = await Order.find(orderQuery);
-    const expenses = await Expense.find(expenseQuery);
+export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
+  const month = req.validatedQuery?.month as string | undefined;
+  const range = month ? monthRange(month) : null;
+  const period = range ? { $gte: range.start, $lt: range.end } : undefined;
 
-    const totalRevenue = orders.reduce((sum, order) => sum + (order.total - order.totalVAT), 0);
-    const totalVATCollected = orders.reduce((sum, order) => sum + order.totalVAT, 0);
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const netProfit = totalRevenue - totalExpenses;
-
-    const lowStock = await Product.find({ stock: { $lte: 10 } })
+  const [totals, expenseTotals, lowStock] = await Promise.all([
+    // Voided orders are excluded: the money was handed back.
+    Order.aggregate([
+      { $match: { status: { $ne: 'voided' }, ...(period && { createdAt: period }) } },
+      {
+        $group: {
+          _id: null,
+          revenue: { $sum: { $subtract: ['$total', '$totalVAT'] } },
+          vat: { $sum: '$totalVAT' },
+          orderCount: { $sum: 1 },
+        },
+      },
+    ]),
+    Expense.aggregate([
+      { $match: { ...(period && { date: period }) } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
+    Product.find({ stock: { $lte: LOW_STOCK_THRESHOLD } })
       .select('name sku stock category')
       .sort({ stock: 1 })
-      .limit(5);
+      .limit(5),
+  ]);
 
-    res.json(successResponse({
+  const totalRevenue = totals[0]?.revenue ?? 0;
+  const totalExpenses = expenseTotals[0]?.total ?? 0;
+
+  res.json(
+    successResponse({
       totalRevenue,
-      totalVATCollected,
+      totalVATCollected: totals[0]?.vat ?? 0,
       totalExpenses,
-      netProfit,
-      orderCount: orders.length,
-      lowStock
-    }));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+      netProfit: totalRevenue - totalExpenses,
+      orderCount: totals[0]?.orderCount ?? 0,
+      lowStock,
+    })
+  );
+});

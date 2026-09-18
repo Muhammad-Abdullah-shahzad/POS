@@ -1,14 +1,14 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
 
 export function registerBankHandlers(): void {
 
   // ── BANK NAMES ────────────────────────────────────────────────────────────
-  ipcMain.handle('banks:getNames', () => {
+  handleLicensed('banks:getNames', () => {
     return dbAll('SELECT * FROM bank_names WHERE deletedAt IS NULL ORDER BY name ASC');
   });
 
-  ipcMain.handle('banks:addName', (_e, data: Record<string, unknown>) => {
+  handleLicensed('banks:addName', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -20,11 +20,11 @@ export function registerBankHandlers(): void {
   });
 
   // ── BANK ACCOUNTS ─────────────────────────────────────────────────────────
-  ipcMain.handle('banks:getAccounts', () => {
+  handleLicensed('banks:getAccounts', () => {
     return dbAll('SELECT * FROM bank_accounts WHERE deletedAt IS NULL ORDER BY accountName ASC');
   });
 
-  ipcMain.handle('banks:addAccount', (_e, data: Record<string, unknown>) => {
+  handleLicensed('banks:addAccount', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -45,11 +45,11 @@ export function registerBankHandlers(): void {
   });
 
   // ── BANK CARDS ────────────────────────────────────────────────────────────
-  ipcMain.handle('banks:getCards', () => {
+  handleLicensed('banks:getCards', () => {
     return dbAll('SELECT * FROM bank_cards WHERE deletedAt IS NULL ORDER BY cardName ASC');
   });
 
-  ipcMain.handle('banks:addCard', (_e, data: Record<string, unknown>) => {
+  handleLicensed('banks:addCard', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(

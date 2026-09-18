@@ -1,9 +1,10 @@
-import { ipcMain, IpcMainInvokeEvent } from 'electron';
+import { IpcMainInvokeEvent } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, dbTransaction, generateLocalId, now, v, BindMap } from '../db/database';
 
 export function registerOrderHandlers(): void {
 
-  ipcMain.handle('orders:getAll', (_e: IpcMainInvokeEvent, month?: number, year?: number) => {
+  handleLicensed('orders:getAll', (_e: IpcMainInvokeEvent, month?: number, year?: number) => {
     let rows: Record<string, unknown>[];
     if (month && year) {
       const start = new Date(year, month - 1, 1).toISOString();
@@ -20,12 +21,12 @@ export function registerOrderHandlers(): void {
     return rows.map((r) => ({ ...r, items: JSON.parse((r.items as string) || '[]') }));
   });
 
-  ipcMain.handle('orders:getVoided', (_e: IpcMainInvokeEvent) => {
+  handleLicensed('orders:getVoided', (_e: IpcMainInvokeEvent) => {
     const rows = dbAll(`SELECT * FROM orders WHERE status = 'voided' ORDER BY voidedAt DESC LIMIT 500`);
     return rows.map((r) => ({ ...r, items: JSON.parse((r.items as string) || '[]') }));
   });
 
-  ipcMain.handle('orders:create', (_e: IpcMainInvokeEvent, data: Record<string, unknown>) => {
+  handleLicensed('orders:create', (_e: IpcMainInvokeEvent, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     const invoiceId = `REC-${Date.now()}`;
@@ -86,7 +87,7 @@ export function registerOrderHandlers(): void {
     return { ...row, items: JSON.parse(row?.items || '[]') };
   });
 
-  ipcMain.handle('orders:void', (_e: IpcMainInvokeEvent, _id: string, reason: string, employeeId?: string, employeeName?: string) => {
+  handleLicensed('orders:void', (_e: IpcMainInvokeEvent, _id: string, reason: string, employeeId?: string, employeeName?: string) => {
     const ts = now();
 
     const order = dbGet('SELECT * FROM orders WHERE _id = $id', { $id: _id }) as any;

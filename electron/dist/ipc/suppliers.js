@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerSupplierHandlers = registerSupplierHandlers;
-const electron_1 = require("electron");
+const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
 function registerSupplierHandlers() {
-    electron_1.ipcMain.handle('suppliers:getAll', () => {
+    (0, licenseGuard_1.handleLicensed)('suppliers:getAll', () => {
         return (0, database_1.dbAll)('SELECT * FROM suppliers WHERE deletedAt IS NULL ORDER BY name ASC');
     });
-    electron_1.ipcMain.handle('suppliers:create', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('suppliers:create', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO suppliers (_id, name, contact, emailId, address, createdAt, updatedAt, isSync)

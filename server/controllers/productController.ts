@@ -1,236 +1,119 @@
+/**
+ * Product catalogue.
+ *
+ * Every query is scoped to the caller's company by the tenant plugin, so two
+ * shops can stock the same barcode without ever seeing each other's stock.
+ */
 import { Request, Response } from 'express';
-import path from 'path';
-import fs from 'fs';
-import multer from 'multer';
+import { successResponse } from '../core/apiResponse';
+import { asyncHandler } from '../core/asyncHandler';
+import { BadRequestError, NotFoundError } from '../core/errors';
 import Product from '../models/Product';
-import { successResponse, errorResponse } from '../utils/response';
-import { uploadToDrive, deleteFromDrive, extractDriveFileId } from '../utils/googleDrive';
+import { searchFilter } from '../utils/query';
+import {
+  discardUpload,
+  mirrorToDrive,
+  publicImageUrl,
+  removeStoredImage,
+} from '../services/productImageService';
 
-// Temp directory for multer — files are uploaded here first, then pushed to Drive
-const uploadDir = path.join(process.cwd(), 'uploads', 'products');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-console.log('Upload directory:', uploadDir);
+const generateSku = (): string => `SKU-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `product-${Date.now()}${ext}`);
-  },
+export const getProducts = asyncHandler(async (req: Request, res: Response) => {
+  const { search, category, limit } = (req.validatedQuery ?? {}) as {
+    search?: string;
+    category?: string;
+    limit?: number;
+  };
+
+  const products = await Product.find({
+    ...searchFilter(search, ['name', 'barcode', 'sku']),
+    ...(category && { category }),
+  })
+    .sort({ name: 1 })
+    .limit(limit ?? 200);
+
+  res.json(successResponse(products));
 });
 
-const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowed = /jpeg|jpg|png|webp/;
-  if (allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files (jpg, png, webp) are allowed'));
-  }
-};
+export const getProductByBarcode = asyncHandler(async (req: Request, res: Response) => {
+  const product = await Product.findOne({ barcode: req.params.barcode });
+  if (!product) throw new NotFoundError('Product');
 
-export const upload = multer({ storage, fileFilter, limits: { fileSize: 15 * 1024 * 1024 } });
+  res.json(successResponse(product));
+});
 
-const localImageUrl = (file: Express.Multer.File): string => `/uploads/products/${file.filename}`;
-
-const generatedSku = (): string => `SKU-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-
-// Upload to Drive after the product is already saved so image uploads never block product creation.
-function promoteImageToDrive(
-  productId: string,
-  file: Express.Multer.File,
-  oldImage?: string | null
-): void {
-  uploadToDrive(file.path, file.filename, file.mimetype)
-    .then((driveUrl) => {
-      if (oldImage) {
-        const oldId = extractDriveFileId(oldImage);
-        if (oldId) deleteFromDrive(oldId);
-      }
-
-      console.log('Drive backup upload success:', { productId, driveUrl });
-    })
-    .catch((driveErr: any) => {
-      console.error('Google Drive upload failed, keeping local image:', driveErr.message);
+export const createProduct = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const product = await Product.create({
+      ...req.body,
+      sku: req.body.sku || generateSku(),
+      image: req.file ? publicImageUrl(req.user!.tenantId, req.file) : null,
     });
-}
 
-export const getProducts = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const search = req.query.search as string;
-    const query = search ? {
-      $or: [
-        { name: { $regex: search, $options: 'i' } },
-        { barcode: { $regex: search, $options: 'i' } }
-      ]
-    } : {};
-    const products = await Product.find(query).limit(100);
-    res.json(successResponse(products));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+    if (req.file) mirrorToDrive(product.id, req.file);
 
-export const createProduct = async (req: Request, res: Response): Promise<void> => {
-  console.log('=== createProduct called ===');
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Has file:', !!req.file);
-  console.log('Body keys:', Object.keys(req.body));
-  try {
-    let imageUrl: string | null = null;
-
-    if (req.file) imageUrl = localImageUrl(req.file);
-
-    // Parse numeric fields — they come as strings when sent via FormData
-    const body = { ...req.body };
-    if (typeof body.price === 'string')     body.price     = parseFloat(body.price);
-    if (typeof body.costPrice === 'string') body.costPrice = parseFloat(body.costPrice);
-    if (typeof body.vatRate === 'string')   body.vatRate   = parseFloat(body.vatRate);
-    if (typeof body.stock === 'string')     body.stock     = parseInt(body.stock, 10);
-    if (typeof body.drs === 'string')       body.drs       = parseFloat(body.drs);
-    if (typeof body.sku === 'string')       body.sku       = body.sku.trim();
-
-    console.log('Creating product with body:', JSON.stringify(body));
-
-    const missingFields = ['name', 'barcode', 'category'].filter((field) => !body[field]);
-    if (missingFields.length > 0) {
-      if (req.file) fs.unlink(req.file.path, () => {});
-      res.status(400).json(errorResponse(`Missing required field(s): ${missingFields.join(', ')}`));
-      return;
-    }
-
-    // Ensure required fields have defaults if missing
-    if (body.vatRate === undefined || body.vatRate === null || isNaN(body.vatRate)) body.vatRate = 0;
-    if (!body.vatType) body.vatType = 'exclusive';
-    if (body.price === undefined || isNaN(body.price)) body.price = 0;
-    if (body.costPrice === undefined || isNaN(body.costPrice)) body.costPrice = 0;
-    if (body.stock === undefined || isNaN(body.stock)) body.stock = 0;
-    if (body.drs === undefined || isNaN(body.drs)) body.drs = 0;
-    if (!body.sku) body.sku = generatedSku();
-
-    const product = await Product.create({ ...body, image: imageUrl });
-    if (req.file) promoteImageToDrive(String(product._id), req.file);
     res.status(201).json(successResponse(product, 'Product created'));
-  } catch (error: any) {
-    if (req.file) fs.unlink(req.file.path, () => {});
-    console.error('Create product error:', error.message);
-    // Handle MongoDB duplicate key error
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0] || 'field';
-      res.status(400).json(errorResponse(`A product with this ${field} already exists. Please use a unique SKU and barcode.`));
-      return;
-    }
-    const message = error?.errors
-      ? Object.values(error.errors).map((e: any) => e.message).join(', ')
-      : error.message;
-    res.status(400).json(errorResponse(message));
+  } catch (error) {
+    // The image is only useful if the product row was written.
+    await discardUpload(req.file);
+    throw error;
   }
-};
+});
 
-export const createProductJson = createProduct;
-
-export const getProductByBarcode = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const product = await Product.findOne({ barcode: req.params.barcode });
-    if (!product) {
-      res.status(404).json(errorResponse('Product not found'));
-      return;
-    }
-    res.json(successResponse(product));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
+export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
+  const existing = await Product.findById(req.params.id);
+  if (!existing) {
+    await discardUpload(req.file);
+    throw new NotFoundError('Product');
   }
-};
 
-export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+  const previousImage = existing.image ?? null;
+
   try {
-    let updateData: any = { ...req.body };
-
-    let previousImage: string | null = null;
-
-    // If a new image file was uploaded, save it locally immediately.
-    if (req.file) {
-      const existing = await Product.findById(req.params.id);
-      previousImage = existing?.image || null;
-      updateData.image = localImageUrl(req.file);
-    }
-
-    // Parse numeric strings from FormData
-    if (typeof updateData.price === 'string')     updateData.price     = parseFloat(updateData.price);
-    if (typeof updateData.costPrice === 'string') updateData.costPrice = parseFloat(updateData.costPrice);
-    if (typeof updateData.vatRate === 'string')   updateData.vatRate   = parseFloat(updateData.vatRate);
-    if (typeof updateData.stock === 'string')     updateData.stock     = parseInt(updateData.stock, 10);
-    if (typeof updateData.drs === 'string')       updateData.drs       = parseFloat(updateData.drs);
-    if (typeof updateData.sku === 'string')       updateData.sku       = updateData.sku.trim();
-    if (updateData.sku === '') delete updateData.sku;
-
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $set: updateData },
-      { new: true, runValidators: true }
+      { $set: { ...req.body, ...(req.file && { image: publicImageUrl(req.user!.tenantId, req.file) }) } },
+      { returnDocument: 'after', runValidators: true }
     );
-    if (!product) {
-      res.status(404).json(errorResponse('Product not found'));
-      return;
-    }
-    if (req.file) promoteImageToDrive(String(product._id), req.file, previousImage);
-    res.json(successResponse(product, 'Product updated successfully'));
-  } catch (error: any) {
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0] || 'field';
-      res.status(400).json(errorResponse(`A product with this ${field} already exists.`));
-      return;
-    }
-    res.status(400).json(errorResponse('Bad Request', error.message));
+
+    if (req.file) mirrorToDrive(product!.id, req.file, previousImage);
+
+    res.json(successResponse(product, 'Product updated'));
+  } catch (error) {
+    await discardUpload(req.file);
+    throw error;
   }
-};
+});
 
-export const updateStock = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { quantity } = req.body;
-    if (typeof quantity !== 'number') {
-      res.status(400).json(errorResponse('Quantity must be a number'));
-      return;
-    }
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { stock: quantity } },
-      { new: true }
-    );
-    if (!product) {
-      res.status(404).json(errorResponse('Product not found'));
-      return;
-    }
-    res.json(successResponse(product, 'Stock updated successfully'));
-  } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
+/**
+ * Adjust stock by a relative amount. Negative adjustments are rejected when
+ * they would take the product below zero, so two tills selling the last unit
+ * at once cannot both succeed.
+ */
+export const updateStock = asyncHandler(async (req: Request, res: Response) => {
+  const { quantity } = req.body as { quantity: number };
+
+  const product = await Product.findOneAndUpdate(
+    { _id: req.params.id, ...(quantity < 0 && { stock: { $gte: Math.abs(quantity) } }) },
+    { $inc: { stock: quantity } },
+    { returnDocument: 'after' }
+  );
+
+  if (!product) {
+    const exists = await Product.exists({ _id: req.params.id });
+    if (!exists) throw new NotFoundError('Product');
+    throw new BadRequestError('Not enough stock for this adjustment');
   }
-};
 
-export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product) {
-      res.status(404).json(errorResponse('Product not found'));
-      return;
-    }
+  res.json(successResponse(product, 'Stock updated'));
+});
 
-    // Delete image from Google Drive if it's a Drive URL
-    if (product.image) {
-      const driveId = extractDriveFileId(product.image);
-      if (driveId) {
-        deleteFromDrive(driveId); // fire-and-forget
-      } else {
-        // Legacy local file — delete from disk
-        const filePath = path.join(process.cwd(), product.image.replace(/^\//, ''));
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }
-    }
+export const deleteProduct = asyncHandler(async (req: Request, res: Response) => {
+  const product = await Product.findByIdAndDelete(req.params.id);
+  if (!product) throw new NotFoundError('Product');
 
-    res.json(successResponse(null, 'Product deleted successfully'));
-  } catch (error: any) {
-    console.error('Delete product error:', error);
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+  await removeStoredImage(product.image);
+
+  res.json(successResponse(null, 'Product deleted'));
+});

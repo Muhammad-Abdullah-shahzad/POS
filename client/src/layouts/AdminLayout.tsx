@@ -8,6 +8,7 @@ import {
   IconCash,
   IconChartDonut3,
   IconLayoutDashboard,
+  IconKey,
   IconLogout,
   IconPackage,
   IconPackages,
@@ -18,24 +19,23 @@ import {
 } from '@tabler/icons-react';
 import type { TablerIcon } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
-import { usePosStore } from '../store/posStore';
 import SyncButton from '../features/sync/SyncButton';
+import LicenseBadge from '../features/license/LicenseBadge';
+import { signOutEverywhere } from '../services/sessionService';
 
 const AdminLayout = () => {
   const [opened, { toggle }] = useDisclosure();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuthStore();
-  const clearCart = usePosStore((state) => state.clearCart);
+  const user = useAuthStore((state) => state.user);
 
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin' && user.role !== 'manager') return <Navigate to="/" replace />;
 
-  const handleLogout = () => {
-    clearCart();
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await signOutEverywhere();
+    navigate('/login', { replace: true });
   };
 
   interface NavItem {
@@ -121,6 +121,7 @@ const AdminLayout = () => {
     { label: 'Bank', icon: IconBuildingBank, path: '/admin/bank' },
     { label: 'Customer Details', icon: IconAddressBook, path: '/admin/customers' },
     { label: 'Settings', icon: IconSettings, path: '/admin/settings' },
+    { label: 'Licence', icon: IconKey, path: '/license' },
   ];
 
   const renderNavIcon = (Icon: TablerIcon, active: boolean) => (
@@ -147,7 +148,15 @@ const AdminLayout = () => {
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
           </Group>
           <Group>
-            {!isMobile && <Title order={6}>Welcome, {user.name}</Title>}
+            {!isMobile && (
+              <div>
+                <Title order={6}>{user.tenantName}</Title>
+                <Text size="xs" c="dimmed">
+                  {user.name}
+                </Text>
+              </div>
+            )}
+            <LicenseBadge />
             <SyncButton />
             <Button variant="light" color="red" size="xs" onClick={handleLogout} leftSection={<IconLogout size={16} />}>
               Logout

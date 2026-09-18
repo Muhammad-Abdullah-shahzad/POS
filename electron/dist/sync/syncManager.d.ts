@@ -11,8 +11,4 @@
  *     - missing locally → insert from server
  *     - in SQLite but gone from server → delete locally (web user deleted it)
  */
-export interface SyncConfig {
-    baseUrl: string;
-    token: string;
-}
 export declare function registerSyncHandlers(): void;

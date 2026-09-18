@@ -10,11 +10,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const api = {
     // ── AUTH ──────────────────────────────────────────────────────────────────
+    // Staff accounts are created on the server by a company admin. `register`
+    // creates a brand new company (and its first admin) from the till.
     auth: {
         login: (email, password) => electron_1.ipcRenderer.invoke('auth:login', email, password),
-        register: (data) => electron_1.ipcRenderer.invoke('auth:register', data),
+        register: (input) => electron_1.ipcRenderer.invoke('auth:register', input),
+        logout: () => electron_1.ipcRenderer.invoke('auth:logout'),
         getUsers: () => electron_1.ipcRenderer.invoke('auth:getUsers'),
         changePassword: (userId, oldPassword, newPassword) => electron_1.ipcRenderer.invoke('auth:changePassword', userId, oldPassword, newPassword),
+        /** Which company this till is registered to. */
+        getDevice: () => electron_1.ipcRenderer.invoke('auth:getDevice'),
+        /** Clear local data so the till can be handed to a different company. */
+        resetDevice: () => electron_1.ipcRenderer.invoke('auth:resetDevice'),
     },
     // ── PRODUCTS ──────────────────────────────────────────────────────────────
     products: {
@@ -94,15 +101,34 @@ const api = {
         getQuickProducts: () => electron_1.ipcRenderer.invoke('settings:getQuickProducts'),
         updateQuickProducts: (qp) => electron_1.ipcRenderer.invoke('settings:updateQuickProducts', qp),
     },
+    // ── ANALYTICS ─────────────────────────────────────────────────────────────
+    analytics: {
+        monthlySummary: (months) => electron_1.ipcRenderer.invoke('analytics:monthlySummary', months),
+        topProducts: (limit) => electron_1.ipcRenderer.invoke('analytics:topProducts', limit),
+        paymentMethods: () => electron_1.ipcRenderer.invoke('analytics:paymentMethods'),
+        expenseCategories: () => electron_1.ipcRenderer.invoke('analytics:expenseCategories'),
+    },
+    // ── LICENCE ───────────────────────────────────────────────────────────────
+    // The key is verified in the main process against the public key baked into
+    // this build, so the till can lock or unlock with no connection at all.
+    license: {
+        /** Current state from the cached key and the clock. */
+        status: () => electron_1.ipcRenderer.invoke('license:status'),
+        /** Apply a key the operator sent. Works offline. */
+        activate: (key) => electron_1.ipcRenderer.invoke('license:activate', key),
+        /** Ask the server for the latest licence (after a renewal), then re-check. */
+        refresh: () => electron_1.ipcRenderer.invoke('license:refresh'),
+    },
     // ── SYNC ──────────────────────────────────────────────────────────────────
+    // Server credentials stay in the main process, so none of these take a token.
     sync: {
-        /** Push local changes + pull server changes (full two-way sync) */
-        all: (config) => electron_1.ipcRenderer.invoke('sync:all', config),
-        /** Pull only: fetch all server data into local SQLite */
-        pull: (config) => electron_1.ipcRenderer.invoke('sync:pull', config),
-        /** Sync a single collection (push) */
-        collection: (config, collection) => electron_1.ipcRenderer.invoke('sync:collection', config, collection),
-        /** Get count of unsynced records per collection */
+        /** Push local changes, then pull the server's. */
+        all: () => electron_1.ipcRenderer.invoke('sync:all'),
+        /** Pull only: fetch server data into local SQLite. */
+        pull: () => electron_1.ipcRenderer.invoke('sync:pull'),
+        /** Push a single collection. */
+        collection: (collection) => electron_1.ipcRenderer.invoke('sync:collection', collection),
+        /** Count of records waiting to be pushed, per collection. */
         pendingCounts: () => electron_1.ipcRenderer.invoke('sync:pendingCounts'),
     },
 };

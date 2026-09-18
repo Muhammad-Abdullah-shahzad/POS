@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerCustomerHandlers = registerCustomerHandlers;
-const electron_1 = require("electron");
+const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
 function registerCustomerHandlers() {
-    electron_1.ipcMain.handle('customers:getAll', () => {
+    (0, licenseGuard_1.handleLicensed)('customers:getAll', () => {
         return (0, database_1.dbAll)('SELECT * FROM customers WHERE deletedAt IS NULL ORDER BY name ASC');
     });
-    electron_1.ipcMain.handle('customers:create', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('customers:create', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO customers
@@ -29,7 +29,7 @@ function registerCustomerHandlers() {
         });
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
     });
-    electron_1.ipcMain.handle('customers:update', (_e, _id, data) => {
+    (0, licenseGuard_1.handleLicensed)('customers:update', (_e, _id, data) => {
         (0, database_1.dbRun)(`UPDATE customers SET
          name=$name, contactNum1=$c1, contactNum2=$c2, email=$email,
          address=$address, eircode=$eircode, qrCode=$qrCode, barcode=$barcode,
@@ -48,17 +48,17 @@ function registerCustomerHandlers() {
         });
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
     });
-    electron_1.ipcMain.handle('customers:delete', (_e, _id) => {
+    (0, licenseGuard_1.handleLicensed)('customers:delete', (_e, _id) => {
         (0, database_1.softDelete)('customers', _id);
         return { success: true };
     });
-    electron_1.ipcMain.handle('customers:updateStats', (_e, _id, amount) => {
+    (0, licenseGuard_1.handleLicensed)('customers:updateStats', (_e, _id, amount) => {
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`UPDATE customers SET timesVisited = timesVisited + 1, totalAmount = totalAmount + $amount,
          lastVisit=$ts, updatedAt=$ts, isSync=0 WHERE _id=$id AND deletedAt IS NULL`, { $id: _id, $amount: amount, $ts: ts });
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
     });
-    electron_1.ipcMain.handle('customers:resetPoints', (_e, _id) => {
+    (0, licenseGuard_1.handleLicensed)('customers:resetPoints', (_e, _id) => {
         (0, database_1.dbRun)(`UPDATE customers SET loyaltyPoints=0, updatedAt=$ts, isSync=0 WHERE _id=$id AND deletedAt IS NULL`, { $id: _id, $ts: (0, database_1.now)() });
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
     });

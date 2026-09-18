@@ -12,24 +12,36 @@
  *     - in SQLite but gone from server → delete locally (web user deleted it)
  */
 
-import { ipcMain, IpcMainInvokeEvent } from 'electron';
-import axios, { AxiosInstance } from 'axios';
+import { ipcMain } from 'electron';
+import type { AxiosInstance } from 'axios';
+import { config } from '../config';
+import { createServerClient } from '../api/serverClient';
 import { dbAll, dbRun } from '../db/database';
+import { refreshLicenseFromServer } from '../ipc/license';
 import type { SqlValue } from 'sql.js';
-
-export interface SyncConfig { baseUrl: string; token: string; }
 
 interface SyncResult { collection: string; synced: number; errors: string[]; }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-function buildClient(config: SyncConfig): AxiosInstance {
-  return axios.create({
-    baseURL: config.baseUrl,
-    headers: { Authorization: `Bearer ${config.token}` },
-    timeout: 30_000,
-  });
+interface SyncSummary {
+  success: boolean;
+  results: SyncResult[];
+  totalSynced: number;
+  totalErrors: number;
 }
+
+/** Returned when the till has never signed in against the server. */
+const NOT_AUTHENTICATED: SyncSummary = {
+  success: false,
+  results: [
+    {
+      collection: 'auth',
+      synced: 0,
+      errors: ['This till is not signed in to the server. Sign in once while online, then sync.'],
+    },
+  ],
+  totalSynced: 0,
+  totalErrors: 1,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -276,8 +288,7 @@ const pullFunctions: Array<{
 
 // ── Master sync (push → pull) ─────────────────────────────────────────────────
 
-async function syncAll(config: SyncConfig) {
-  const client = buildClient(config);
+async function syncAll(client: AxiosInstance): Promise<SyncSummary> {
 
   // ① Push: send local changes to the server first so the server has the latest data
   const pushSettled = await Promise.allSettled([
@@ -312,8 +323,7 @@ async function syncAll(config: SyncConfig) {
   return { success: totalErrors === 0, results, totalSynced, totalErrors };
 }
 
-async function pullAll(config: SyncConfig) {
-  const client = buildClient(config);
+async function pullAll(client: AxiosInstance): Promise<SyncSummary> {
   const settled = await Promise.allSettled(
     pullFunctions.map(({ table, fetchEndpoint, serialize }) =>
       pullTable(table, fetchEndpoint, client, serialize)
@@ -332,26 +342,43 @@ async function pullAll(config: SyncConfig) {
 // ── IPC ───────────────────────────────────────────────────────────────────────
 
 export function registerSyncHandlers(): void {
-  ipcMain.handle('sync:all', async (_e: IpcMainInvokeEvent, config: SyncConfig) => {
-    console.log('[Sync] Starting full sync to', config.baseUrl);
-    const result = await syncAll(config);
+  // The renderer no longer supplies a token: credentials belong to the main
+  // process, which keeps them out of the web page entirely.
+  ipcMain.handle('sync:all', async (): Promise<SyncSummary> => {
+    const client = createServerClient();
+    if (!client) return NOT_AUTHENTICATED;
+
+    console.log('[Sync] Starting full sync to', config.apiBaseUrl);
+    const result = await syncAll(client);
     console.log('[Sync] Done:', result.totalSynced, 'synced,', result.totalErrors, 'errors');
+
+    // The till is online, so this is the cheapest moment to pick up a renewal.
+    await refreshLicenseFromServer().catch(() => undefined);
     return result;
   });
 
-  ipcMain.handle('sync:pull', async (_e: IpcMainInvokeEvent, config: SyncConfig) => {
-    console.log('[Sync] Starting pull from', config.baseUrl);
-    const result = await pullAll(config);
+  ipcMain.handle('sync:pull', async (): Promise<SyncSummary> => {
+    const client = createServerClient();
+    if (!client) return NOT_AUTHENTICATED;
+
+    console.log('[Sync] Starting pull from', config.apiBaseUrl);
+    const result = await pullAll(client);
     console.log('[Sync] Pull done:', result.totalSynced, 'pulled,', result.totalErrors, 'errors');
+
+    await refreshLicenseFromServer().catch(() => undefined);
     return result;
   });
 
-  ipcMain.handle('sync:collection', async (_e: IpcMainInvokeEvent, config: SyncConfig, collection: string) => {
-    const client = buildClient(config);
+  ipcMain.handle('sync:collection', async (_event, collection: string) => {
+    const client = createServerClient();
+    if (!client) return NOT_AUTHENTICATED.results[0];
+
     if (collection === 'deletes') return syncDeletes(client);
-    const def = syncFunctions.find((f) => f.table === collection);
-    if (!def) return { collection, synced: 0, errors: [`Unknown collection: ${collection}`] };
-    return syncTable(def.table, def.endpoint, client, def.transform);
+
+    const definition = syncFunctions.find((entry) => entry.table === collection);
+    if (!definition) return { collection, synced: 0, errors: [`Unknown collection: ${collection}`] };
+
+    return syncTable(definition.table, definition.endpoint, client, definition.transform);
   });
 
   ipcMain.handle('sync:pendingCounts', () => {

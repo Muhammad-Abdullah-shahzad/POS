@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerOrderHandlers = registerOrderHandlers;
-const electron_1 = require("electron");
+const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
 function registerOrderHandlers() {
-    electron_1.ipcMain.handle('orders:getAll', (_e, month, year) => {
+    (0, licenseGuard_1.handleLicensed)('orders:getAll', (_e, month, year) => {
         let rows;
         if (month && year) {
             const start = new Date(year, month - 1, 1).toISOString();
@@ -18,11 +18,11 @@ function registerOrderHandlers() {
         }
         return rows.map((r) => ({ ...r, items: JSON.parse(r.items || '[]') }));
     });
-    electron_1.ipcMain.handle('orders:getVoided', (_e) => {
+    (0, licenseGuard_1.handleLicensed)('orders:getVoided', (_e) => {
         const rows = (0, database_1.dbAll)(`SELECT * FROM orders WHERE status = 'voided' ORDER BY voidedAt DESC LIMIT 500`);
         return rows.map((r) => ({ ...r, items: JSON.parse(r.items || '[]') }));
     });
-    electron_1.ipcMain.handle('orders:create', (_e, data) => {
+    (0, licenseGuard_1.handleLicensed)('orders:create', (_e, data) => {
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         const invoiceId = `REC-${Date.now()}`;
@@ -71,7 +71,7 @@ function registerOrderHandlers() {
         const row = (0, database_1.dbGet)('SELECT * FROM orders WHERE _id = $id', { $id: _id });
         return { ...row, items: JSON.parse(row?.items || '[]') };
     });
-    electron_1.ipcMain.handle('orders:void', (_e, _id, reason, employeeId, employeeName) => {
+    (0, licenseGuard_1.handleLicensed)('orders:void', (_e, _id, reason, employeeId, employeeName) => {
         const ts = (0, database_1.now)();
         const order = (0, database_1.dbGet)('SELECT * FROM orders WHERE _id = $id', { $id: _id });
         if (!order)

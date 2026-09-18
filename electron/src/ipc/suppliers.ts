@@ -1,13 +1,13 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
 
 export function registerSupplierHandlers(): void {
 
-  ipcMain.handle('suppliers:getAll', () => {
+  handleLicensed('suppliers:getAll', () => {
     return dbAll('SELECT * FROM suppliers WHERE deletedAt IS NULL ORDER BY name ASC');
   });
 
-  ipcMain.handle('suppliers:create', (_e, data: Record<string, unknown>) => {
+  handleLicensed('suppliers:create', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(

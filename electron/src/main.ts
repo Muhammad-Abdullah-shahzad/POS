@@ -12,8 +12,9 @@ import { registerSupplierHandlers } from './ipc/suppliers';
 import { registerBankHandlers } from './ipc/banks';
 import { registerSettingsHandlers } from './ipc/settings';
 import { registerSyncHandlers } from './sync/syncManager';
-import { registerAuthHandlers, seedDefaultAdmin } from './ipc/auth';
+import { registerAuthHandlers } from './ipc/auth';
 import { registerAnalyticsHandlers } from './ipc/analytics';
+import { registerLicenseHandlers, startLicenseRefreshLoop } from './ipc/license';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -43,16 +44,12 @@ function createWindow(): void {
       path.join(process.resourcesPath, 'client', 'dist', 'index.html')
     );
   }
-  mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
 app.whenReady().then(async () => {
   // sql.js init is async — must await before registering handlers
   await initDb();
-
-  // Seed default admin user if no users exist yet
-  seedDefaultAdmin();
 
   // Register all IPC handlers
   registerAuthHandlers();
@@ -68,6 +65,11 @@ app.whenReady().then(async () => {
   registerSettingsHandlers();
   registerSyncHandlers();
   registerAnalyticsHandlers();
+  registerLicenseHandlers();
+
+  // Picks up a renewed licence while the till is open, so a paid customer is
+  // never stuck on the lock screen waiting for a restart.
+  startLicenseRefreshLoop();
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
   ipcMain.handle('app:getPlatform', () => process.platform);

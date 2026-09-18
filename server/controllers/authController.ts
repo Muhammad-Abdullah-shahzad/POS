@@ -1,50 +1,74 @@
+/**
+ * Sign up, sign in, session refresh, sign out and "who am I".
+ */
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import User from '../models/User';
-import { successResponse, errorResponse } from '../utils/response';
+import { successResponse } from '../core/apiResponse';
+import { asyncHandler } from '../core/asyncHandler';
+import { UnauthorizedError } from '../core/errors';
+import * as authService from '../services/authService';
+import { AuthResult } from '../services/authService';
+import { getLicenseStatus } from '../services/licenseService';
+import { SessionMetadata } from '../services/tokenService';
 
-export const login = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
+const sessionMetadata = (req: Request): SessionMetadata => ({
+  userAgent: req.get('user-agent') ?? '',
+  ipAddress: req.ip ?? '',
+});
 
-    if (!user) {
-      res.status(401).json(errorResponse('Invalid credentials'));
-      return;
-    }
+/** The one response shape every sign in style endpoint returns. */
+const sessionPayload = (result: AuthResult) => ({
+  // `token` is kept alongside `accessToken` so older desktop builds that read
+  // the original field keep working.
+  token: result.accessToken,
+  accessToken: result.accessToken,
+  refreshToken: result.refreshToken,
+  expiresIn: result.expiresIn,
+  user: result.user,
+  license: result.license,
+});
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      res.status(401).json(errorResponse('Invalid credentials'));
-      return;
-    }
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const result = await authService.register(req.body, sessionMetadata(req));
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secret', {
-      expiresIn: '30d',
-    });
+  res.status(201).json(successResponse(sessionPayload(result), `${result.user.tenantName} is ready`));
+});
 
-    res.json(successResponse({ token, user: { id: user._id, name: user.name, role: user.role } }, 'Login successful'));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  const result = await authService.login(email, password, sessionMetadata(req));
 
-export const register = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { name, email, password, role } = req.body;
-    const existing = await User.findOne({ email });
-    if (existing) {
-      res.status(400).json(errorResponse('User already exists'));
-      return;
-    }
+  res.json(successResponse(sessionPayload(result), 'Signed in'));
+});
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  const result = await authService.refreshSession(req.body.refreshToken, sessionMetadata(req));
 
-    const user = await User.create({ name, email, passwordHash, role: role || 'cashier' });
-    res.status(201).json(successResponse({ id: user._id, name: user.name, role: user.role }, 'User created'));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+  res.json(successResponse(sessionPayload(result), 'Session refreshed'));
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const refreshToken = req.body?.refreshToken;
+  if (refreshToken) await authService.logout(refreshToken);
+  res.json(successResponse(null, 'Signed out'));
+});
+
+export const me = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError();
+
+  res.json(
+    successResponse({
+      id: req.user.id,
+      role: req.user.role,
+      tenantId: req.user.tenantId,
+      tenantName: req.user.tenantName,
+      license: await getLicenseStatus(req.user.tenantId),
+    })
+  );
+});
+
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError();
+
+  await authService.changePassword(req.user.id, req.body.currentPassword, req.body.newPassword);
+  res.json(successResponse(null, 'Password changed. Please sign in again.'));
+});

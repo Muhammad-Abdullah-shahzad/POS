@@ -1,98 +1,60 @@
+/**
+ * Shop settings — one document per company, created on demand so a tenant that
+ * predates a settings field still gets sensible defaults.
+ */
 import { Request, Response } from 'express';
-import Settings from '../models/Settings';
-import { successResponse, errorResponse } from '../utils/response';
+import { successResponse } from '../core/apiResponse';
+import { asyncHandler } from '../core/asyncHandler';
+import Settings, { ISettings, IQuickProduct } from '../models/Settings';
 
-const ensureSettings = async () => {
-  let settings = await Settings.findOne();
-  if (!settings) {
-    settings = await Settings.create({});
-  }
-  return settings;
-};
+/** Fields a client may never overwrite through the settings endpoint. */
+const PROTECTED_FIELDS = ['_id', 'tenantId', 'createdAt', 'updatedAt'];
 
-export const getSettings = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await ensureSettings();
-    res.json(successResponse(settings));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+async function loadSettings(): Promise<ISettings> {
+  const existing = await Settings.findOne();
+  if (existing) return existing;
 
-export const updateSettings = async (req: Request, res: Response): Promise<void> => {
-  try {
-    let settings = await Settings.findOne();
-    if (!settings) {
-      settings = await Settings.create(req.body);
-    } else {
-      settings = await Settings.findByIdAndUpdate(settings._id, req.body, {
-        new: true,
-        runValidators: true,
-      });
-    }
-    res.json(successResponse(settings, 'Settings updated successfully'));
-  } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
-  }
-};
+  return Settings.create({});
+}
 
-export const getQuickProducts = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await ensureSettings();
-    res.json(successResponse(settings.quickProducts || []));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+export const getSettings = asyncHandler(async (_req: Request, res: Response) => {
+  res.json(successResponse(await loadSettings()));
+});
 
-export const updateQuickProducts = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const quickProducts = Array.isArray(req.body.quickProducts) ? req.body.quickProducts : [];
-    const cleanedQuickProducts = quickProducts
-      .filter((item: any) => item?.name && item?.barcode && item?.color)
-      .map((item: any) => ({
-        id: String(item.id || `quick-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
-        name: String(item.name).trim().toUpperCase(),
-        barcode: String(item.barcode).trim(),
-        color: String(item.color).trim(),
-      }));
+export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await loadSettings();
 
-    const settings = await ensureSettings();
-    const updatedSettings = await Settings.findByIdAndUpdate(
-      settings._id,
-      { quickProducts: cleanedQuickProducts },
-      { new: true, runValidators: true }
-    );
+  const update = { ...req.body };
+  for (const field of PROTECTED_FIELDS) delete update[field];
 
-    res.json(successResponse(updatedSettings?.quickProducts || [], 'Quick products updated successfully'));
-  } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
-  }
-};
+  const updated = await Settings.findByIdAndUpdate(
+    settings._id,
+    { $set: update },
+    { returnDocument: 'after', runValidators: true }
+  );
 
-export const getExpenseCategories = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await ensureSettings();
-    res.json(successResponse(settings.expenseCategories || []));
-  } catch (error: any) {
-    res.status(500).json(errorResponse('Server Error', error.message));
-  }
-};
+  res.json(successResponse(updated, 'Settings updated'));
+});
 
-export const updateExpenseCategories = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const categories = Array.isArray(req.body.expenseCategories)
-      ? req.body.expenseCategories.map((c: any) => String(c).trim()).filter(Boolean)
-      : [];
+export const getQuickProducts = asyncHandler(async (_req: Request, res: Response) => {
+  const settings = await loadSettings();
+  res.json(successResponse(settings.quickProducts ?? []));
+});
 
-    const settings = await ensureSettings();
-    const updated = await Settings.findByIdAndUpdate(
-      settings._id,
-      { expenseCategories: categories },
-      { new: true }
-    );
-    res.json(successResponse(updated?.expenseCategories || [], 'Expense categories updated'));
-  } catch (error: any) {
-    res.status(400).json(errorResponse('Bad Request', error.message));
-  }
-};
+export const updateQuickProducts = asyncHandler(async (req: Request, res: Response) => {
+  const quickProducts: IQuickProduct[] = (req.body.quickProducts as IQuickProduct[]).map((item) => ({
+    id: item.id || `quick-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: item.name.trim().toUpperCase(),
+    barcode: item.barcode.trim(),
+    color: item.color.trim(),
+  }));
+
+  const settings = await loadSettings();
+  const updated = await Settings.findByIdAndUpdate(
+    settings._id,
+    { $set: { quickProducts } },
+    { returnDocument: 'after', runValidators: true }
+  );
+
+  res.json(successResponse(updated?.quickProducts ?? [], 'Quick products updated'));
+});

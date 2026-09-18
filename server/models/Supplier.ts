@@ -1,17 +1,28 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
+import { tenantScopePlugin } from './plugins/tenantScope';
 
-export interface ISupplier extends Document {
+export interface ISupplier extends Document<Types.ObjectId> {
+  tenantId: Types.ObjectId;
   name: string;
   contact: string;
   emailId: string;
   address: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const SupplierSchema: Schema = new Schema({
-  name: { type: String, required: true },
-  contact: { type: String, required: true },
-  emailId: { type: String, required: true },
-  address: { type: String, required: true },
-}, { timestamps: true });
+const SupplierSchema = new Schema<ISupplier>(
+  {
+    name: { type: String, required: true, trim: true },
+    contact: { type: String, required: true, trim: true },
+    emailId: { type: String, required: true, lowercase: true, trim: true },
+    address: { type: String, required: true },
+  },
+  { timestamps: true }
+);
 
-export default mongoose.model<ISupplier>('Supplier', SupplierSchema);
+SupplierSchema.plugin(tenantScopePlugin);
+SupplierSchema.index({ tenantId: 1, name: 1 });
+
+export const Supplier = mongoose.model<ISupplier>('Supplier', SupplierSchema);
+export default Supplier;

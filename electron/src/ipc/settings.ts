@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v } from '../db/database';
 
 export function registerSettingsHandlers(): void {
@@ -15,14 +15,14 @@ export function registerSettingsHandlers(): void {
     }
   };
 
-  ipcMain.handle('settings:get', () => {
+  handleLicensed('settings:get', () => {
     ensureSettings();
     const row = dbGet('SELECT * FROM settings LIMIT 1') as any;
     if (!row) return null;
     return { ...row, quickProducts: JSON.parse(row.quickProducts || '[]') };
   });
 
-  ipcMain.handle('settings:update', (_e, data: Record<string, unknown>) => {
+  handleLicensed('settings:update', (_e, data: Record<string, unknown>) => {
     ensureSettings();
     dbRun(
       `UPDATE settings SET
@@ -52,13 +52,13 @@ export function registerSettingsHandlers(): void {
     return { ...row, quickProducts: JSON.parse(row?.quickProducts || '[]') };
   });
 
-  ipcMain.handle('settings:getQuickProducts', () => {
+  handleLicensed('settings:getQuickProducts', () => {
     ensureSettings();
     const row = dbGet('SELECT quickProducts FROM settings LIMIT 1') as any;
     return JSON.parse(row?.quickProducts || '[]');
   });
 
-  ipcMain.handle('settings:updateQuickProducts', (_e, quickProducts: unknown[]) => {
+  handleLicensed('settings:updateQuickProducts', (_e, quickProducts: unknown[]) => {
     ensureSettings();
     dbRun(
       `UPDATE settings SET quickProducts=$qp, updatedAt=$ts, isSync=0`,

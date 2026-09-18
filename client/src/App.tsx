@@ -2,6 +2,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
 import Login from './features/auth/Login';
+import Register from './features/auth/Register';
+import LicensePage from './features/license/LicensePage';
+import { useLicenseWatcher } from './features/license/useLicenseWatcher';
 import Dashboard from './features/dashboard/Dashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import Products from './features/products/Products';
@@ -10,18 +13,18 @@ import Receipts from './features/receipts/Receipts';
 import Analysis from './features/analytics/Analysis';
 import Suppliers from './features/suppliers/Suppliers';
 import Employees from './features/employees/Employees';
-import { 
-  SalaryManagement, 
-  Damages, 
-  ChangePassword, 
-  EmployeeAccess, 
-  DutyRoaster, 
-  AttendanceReport, 
-  OverTimeDetails 
+import {
+  SalaryManagement,
+  Damages,
+  ChangePassword,
+  EmployeeAccess,
+  DutyRoaster,
+  AttendanceReport,
+  OverTimeDetails
 } from './features/employees/EmployeeSubFeatures';
-import { 
-  SupplierPayments, 
-  ManageProductCodes 
+import {
+  SupplierPayments,
+  ManageProductCodes
 } from './features/products/StockSubFeatures';
 import { ProductsSubFeatures } from './features/products/ProductsSubFeatures';
 import ManageQuickProducts from './features/products/QuickProducts';
@@ -32,18 +35,34 @@ import Customers from './features/customers/Customers';
 import VoidTransactions from './features/voidTransactions/VoidTransactions';
 import SettingsPage from './features/settings/SettingsPage';
 import { useAuthStore } from './store/authStore';
+import { isLicenseBlocking, useLicenseStore } from './store/licenseStore';
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuthStore();
-  if (!user) return <Navigate to="/login" replace />;
+/**
+ * Route guards.
+ *
+ * These only decide what to render. Every request is authorised again on the
+ * server, so a tampered role in local storage changes nothing but the menu.
+ * The licence guard is the same: it keeps a lapsed company on the renewal
+ * screen, while the server (and, offline, the Electron main process) is what
+ * actually refuses to work without a licence.
+ */
+const LicenseGuard = ({ children }: { children: React.ReactNode }) => {
+  const status = useLicenseStore((state) => state.status);
+  if (isLicenseBlocking(status)) return <Navigate to="/license" replace />;
   return <>{children}</>;
 };
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const user = useAuthStore((state) => state.user);
+  if (!user) return <Navigate to="/login" replace />;
+  return <LicenseGuard>{children}</LicenseGuard>;
+};
+
 const AdminProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin' && user.role !== 'manager') return <Navigate to="/" replace />;
-  return <>{children}</>;
+  return <LicenseGuard>{children}</LicenseGuard>;
 };
 
 // Shared page set — used inside both / and /admin route parents
@@ -76,9 +95,16 @@ const sharedRoutes = () => (
 );
 
 function App() {
+  // Re-checks the licence while signed in; on the desktop this is what locks
+  // the till at expiry with no internet connection.
+  useLicenseWatcher();
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      {/* Reachable with an expired licence: it is where the renewal happens. */}
+      <Route path="/license" element={<LicensePage />} />
 
       {/* ── CASHIER ROUTES ── */}
       <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>

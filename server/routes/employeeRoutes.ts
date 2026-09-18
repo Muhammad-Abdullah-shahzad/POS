@@ -1,15 +1,25 @@
-import express from 'express';
-import { getEmployees, createEmployee, deleteEmployee, updateEmployee } from '../controllers/employeeController';
-import { protect, authorize } from '../middleware/auth';
+import { Router } from 'express';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validate } from '../middleware/validate';
+import { idParam } from '../validators/common';
+import { createEmployeeSchema, updateEmployeeSchema } from '../validators/catalogValidators';
+import {
+  createEmployee,
+  deleteEmployee,
+  getEmployees,
+  updateEmployee,
+} from '../controllers/employeeController';
 
-const router = express.Router();
+const router = Router();
+const managers = authorize('admin', 'manager');
 
-router.route('/')
-  .get(protect, authorize('admin', 'manager', 'cashier'), getEmployees)
-  .post(protect, authorize('admin', 'manager'), createEmployee);
+router.use(authenticate);
 
-router.route('/:id')
-  .put(protect, authorize('admin', 'manager'), updateEmployee)
-  .delete(protect, authorize('admin', 'manager'), deleteEmployee);
+router.route('/').get(getEmployees).post(managers, validate({ body: createEmployeeSchema }), createEmployee);
+
+router
+  .route('/:id')
+  .put(managers, validate({ params: idParam, body: updateEmployeeSchema }), updateEmployee)
+  .delete(managers, validate({ params: idParam }), deleteEmployee);
 
 export default router;

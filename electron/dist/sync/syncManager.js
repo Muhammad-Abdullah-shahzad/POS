@@ -12,22 +12,26 @@
  *     - missing locally → insert from server
  *     - in SQLite but gone from server → delete locally (web user deleted it)
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerSyncHandlers = registerSyncHandlers;
 const electron_1 = require("electron");
-const axios_1 = __importDefault(require("axios"));
+const config_1 = require("../config");
+const serverClient_1 = require("../api/serverClient");
 const database_1 = require("../db/database");
-// ─────────────────────────────────────────────────────────────────────────────
-function buildClient(config) {
-    return axios_1.default.create({
-        baseURL: config.baseUrl,
-        headers: { Authorization: `Bearer ${config.token}` },
-        timeout: 30000,
-    });
-}
+const license_1 = require("../ipc/license");
+/** Returned when the till has never signed in against the server. */
+const NOT_AUTHENTICATED = {
+    success: false,
+    results: [
+        {
+            collection: 'auth',
+            synced: 0,
+            errors: ['This till is not signed in to the server. Sign in once while online, then sync.'],
+        },
+    ],
+    totalSynced: 0,
+    totalErrors: 1,
+};
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,8 +228,7 @@ const pullFunctions = [
     { table: 'settings', fetchEndpoint: '/settings', serialize: stringifyField('quickProducts') },
 ];
 // ── Master sync (push → pull) ─────────────────────────────────────────────────
-async function syncAll(config) {
-    const client = buildClient(config);
+async function syncAll(client) {
     // ① Push: send local changes to the server first so the server has the latest data
     const pushSettled = await Promise.allSettled([
         ...syncFunctions.map(({ table, endpoint, transform }) => syncTable(table, endpoint, client, transform)),
@@ -250,8 +253,7 @@ async function syncAll(config) {
     const totalErrors = results.reduce((s, r) => s + r.errors.length, 0);
     return { success: totalErrors === 0, results, totalSynced, totalErrors };
 }
-async function pullAll(config) {
-    const client = buildClient(config);
+async function pullAll(client) {
     const settled = await Promise.allSettled(pullFunctions.map(({ table, fetchEndpoint, serialize }) => pullTable(table, fetchEndpoint, client, serialize)));
     const results = settled.map((r, i) => {
         const name = `pull:${pullFunctions[i].table}`;
@@ -265,26 +267,39 @@ async function pullAll(config) {
 }
 // ── IPC ───────────────────────────────────────────────────────────────────────
 function registerSyncHandlers() {
-    electron_1.ipcMain.handle('sync:all', async (_e, config) => {
-        console.log('[Sync] Starting full sync to', config.baseUrl);
-        const result = await syncAll(config);
+    // The renderer no longer supplies a token: credentials belong to the main
+    // process, which keeps them out of the web page entirely.
+    electron_1.ipcMain.handle('sync:all', async () => {
+        const client = (0, serverClient_1.createServerClient)();
+        if (!client)
+            return NOT_AUTHENTICATED;
+        console.log('[Sync] Starting full sync to', config_1.config.apiBaseUrl);
+        const result = await syncAll(client);
         console.log('[Sync] Done:', result.totalSynced, 'synced,', result.totalErrors, 'errors');
+        // The till is online, so this is the cheapest moment to pick up a renewal.
+        await (0, license_1.refreshLicenseFromServer)().catch(() => undefined);
         return result;
     });
-    electron_1.ipcMain.handle('sync:pull', async (_e, config) => {
-        console.log('[Sync] Starting pull from', config.baseUrl);
-        const result = await pullAll(config);
+    electron_1.ipcMain.handle('sync:pull', async () => {
+        const client = (0, serverClient_1.createServerClient)();
+        if (!client)
+            return NOT_AUTHENTICATED;
+        console.log('[Sync] Starting pull from', config_1.config.apiBaseUrl);
+        const result = await pullAll(client);
         console.log('[Sync] Pull done:', result.totalSynced, 'pulled,', result.totalErrors, 'errors');
+        await (0, license_1.refreshLicenseFromServer)().catch(() => undefined);
         return result;
     });
-    electron_1.ipcMain.handle('sync:collection', async (_e, config, collection) => {
-        const client = buildClient(config);
+    electron_1.ipcMain.handle('sync:collection', async (_event, collection) => {
+        const client = (0, serverClient_1.createServerClient)();
+        if (!client)
+            return NOT_AUTHENTICATED.results[0];
         if (collection === 'deletes')
             return syncDeletes(client);
-        const def = syncFunctions.find((f) => f.table === collection);
-        if (!def)
+        const definition = syncFunctions.find((entry) => entry.table === collection);
+        if (!definition)
             return { collection, synced: 0, errors: [`Unknown collection: ${collection}`] };
-        return syncTable(def.table, def.endpoint, client, def.transform);
+        return syncTable(definition.table, definition.endpoint, client, definition.transform);
     });
     electron_1.ipcMain.handle('sync:pendingCounts', () => {
         const counts = {};

@@ -1,59 +1,28 @@
 /**
- * syncRoutes.ts
+ * Sync routes for the Electron desktop till.
  *
- * Upsert sync:  POST /api/<collection>/sync
- * Delete sync:  POST /api/<collection>/sync/delete
+ *   POST /api/<collection>/sync         push created and updated records
+ *   POST /api/<collection>/sync/delete  push deletions
  *
- * All routes require a valid JWT.
+ * Registered from the collection table so a new synced model needs one entry
+ * there and nothing here.
  */
+import { Router } from 'express';
+import { authenticate } from '../middleware/authenticate';
+import { SYNC_COLLECTIONS, SyncCollection } from '../services/syncService';
+import { syncCollection, syncDeletes } from '../controllers/syncController';
 
-import express from 'express';
-import { protect } from '../middleware/auth';
-import {
-  syncProducts,            deleteProducts,
-  syncCategories,          deleteCategories,
-  syncOrders,              deleteOrders,
-  syncCustomers,           deleteCustomers,
-  syncEmployees,           deleteEmployees,
-  syncExpenses,            deleteExpenses,
-  syncExpenseCategories,   deleteExpenseCategories,
-  syncEmployeeDamages,     deleteEmployeeDamages,
-  syncSuppliers,           deleteSuppliers,
-  syncBankNames,           deleteBankNames,
-  syncBankAccounts,        deleteBankAccounts,
-  syncBankCards,           deleteBankCards,
-  syncSettings,
-} from '../controllers/syncController';
+const router = Router();
 
-const router = express.Router();
+router.use(authenticate);
 
-// ── Upsert sync ───────────────────────────────────────────────────────────────
-router.post('/products/sync',               protect, syncProducts);
-router.post('/categories/sync',             protect, syncCategories);
-router.post('/orders/sync',                 protect, syncOrders);
-router.post('/customers/sync',              protect, syncCustomers);
-router.post('/employees/sync',              protect, syncEmployees);
-router.post('/expenses/sync',               protect, syncExpenses);
-router.post('/expense-categories/sync',     protect, syncExpenseCategories);
-router.post('/employee-damages/sync',       protect, syncEmployeeDamages);
-router.post('/suppliers/sync',              protect, syncSuppliers);
-router.post('/banks/names/sync',            protect, syncBankNames);
-router.post('/banks/accounts/sync',         protect, syncBankAccounts);
-router.post('/banks/cards/sync',            protect, syncBankCards);
-router.post('/settings/sync',               protect, syncSettings);
+for (const collection of Object.keys(SYNC_COLLECTIONS) as SyncCollection[]) {
+  router.post(`/${collection}/sync`, syncCollection(collection));
 
-// ── Delete sync ───────────────────────────────────────────────────────────────
-router.post('/products/sync/delete',        protect, deleteProducts);
-router.post('/categories/sync/delete',      protect, deleteCategories);
-router.post('/orders/sync/delete',          protect, deleteOrders);
-router.post('/customers/sync/delete',       protect, deleteCustomers);
-router.post('/employees/sync/delete',       protect, deleteEmployees);
-router.post('/expenses/sync/delete',            protect, deleteExpenses);
-router.post('/expense-categories/sync/delete',  protect, deleteExpenseCategories);
-router.post('/employee-damages/sync/delete',    protect, deleteEmployeeDamages);
-router.post('/suppliers/sync/delete',           protect, deleteSuppliers);
-router.post('/banks/names/sync/delete',     protect, deleteBankNames);
-router.post('/banks/accounts/sync/delete',  protect, deleteBankAccounts);
-router.post('/banks/cards/sync/delete',     protect, deleteBankCards);
+  // Settings is a singleton and is never deleted from a till.
+  if (collection !== 'settings') {
+    router.post(`/${collection}/sync/delete`, syncDeletes(collection));
+  }
+}
 
 export default router;

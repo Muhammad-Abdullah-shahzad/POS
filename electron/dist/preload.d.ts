@@ -8,14 +8,20 @@
 declare const api: {
     auth: {
         login: (email: string, password: string) => Promise<any>;
-        register: (data: {
+        register: (input: {
+            companyName: string;
             name: string;
             email: string;
             password: string;
-            role: string;
+            phone?: string;
         }) => Promise<any>;
+        logout: () => Promise<any>;
         getUsers: () => Promise<any>;
         changePassword: (userId: string, oldPassword: string, newPassword: string) => Promise<any>;
+        /** Which company this till is registered to. */
+        getDevice: () => Promise<any>;
+        /** Clear local data so the till can be handed to a different company. */
+        resetDevice: () => Promise<any>;
     };
     products: {
         getAll: (search?: string) => Promise<any>;
@@ -84,23 +90,28 @@ declare const api: {
         getQuickProducts: () => Promise<any>;
         updateQuickProducts: (qp: unknown[]) => Promise<any>;
     };
+    analytics: {
+        monthlySummary: (months?: number) => Promise<any>;
+        topProducts: (limit?: number) => Promise<any>;
+        paymentMethods: () => Promise<any>;
+        expenseCategories: () => Promise<any>;
+    };
+    license: {
+        /** Current state from the cached key and the clock. */
+        status: () => Promise<any>;
+        /** Apply a key the operator sent. Works offline. */
+        activate: (key: string) => Promise<any>;
+        /** Ask the server for the latest licence (after a renewal), then re-check. */
+        refresh: () => Promise<any>;
+    };
     sync: {
-        /** Push local changes + pull server changes (full two-way sync) */
-        all: (config: {
-            baseUrl: string;
-            token: string;
-        }) => Promise<any>;
-        /** Pull only: fetch all server data into local SQLite */
-        pull: (config: {
-            baseUrl: string;
-            token: string;
-        }) => Promise<any>;
-        /** Sync a single collection (push) */
-        collection: (config: {
-            baseUrl: string;
-            token: string;
-        }, collection: string) => Promise<any>;
-        /** Get count of unsynced records per collection */
+        /** Push local changes, then pull the server's. */
+        all: () => Promise<any>;
+        /** Pull only: fetch server data into local SQLite. */
+        pull: () => Promise<any>;
+        /** Push a single collection. */
+        collection: (collection: string) => Promise<any>;
+        /** Count of records waiting to be pushed, per collection. */
         pendingCounts: () => Promise<any>;
     };
 };

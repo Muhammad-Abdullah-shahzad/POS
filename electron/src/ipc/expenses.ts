@@ -1,13 +1,13 @@
-import { ipcMain } from 'electron';
+import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v } from '../db/database';
 
 export function registerExpenseHandlers(): void {
 
-  ipcMain.handle('expenses:getAll', () => {
+  handleLicensed('expenses:getAll', () => {
     return dbAll('SELECT * FROM expenses ORDER BY date DESC');
   });
 
-  ipcMain.handle('expenses:create', (_e, data: Record<string, unknown>) => {
+  handleLicensed('expenses:create', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -31,11 +31,11 @@ export function registerExpenseHandlers(): void {
 
   // ── Expense Categories ────────────────────────────────────────────────────
 
-  ipcMain.handle('expenseCategories:getAll', () => {
+  handleLicensed('expenseCategories:getAll', () => {
     return dbAll('SELECT * FROM expense_categories ORDER BY name ASC');
   });
 
-  ipcMain.handle('expenseCategories:create', (_e, data: Record<string, unknown>) => {
+  handleLicensed('expenseCategories:create', (_e, data: Record<string, unknown>) => {
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -46,7 +46,7 @@ export function registerExpenseHandlers(): void {
     return dbGet('SELECT * FROM expense_categories WHERE name = $name', { $name: v(data.name) });
   });
 
-  ipcMain.handle('expenseCategories:delete', (_e, _id: string) => {
+  handleLicensed('expenseCategories:delete', (_e, _id: string) => {
     dbRun('DELETE FROM expense_categories WHERE _id = $id', { $id: _id });
     return { success: true };
   });

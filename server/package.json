@@ -1,14 +1,23 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Multi-tenant POS API",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/server.js",
-    "dev": "nodemon server.ts",
+    "dev": "nodemon --watch . --ext ts --exec ts-node server.ts",
     "build": "tsc",
-    "seed": "ts-node scripts/seed.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "db:indexes": "ts-node scripts/syncIndexes.ts",
+    "tenant:create": "ts-node scripts/createTenant.ts",
+    "tenant:list": "ts-node scripts/listTenants.ts",
+    "user:create": "ts-node scripts/createUser.ts",
+    "license:keys": "ts-node scripts/generateLicenseKeys.ts",
+    "license:issue": "ts-node scripts/issueLicense.ts",
+    "seed:categories": "ts-node scripts/seedCategories.ts",
+    "migrate:multitenant": "ts-node scripts/migrateToMultiTenant.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -21,11 +30,16 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "form-data": "^4.0.5",
     "googleapis": "^144.0.0",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
-    "multer": "^2.1.1"
+    "multer": "^2.1.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -33,8 +47,11 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.6.2",
+    "@types/supertest": "^7.2.1",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
   }
 }

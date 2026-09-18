@@ -9,6 +9,8 @@
  * that the Express server returns, so all existing components work unchanged.
  */
 
+import { lockLicense } from '../store/licenseStore';
+
 const eAPI = () => window.electronAPI!;
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -187,14 +189,32 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
   throw new Error(`[localApi] Unhandled route: ${method.toUpperCase()} /${url}`);
 }
 
+/**
+ * The desktop main process refuses data calls while the licence is not in force
+ * (electron/src/license/licenseGuard.ts). Only the error text crosses the IPC
+ * bridge, so it is recognised here and turned into the same lock the web app
+ * gets from a 402.
+ */
+const LICENSE_REQUIRED = /LICENSE_REQUIRED\|(expired|missing|invalid)\|(.*)$/;
+
+async function routeWithLicenseCheck(method: Method, url: string, body?: unknown) {
+  try {
+    return await route(method, url, body);
+  } catch (error) {
+    const match = LICENSE_REQUIRED.exec((error as Error)?.message ?? '');
+    if (match) lockLicense(match[1] as 'expired' | 'missing' | 'invalid', match[2]);
+    throw error;
+  }
+}
+
 // ─── Public API (same shape as axios instance) ───────────────────────────────
 
 const localApi = {
-  get:    (url: string, config?: any) => route('get',    url, config?.params),
-  post:   (url: string, body?: any)   => route('post',   url, body),
-  patch:  (url: string, body?: any)   => route('patch',  url, body),
-  put:    (url: string, body?: any)   => route('put',    url, body),
-  delete: (url: string, config?: any) => route('delete', url, config?.data || config?.params),
+  get:    (url: string, config?: any) => routeWithLicenseCheck('get',    url, config?.params),
+  post:   (url: string, body?: any)   => routeWithLicenseCheck('post',   url, body),
+  patch:  (url: string, body?: any)   => routeWithLicenseCheck('patch',  url, body),
+  put:    (url: string, body?: any)   => routeWithLicenseCheck('put',    url, body),
+  delete: (url: string, config?: any) => routeWithLicenseCheck('delete', url, config?.data || config?.params),
 };
 
 export default localApi;
