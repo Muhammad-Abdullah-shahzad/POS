@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import api from '../../services/api';
+import { currencySymbol, formatMoney } from '../../utils/money';
 
 const GENERAL_CATEGORIES = [
   'FISH AND SEAFOOD',
@@ -373,8 +374,8 @@ export const GeneralProducts = () => {
                   <Table.Td fw={600}>{p.name}</Table.Td>
                   <Table.Td c="dimmed">{p.sku}</Table.Td>
                   <Table.Td c="dimmed">{p.barcode}</Table.Td>
-                  <Table.Td style={{ textAlign: 'right' }}>€ {p.price.toFixed(2)}</Table.Td>
-                  <Table.Td style={{ textAlign: 'right' }}>€ {(p.drs || 0).toFixed(2)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right' }}>{formatMoney(p.price)}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right' }}>{formatMoney(p.drs || 0)}</Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Badge color={p.stock > 0 ? 'green' : 'red'} variant="light">{p.stock}</Badge>
                   </Table.Td>
@@ -442,7 +443,7 @@ export const GeneralProducts = () => {
           <Grid>
             <Grid.Col span={6}>
               <NumberInput
-                label="Selling Price (€)"
+                label={`Selling Price (${currencySymbol()})`}
                 min={0}
                 value={form.price}
                 onChange={val => setForm(f => ({ ...f, price: val }))}
@@ -450,7 +451,7 @@ export const GeneralProducts = () => {
             </Grid.Col>
             <Grid.Col span={6}>
               <NumberInput
-                label="Cost Price (€)"
+                label={`Cost Price (${currencySymbol()})`}
                 min={0}
                 value={form.costPrice}
                 onChange={val => setForm(f => ({ ...f, costPrice: val }))}

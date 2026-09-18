@@ -7,6 +7,7 @@ import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto, IconEdit, IconPrinter } from '@tabler/icons-react';
 import JsBarcode from 'jsbarcode';
+import { formatMoney } from '../../utils/money';
 
 interface Product {
   _id: string;
@@ -288,9 +289,9 @@ const Products = () => {
     <div class="product-name">${product.name}</div>
     <div class="barcode-wrap">${barcodeHtml}</div>
     <hr class="divider"/>
-    <div class="price-big">€ ${product.price.toFixed(2)}</div>
-    <div class="row"><span class="label">Cost Price:</span><span class="value">€ ${product.costPrice.toFixed(2)}</span></div>
-    <div class="row"><span class="label">Discount (DRS):</span><span class="value">€ ${(product.drs || 0).toFixed(2)}</span></div>
+    <div class="price-big">${formatMoney(product.price)}</div>
+    <div class="row"><span class="label">Cost Price:</span><span class="value">${formatMoney(product.costPrice)}</span></div>
+    <div class="row"><span class="label">Discount (DRS):</span><span class="value">${formatMoney(product.drs || 0)}</span></div>
     <div class="row"><span class="label">VAT:</span><span class="value">${product.vatRate}% (${product.vatType})</span></div>
     <div class="row"><span class="label">Category:</span><span class="value">${product.category}</span></div>
     <hr class="divider"/>
@@ -384,8 +385,8 @@ const Products = () => {
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td>{p.sku || '-'} / {p.barcode}</Table.Td>
                 <Table.Td>{p.category}</Table.Td>
-                <Table.Td>€ {p.price.toFixed(2)}</Table.Td>
-                <Table.Td>€ {(p.drs || 0).toFixed(2)}</Table.Td>
+                <Table.Td>{formatMoney(p.price)}</Table.Td>
+                <Table.Td>{formatMoney(p.drs || 0)}</Table.Td>
                 <Table.Td>{p.vatRate}% ({p.vatType})</Table.Td>
                 <Table.Td fw={700} c={p.stock < 10 ? 'red' : 'inherit'}>{p.stock}</Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>

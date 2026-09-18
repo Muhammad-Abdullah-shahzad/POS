@@ -27,6 +27,8 @@ export interface DesktopLicenseStatus {
   message: string;
   /** When this status was computed, so the renderer can show "checked at". */
   checkedAt: string;
+  /** The last few characters of the key in use, shown masked like a card number. */
+  keyHint: string | null;
 }
 
 const META_LICENSE_KEY = 'licenseKey';
@@ -43,6 +45,8 @@ const CLOCK_TOLERANCE_MS = 10 * 60 * 1000;
  */
 const HIGH_WATER_WRITE_STEP_MS = 5 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** How many trailing characters of the key the activation screen shows. */
+const KEY_HINT_LENGTH = 5;
 
 // ── Metadata helpers ────────────────────────────────────────────────────────
 
@@ -83,7 +87,7 @@ const status = (
   message: string,
   claims?: LicenseClaims,
   currentTime = new Date()
-): DesktopLicenseStatus => ({
+): Omit<DesktopLicenseStatus, 'keyHint'> => ({
   state,
   expiresAt: claims ? claims.expiresAt.toISOString() : null,
   daysLeft: claims ? Math.floor((claims.expiresAt.getTime() - currentTime.getTime()) / DAY_MS) : null,
@@ -109,9 +113,7 @@ function verifyForThisTill(rawKey: string): LicenseClaims {
 
 export const readStoredLicenseKey = (): string | null => readMeta(META_LICENSE_KEY);
 
-/** The licence status right now, computed from the cached key and the clock. */
-export function getLicenseStatus(currentTime = new Date()): DesktopLicenseStatus {
-  const key = readStoredLicenseKey();
+function evaluate(key: string | null, currentTime: Date): Omit<DesktopLicenseStatus, 'keyHint'> {
   if (!key) {
     return status('missing', 'No licence key has been entered on this till yet.', undefined, currentTime);
   }
@@ -139,6 +141,12 @@ export function getLicenseStatus(currentTime = new Date()): DesktopLicenseStatus
   }
 
   return status('active', `Licence valid until ${expiresOn}.`, claims, currentTime);
+}
+
+/** The licence status right now, computed from the cached key and the clock. */
+export function getLicenseStatus(currentTime = new Date()): DesktopLicenseStatus {
+  const key = readStoredLicenseKey();
+  return { ...evaluate(key, currentTime), keyHint: key ? key.slice(-KEY_HINT_LENGTH) : null };
 }
 
 /**

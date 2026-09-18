@@ -21,6 +21,8 @@ export interface LicenseStatus {
   checkedAt?: string;
   /** Desktop only: the last server check failed and the local key was used. */
   offline?: boolean;
+  /** The last few characters of the key in use, shown masked like a card number. */
+  keyHint?: string | null;
 }
 
 interface LicenseStoreState {
@@ -84,6 +86,7 @@ export const useLicenseStore = create<LicenseStoreState>((set) => ({
 }));
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const KEY_HINT_LENGTH = 5;
 
 /** Turn a licence object from the API into a status. The key is not kept. */
 export function licenseStatusFromServer(payload: Record<string, unknown>): LicenseStatus {
@@ -94,6 +97,8 @@ export function licenseStatusFromServer(payload: Record<string, unknown>): Licen
     message: (payload.message as string) ?? '',
     kind: (payload.kind as LicenseStatus['kind']) ?? null,
     checkedAt: new Date().toISOString(),
+    // Only the tail is kept: enough to tell keys apart, useless if copied.
+    keyHint: typeof payload.key === 'string' ? payload.key.slice(-KEY_HINT_LENGTH) : null,
   };
 }
 
@@ -118,5 +123,6 @@ export function lockLicense(
     daysLeft: expiresAt ? Math.floor((Date.parse(expiresAt) - Date.now()) / DAY_MS) : null,
     message,
     checkedAt: new Date().toISOString(),
+    keyHint: current.keyHint ?? null,
   });
 }

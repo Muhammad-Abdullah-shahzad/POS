@@ -14,14 +14,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
 import api from '../../services/api';
+import { formatMoney, formatMoneyCompact } from '../../utils/money';
 
 const COLORS = ['#228be6', '#40c057', '#fab005', '#fa5252', '#7950f2', '#15aabf', '#fd7e14'];
-const fmt = (n: number) => `€ ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const fmtShort = (n: number) => {
-  if (n >= 1_000_000) return `€ ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `€ ${(n / 1_000).toFixed(1)}K`;
-  return `€ ${n.toFixed(2)}`;
-};
+const fmt = formatMoney;
+const fmtShort = formatMoneyCompact;
 
 // Responsive stat mini-card used inside modals
 const MiniCard = ({ label, value, color }: { label: string; value: string; color?: string }) => (

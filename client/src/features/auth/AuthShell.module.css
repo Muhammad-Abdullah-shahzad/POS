@@ -1,0 +1,171 @@
+/*
+ * Sign in and sign up screens.
+ *
+ * Rules that restyle library components are scoped under .page, so they win
+ * over the component library regardless of stylesheet order.
+ *
+ * A calm light background with soft shapes, a single centred column, outlined
+ * fields and one solid action. Kept light on purpose: tills are stared at for
+ * whole shifts, so the screen should not glare.
+ */
+
+.page {
+  --auth-brand: #2350c9;
+  --auth-brand-hover: #1d44ad;
+  --auth-border: #c9d3e6;
+  --auth-muted: #7d8bab;
+
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  /* Auto margins on the column centre it, yet let a tall page scroll from the
+     top instead of being clipped, which align-items: center would do. */
+  display: flex;
+  flex-direction: column;
+  padding: 48px 16px;
+  background: #f3f6fc;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.column {
+  position: relative;
+  width: 100%;
+  max-width: 330px;
+  margin: auto;
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+  color: var(--auth-brand);
+}
+
+.caption {
+  margin: -8px 0 26px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--auth-muted);
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────────── */
+
+.page .input {
+  background-color: #ffffff;
+  border: 1px solid var(--auth-border);
+  border-radius: 2px;
+  color: #1f2a44;
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.page .input:focus,
+.page .input:focus-within {
+  border-color: var(--auth-brand);
+  box-shadow: 0 0 0 3px rgba(35, 80, 201, 0.12);
+}
+
+.page .input::placeholder,
+.page .innerInput::placeholder {
+  color: #8f9bb8;
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.page .section {
+  color: var(--auth-muted);
+}
+
+/* ── Actions ────────────────────────────────────────────────────────────── */
+
+.page .submit {
+  border-radius: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  box-shadow: 0 8px 18px -10px rgba(35, 80, 201, 0.65);
+}
+
+.page .link {
+  color: var(--auth-brand);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.page .link:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--auth-muted);
+}
+
+.error {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 13px;
+  color: #c92a2a;
+}
+
+/* ── Cashier / Admin switch ─────────────────────────────────────────────── */
+
+.modes {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.page .mode {
+  padding: 0 2px 6px;
+  border-bottom: 2px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--auth-muted);
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.page .mode:hover {
+  color: #3f4d70;
+}
+
+.page .mode[data-active] {
+  color: var(--auth-brand);
+  border-bottom-color: var(--auth-brand);
+  font-weight: 600;
+}
+
+/* ── Pop-up info cards ──────────────────────────────────────────────────── */
+
+.infoBody {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #5b6784;
+}
+
+.infoBody p {
+  margin: 0 0 10px;
+}
+
+.infoBody p:last-child {
+  margin-bottom: 0;
+}

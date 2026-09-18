@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import api from '../../services/api';
 import { IconEye, IconPrinter } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
+import { formatMoney } from '../../utils/money';
 
 const Receipts = () => {
   const currentDate = new Date();
@@ -90,7 +91,7 @@ const Receipts = () => {
               <Table.Tr key={rec._id}>
                 <Table.Td fw={500}>{rec.invoiceId || 'N/A'}</Table.Td>
                 <Table.Td>{new Date(rec.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td fw={700}>€ {rec.total.toFixed(2)}</Table.Td>
+                <Table.Td fw={700}>{formatMoney(rec.total)}</Table.Td>
                 <Table.Td><Badge color="green" variant="light">PAID</Badge></Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Button 
@@ -155,18 +156,18 @@ const Receipts = () => {
                         <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
                         {item.discountAmt > 0 && (
                           <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                            Discount: {item.discountPct > 0 ? `-${item.discountPct}% ` : ''}(-€{item.discountAmt.toFixed(2)})
+                            Discount: {item.discountPct > 0 ? `-${item.discountPct}% ` : ''}(-{formatMoney(item.discountAmt)})
                           </div>
                         )}
                         {item.drs > 0 && (
                           <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                            DRS Deposit: +€{(item.drs * item.quantity).toFixed(2)}
+                            DRS Deposit: +{formatMoney(item.drs * item.quantity)}
                           </div>
                         )}
                       </Table.Td>
                       <Table.Td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.quantity}</Table.Td>
-                      <Table.Td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€ {(item.price || 0).toFixed(2)}</Table.Td>
-                      <Table.Td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€ {(item.finalPrice || item.totalPrice).toFixed(2)}</Table.Td>
+                      <Table.Td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{formatMoney(item.price || 0)}</Table.Td>
+                      <Table.Td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatMoney(item.finalPrice || item.totalPrice)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -175,27 +176,27 @@ const Receipts = () => {
               <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                   <span>Subtotal:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.subtotal.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(selectedReceipt.subtotal)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                   <span>Tax:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.totalVAT.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(selectedReceipt.totalVAT)}</span>
                 </div>
                 {selectedReceipt.discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
                     <span>Discount:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>- € {selectedReceipt.discount.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>- {formatMoney(selectedReceipt.discount)}</span>
                   </div>
                 )}
                 {selectedReceipt.totalDRS > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                     <span>Total DRS:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.totalDRS.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(selectedReceipt.totalDRS)}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px', color: '#000' }}>
                   <span>TOTAL:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€ {selectedReceipt.total.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(selectedReceipt.total)}</span>
                 </div>
               </div>
               

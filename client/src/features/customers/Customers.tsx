@@ -11,6 +11,7 @@ import {
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
+import { currencySymbol, formatMoney } from '../../utils/money';
 
 interface Customer {
   _id?: string;
@@ -194,7 +195,7 @@ const Customers = () => {
       <Grid mb="lg">
         {[
           { label: 'Total Customers', value: customers.length },
-          { label: 'Total Revenue',   value: `€ ${totalRevenue.toLocaleString('en', { minimumFractionDigits: 2 })}` },
+          { label: 'Total Revenue',   value: formatMoney(totalRevenue) },
           { label: 'Total Visits',    value: totalVisits },
         ].map(card => (
           <Grid.Col span={4} key={card.label}>
@@ -249,7 +250,7 @@ const Customers = () => {
                   <Table.Td><Text c="dimmed">{c.contactNum1}</Text></Table.Td>
                   <Table.Td><Text c="dimmed">{c.email || '—'}</Text></Table.Td>
                   <Table.Td><Text fw={500}>{c.timesVisited}</Text></Table.Td>
-                  <Table.Td><Text fw={500}>€{c.totalAmount.toFixed(2)}</Text></Table.Td>
+                  <Table.Td><Text fw={500}>{formatMoney(c.totalAmount)}</Text></Table.Td>
                   <Table.Td>
                     <Text fw={500} c={(c.loyaltyPoints || 0) > 0 ? '#111' : 'dimmed'}>
                       {c.loyaltyPoints || 0} pts
@@ -290,7 +291,7 @@ const Customers = () => {
             <Grid>
               {[
                 { label: 'Visits',         value: editingCustomer.timesVisited },
-                { label: 'Total Spent',    value: `€ ${editingCustomer.totalAmount.toFixed(2)}` },
+                { label: 'Total Spent',    value: formatMoney(editingCustomer.totalAmount) },
                 { label: 'Loyalty Points', value: `${editingCustomer.loyaltyPoints || 0} pts` },
                 { label: 'Last Visit',     value: editingCustomer.lastVisit || '—' },
               ].map(s => (
@@ -375,8 +376,8 @@ const Customers = () => {
           <Text size="sm" c="dimmed">Configure how customers earn and redeem loyalty points.</Text>
 
           <NumberInput
-            label="Points per €1 spent"
-            description="e.g. 1 = 1 point per €1"
+            label={`Points per ${currencySymbol()}1 spent`}
+            description={`e.g. 1 = 1 point per ${currencySymbol()}1`}
             min={0} decimalScale={2}
             value={loyaltyPPE}
             onChange={v => setLoyaltyPPE(Number(v) || 0)}
@@ -389,8 +390,8 @@ const Customers = () => {
             onChange={v => setLoyaltyThreshold(Number(v) || 1)}
           />
           <NumberInput
-            label="Reward value (€)"
-            description="e.g. 5 = €5 free shopping"
+            label={`Reward value (${currencySymbol()})`}
+            description={`e.g. 5 = ${currencySymbol()}5 free shopping`}
             min={0} decimalScale={2}
             value={loyaltyReward}
             onChange={v => setLoyaltyReward(Number(v) || 0)}
@@ -399,9 +400,9 @@ const Customers = () => {
           <Paper withBorder p="sm" radius="md" bg="gray.0">
             <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4}>Example</Text>
             <Text size="sm">
-              Spend <strong>€{loyaltyPPE > 0 ? (loyaltyThreshold / loyaltyPPE).toFixed(2) : '—'}</strong>
+              Spend <strong>{loyaltyPPE > 0 ? formatMoney(loyaltyThreshold / loyaltyPPE) : '—'}</strong>
               {' → '}<strong>{loyaltyThreshold} pts</strong>
-              {' → '}<strong>€{loyaltyReward} reward</strong>
+              {' → '}<strong>{formatMoney(loyaltyReward)} reward</strong>
             </Text>
           </Paper>
 

@@ -1,0 +1,309 @@
+/*
+ * Licence page, modelled on Windows activation screens: the brand blue fills
+ * the whole screen, content sits in one wide centred column in large type, and
+ * the account details are pinned to the bottom edge.
+ */
+
+.page {
+  --on-brand-muted: rgba(255, 255, 255, 0.72);
+
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 72px 64px 28px;
+  background: #2350c9;
+  color: #ffffff;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Auto margins centre the column in the space above the footer, yet let a
+   tall page scroll from the top instead of clipping it. */
+.content {
+  width: 100%;
+  max-width: 980px;
+  margin: auto;
+}
+
+.title {
+  margin: 0 0 18px;
+  font-size: 56px;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.lead {
+  margin: 0 0 22px;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+/* ── Current licence ────────────────────────────────────────────────────── */
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 40px;
+  row-gap: 12px;
+  margin: 28px 0 0;
+  font-size: 18px;
+}
+
+.facts dt {
+  color: var(--on-brand-muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.mono {
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, monospace;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+}
+
+.rule {
+  height: 1px;
+  margin: 36px 0 30px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Key entry ──────────────────────────────────────────────────────────── */
+
+.text {
+  margin: 0 0 18px;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.example {
+  margin: 0 0 30px;
+  font-size: 18px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, monospace;
+  font-size: 17px;
+  outline: none;
+  transition: border-color 100ms ease, box-shadow 100ms ease;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.input:hover {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.input:focus {
+  border-color: #ffffff;
+  box-shadow: inset 0 0 0 1px #ffffff;
+}
+
+.input[aria-invalid='true'] {
+  border-color: #ffb8b8;
+  box-shadow: inset 0 0 0 1px #ffb8b8;
+}
+
+/* Reserves the spinner's space so the field never shifts when it appears. */
+.spinner {
+  display: flex;
+  flex: none;
+  width: 28px;
+  justify-content: center;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 26px;
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.message svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.message[data-tone='error'] {
+  color: #ffd9d9;
+}
+
+.message[data-tone='success'] {
+  color: #ffffff;
+}
+
+.message[data-tone='info'] {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.button {
+  height: 48px;
+  min-width: 190px;
+  padding: 0 28px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.primary {
+  background: #ffffff;
+  color: #2350c9;
+  font-weight: 600;
+}
+
+.primary:hover:not(:disabled) {
+  background: #e7edfc;
+}
+
+.secondary {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  color: #ffffff;
+}
+
+.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 20px;
+  width: 100%;
+  max-width: 980px;
+  margin: 40px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 15px;
+  color: var(--on-brand-muted);
+}
+
+.links {
+  display: flex;
+  gap: 24px;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* ── Smaller screens ────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .page {
+    padding: 56px 40px 24px;
+  }
+
+  .title {
+    font-size: 46px;
+  }
+}
+
+@media (max-width: 540px) {
+  .page {
+    padding: 40px 22px 20px;
+  }
+
+  .title {
+    font-size: 34px;
+  }
+
+  .lead,
+  .facts,
+  .text,
+  .example,
+  .label {
+    font-size: 16px;
+  }
+
+  .facts {
+    column-gap: 24px;
+  }
+
+  .mono {
+    font-size: 14px;
+  }
+
+  .input {
+    height: 46px;
+    font-size: 15px;
+  }
+
+  .button {
+    flex: 1 1 auto;
+    height: 44px;
+    min-width: 0;
+    font-size: 16px;
+  }
+}

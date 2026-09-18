@@ -1,0 +1,91 @@
+/*
+ * App frame: a full-height blue sidebar with white text and icons, and a white
+ * header to its right.
+ *
+ * Sidebar rules are scoped under .navbar so they win over the component
+ * library's own NavLink styles regardless of stylesheet order.
+ */
+
+.identity {
+  text-align: right;
+  line-height: 1.25;
+}
+
+/* ── Sidebar top: the mark, level with the header ───────────────────────── */
+
+.brand {
+  display: flex;
+  flex: none; /* never squeezed by a long menu below it */
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 20px;
+  color: #ffffff;
+}
+
+/* The menu takes the remaining height and scrolls inside it. */
+.menu {
+  min-height: 0;
+}
+
+.brand[data-collapsed] {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ── Sidebar links ──────────────────────────────────────────────────────── */
+
+.navbar .link {
+  margin-bottom: 2px;
+  padding: 10px 14px;
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.navbar .link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.navbar .link[data-active],
+.navbar .link[data-active]:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.navbar .section,
+.navbar .chevron {
+  color: inherit;
+}
+
+/* Pages inside a section. */
+.navbar .child {
+  margin: 1px 0;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+/* ── Collapsed sidebar: icons only ──────────────────────────────────────── */
+
+.navbar .link[data-collapsed] {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.navbar .link[data-collapsed] .section {
+  margin: 0;
+}
+
+.navbar .link[data-collapsed] .body {
+  display: none;
+}
+
+/* Flyout for a section while the sidebar is collapsed. */
+.menuItem[data-active] {
+  background-color: var(--mantine-color-blue-light);
+  color: #2350c9;
+  font-weight: 600;
+}

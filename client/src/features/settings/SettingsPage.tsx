@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Title, Paper, TextInput, NumberInput, Switch, Button, Stack, Group, Grid, Tabs, Box, Text } from '@mantine/core';
+import { Title, Paper, TextInput, NumberInput, Switch, Button, Stack, Group, Grid, Tabs, Box, Text, Select } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
+import { CURRENCIES, useCurrencyStore } from '../../store/currencyStore';
+import type { CurrencyCode } from '../../store/currencyStore';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconReceiptTax, IconStar } from '@tabler/icons-react';
+import { currencySymbol, formatMoney, formatMoneyAs } from '../../utils/money';
 
 const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const savedCurrency = useCurrencyStore((state) => state.code);
+  const setCurrency = useCurrencyStore((state) => state.setCurrency);
 
   const form = useForm({
     initialValues: {
@@ -22,6 +27,8 @@ const SettingsPage = () => {
       loyaltyPointsPerEuro: 1,
       loyaltyRewardThreshold: 100,
       loyaltyRewardValue: 5,
+      // Kept on this device rather than on the server; see handleSubmit.
+      currency: savedCurrency as CurrencyCode,
     },
     validate: {
       shopName: (value) => (value.length < 2 ? 'Shop name must be at least 2 characters' : null),
@@ -66,10 +73,14 @@ const SettingsPage = () => {
   }, []);
 
   const handleSubmit = async (values: typeof form.values) => {
+    // The currency is a device preference, so it never goes to the API.
+    const { currency, ...shopSettings } = values;
+
     try {
       setLoading(true);
-      const { data } = await api.put('/settings', values);
+      const { data } = await api.put('/settings', shopSettings);
       if (data.success) {
+        setCurrency(currency);
         notifications.show({
           title: 'Settings Updated',
           message: 'System and shop parameters saved successfully',
@@ -154,6 +165,15 @@ const SettingsPage = () => {
                     {...form.getInputProps('shopAddress')}
                   />
                 </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                  <Select
+                    label="Currency"
+                    description={`Used on every screen and receipt on this device. Receipts will show ${formatMoneyAs(form.values.currency, 1234.5)}`}
+                    data={Object.values(CURRENCIES).map(({ code, label }) => ({ value: code, label: `${label} (${code})` }))}
+                    allowDeselect={false}
+                    {...form.getInputProps('currency')}
+                  />
+                </Grid.Col>
               </Grid>
             </Paper>
           </Tabs.Panel>
@@ -209,8 +229,8 @@ const SettingsPage = () => {
                 <Grid>
                   <Grid.Col span={{ base: 12, md: 4 }}>
                     <NumberInput
-                      label="Points Earned per €1 Spent"
-                      description="e.g. 1 = 1 point per euro"
+                      label={`Points Earned per ${currencySymbol()}1 Spent`}
+                      description={`e.g. 1 = 1 point per ${currencySymbol()}1 spent`}
                       min={0}
                       decimalScale={2}
                       {...form.getInputProps('loyaltyPointsPerEuro')}
@@ -226,7 +246,7 @@ const SettingsPage = () => {
                   </Grid.Col>
                   <Grid.Col span={{ base: 12, md: 4 }}>
                     <NumberInput
-                      label="Reward Value (€)"
+                      label={`Reward Value (${currencySymbol()})`}
                       description="Free shopping value when threshold reached"
                       min={0}
                       decimalScale={2}
@@ -237,9 +257,9 @@ const SettingsPage = () => {
                 <Paper bg="blue.0" p="md" radius="md" withBorder>
                   <Text size="sm" fw={600}>Example with current settings:</Text>
                   <Text size="sm" c="dimmed" mt={4}>
-                    Customer spends €{form.values.loyaltyRewardThreshold / (form.values.loyaltyPointsPerEuro || 1)} total
+                    Customer spends {formatMoney(form.values.loyaltyRewardThreshold / (form.values.loyaltyPointsPerEuro || 1))} total
                     → earns {form.values.loyaltyRewardThreshold} points
-                    → qualifies for €{form.values.loyaltyRewardValue} free shopping reward.
+                    → qualifies for {formatMoney(form.values.loyaltyRewardValue)} free shopping reward.
                   </Text>
                 </Paper>
               </Stack>

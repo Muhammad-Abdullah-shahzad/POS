@@ -3,6 +3,7 @@ import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Pap
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
+import { formatMoney } from '../../utils/money';
 
 interface Expense {
   _id: string;
@@ -113,7 +114,7 @@ const Expenses = () => {
                 <Table.Td>{new Date(e.date).toLocaleDateString()}</Table.Td>
                 <Table.Td>{e.title}</Table.Td>
                 <Table.Td>{e.category}</Table.Td>
-                <Table.Td c="red">€ -{e.amount.toFixed(2)}</Table.Td>
+                <Table.Td c="red">{formatMoney(-e.amount)}</Table.Td>
                 <Table.Td>{e.paymentMethod}</Table.Td>
               </Table.Tr>
             ))}

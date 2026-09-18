@@ -7,6 +7,7 @@ import { useReactToPrint } from 'react-to-print';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { IconCheck, IconX, IconAlertCircle } from '@tabler/icons-react';
+import { formatMoney } from '../../utils/money';
 
 // Read active offers from localStorage
 interface Offer {
@@ -172,8 +173,8 @@ const POS = () => {
       centered: true,
       children: (
         <Text size="sm">
-          Process payment of <strong>€ {total.toFixed(2)}</strong> using alternative payment method?
-          {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes € {totalDiscount.toFixed(2)} discount</Text></>}
+          Process payment of <strong>{formatMoney(total)}</strong> using alternative payment method?
+          {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes {formatMoney(totalDiscount)} discount</Text></>}
           <br /><br />
           <Text size="xs" c="dimmed">This can be used for card payments, mobile wallets, or credit transactions.</Text>
         </Text>
@@ -355,12 +356,12 @@ const POS = () => {
                       <Table.Td>
                         {item.discountPct > 0 ? (
                           <div>
-                            <Text size="xs" td="line-through" c="dimmed">€ {item.totalPrice.toFixed(2)}</Text>
-                            <Text size="sm" fw={700} c="teal">€ {item.finalPrice.toFixed(2)}</Text>
+                            <Text size="xs" td="line-through" c="dimmed">{formatMoney(item.totalPrice)}</Text>
+                            <Text size="sm" fw={700} c="teal">{formatMoney(item.finalPrice)}</Text>
                             <Badge size="xs" color="teal" variant="light">-{item.discountPct}%</Badge>
                           </div>
                         ) : (
-                          <Text size="sm">€ {item.totalPrice.toFixed(2)}</Text>
+                          <Text size="sm">{formatMoney(item.totalPrice)}</Text>
                         )}
                       </Table.Td>
                       <Table.Td>
@@ -384,9 +385,9 @@ const POS = () => {
                           </ActionIcon>
                         </Group>
                       </Table.Td>
-                      <Table.Td>€ {item.vatAmount.toFixed(2)} ({item.vatRate}%)</Table.Td>
+                      <Table.Td>{formatMoney(item.vatAmount)} ({item.vatRate}%)</Table.Td>
                       <Table.Td fw={700}>
-                        € {(item.finalPrice * item.quantity / item.quantity).toFixed(2)}
+                        {formatMoney(item.finalPrice * item.quantity / item.quantity)}
                       </Table.Td>
                       <Table.Td>
                         <ActionIcon color="red" variant="subtle" onClick={() => removeFromCart(item.product)}>
@@ -407,22 +408,22 @@ const POS = () => {
 
             <Group justify="space-between" mb="xs">
               <Text>Subtotal</Text>
-              <Text>€ {subtotal.toFixed(2)}</Text>
+              <Text>{formatMoney(subtotal)}</Text>
             </Group>
             <Group justify="space-between" mb="xs">
               <Text>Total VAT</Text>
-              <Text>€ {totalVAT.toFixed(2)}</Text>
+              <Text>{formatMoney(totalVAT)}</Text>
             </Group>
             {totalDiscount > 0 && (
               <Group justify="space-between" mb="xs">
                 <Text c="teal" fw={600}>Discount</Text>
-                <Text c="teal" fw={600}>- € {totalDiscount.toFixed(2)}</Text>
+                <Text c="teal" fw={600}>- {formatMoney(totalDiscount)}</Text>
               </Group>
             )}
             {totalDRS > 0 && (
               <Group justify="space-between" mb="xs">
                 <Text>Total DRS</Text>
-                <Text>€ {totalDRS.toFixed(2)}</Text>
+                <Text>{formatMoney(totalDRS)}</Text>
               </Group>
             )}
 
@@ -430,7 +431,7 @@ const POS = () => {
 
             <Group justify="space-between" mb="xl">
               <Title order={4}>Grand Total</Title>
-              <Title order={4} c="blue">€ {total.toFixed(2)}</Title>
+              <Title order={4} c="blue">{formatMoney(total)}</Title>
             </Group>
 
             <Button
@@ -441,8 +442,8 @@ const POS = () => {
                   centered: true,
                   children: (
                     <Text size="sm">
-                      Process payment of <strong>€ {total.toFixed(2)}</strong>?
-                      {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes € {totalDiscount.toFixed(2)} discount</Text></>}
+                      Process payment of <strong>{formatMoney(total)}</strong>?
+                      {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes {formatMoney(totalDiscount)} discount</Text></>}
                     </Text>
                   ),
                   labels: { confirm: 'Confirm Payment', cancel: 'No, Wait' },
@@ -452,7 +453,7 @@ const POS = () => {
               }}
               disabled={cart.length === 0}
             >
-              Pay € {total.toFixed(2)}
+              Pay {formatMoney(total)}
             </Button>
             <Button fullWidth mt="md" variant="light" color="red" onClick={() => { clearCart(); inputRef.current?.focus(); }} disabled={cart.length === 0}>
               Clear Cart
@@ -508,10 +509,10 @@ const POS = () => {
           <Text size="xs" fw={700} c="dimmed" mb="xs" tt="uppercase">Last Transaction Details</Text>
           <Group gap="xl">
             <div><Text size="xs" c="dimmed">Trans No</Text><Text size="sm" fw={700}>{lastTransaction.transNo}</Text></div>
-            <div><Text size="xs" c="dimmed">Trans Amt</Text><Text size="sm" fw={700}>€ {lastTransaction.transAmt.toFixed(2)}</Text></div>
-            <div><Text size="xs" c="dimmed">Paid Amt</Text><Text size="sm" fw={700} c="green">€ {lastTransaction.paidAmt.toFixed(2)}</Text></div>
-            <div><Text size="xs" c="dimmed">Return Amt</Text><Text size="sm" fw={700} c="blue">€ {lastTransaction.returnAmt.toFixed(2)}</Text></div>
-            <div><Text size="xs" c="dimmed">Due Amt</Text><Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>€ {lastTransaction.dueAmt.toFixed(2)}</Text></div>
+            <div><Text size="xs" c="dimmed">Trans Amt</Text><Text size="sm" fw={700}>{formatMoney(lastTransaction.transAmt)}</Text></div>
+            <div><Text size="xs" c="dimmed">Paid Amt</Text><Text size="sm" fw={700} c="green">{formatMoney(lastTransaction.paidAmt)}</Text></div>
+            <div><Text size="xs" c="dimmed">Return Amt</Text><Text size="sm" fw={700} c="blue">{formatMoney(lastTransaction.returnAmt)}</Text></div>
+            <div><Text size="xs" c="dimmed">Due Amt</Text><Text size="sm" fw={700} c={lastTransaction.dueAmt > 0 ? 'red' : 'dark'}>{formatMoney(lastTransaction.dueAmt)}</Text></div>
             <div><Text size="xs" c="dimmed">Date</Text><Text size="sm" fw={500}>{lastTransaction.date}</Text></div>
           </Group>
         </Paper>
@@ -550,41 +551,41 @@ const POS = () => {
                       <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
                       {item.discountAmt > 0 && (
                         <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                          Discount: {item.discountPct > 0 ? `-${item.discountPct}% ` : ''}(-€{item.discountAmt.toFixed(2)})
+                          Discount: {item.discountPct > 0 ? `-${item.discountPct}% ` : ''}(-{formatMoney(item.discountAmt)})
                         </div>
                       )}
                       {item.drs > 0 && (
                         <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                          DRS Deposit: +€{(item.drs * item.quantity).toFixed(2)}
+                          DRS Deposit: +{formatMoney(item.drs * item.quantity)}
                         </div>
                       )}
                     </td>
                     <td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.quantity}</td>
-                    <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€ {item.price.toFixed(2)}</td>
-                    <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€ {item.finalPrice.toFixed(2)}</td>
+                    <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{formatMoney(item.price)}</td>
+                    <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatMoney(item.finalPrice)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                <span>Subtotal:</span><span style={{ whiteSpace: 'nowrap' }}>€ {subtotal.toFixed(2)}</span>
+                <span>Subtotal:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(subtotal)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                <span>Tax:</span><span style={{ whiteSpace: 'nowrap' }}>€ {totalVAT.toFixed(2)}</span>
+                <span>Tax:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(totalVAT)}</span>
               </div>
               {totalDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
-                  <span>Discount:</span><span style={{ whiteSpace: 'nowrap' }}>- € {totalDiscount.toFixed(2)}</span>
+                  <span>Discount:</span><span style={{ whiteSpace: 'nowrap' }}>- {formatMoney(totalDiscount)}</span>
                 </div>
               )}
               {totalDRS > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                  <span>Total DRS:</span><span style={{ whiteSpace: 'nowrap' }}>€ {totalDRS.toFixed(2)}</span>
+                  <span>Total DRS:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(totalDRS)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '60px', color: '#000' }}>
-                <span>TOTAL:</span><span style={{ whiteSpace: 'nowrap' }}>€ {total.toFixed(2)}</span>
+                <span>TOTAL:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(total)}</span>
               </div>
             </div>
             <div style={{ marginTop: '24px', textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '10px' }}>

@@ -1,19 +1,21 @@
 /**
- * Public sign up: one form creates the company and its first admin, then
- * signs them straight in. Cashier logins are added afterwards by the admin.
+ * Public sign up: one form creates the company and its first admin, then signs
+ * them straight in. Cashier logins are added afterwards by the admin.
  *
- * In the desktop shell the request goes through Electron so the till is
- * claimed for the new company at the same time; in the browser it is a plain
- * API call.
+ * In the desktop shell the request goes through Electron so the till is claimed
+ * for the new company at the same time; in the browser it is a plain API call.
  */
 import { useState } from 'react';
-import { Anchor, Button, PasswordInput, Text, TextInput, Title } from '@mantine/core';
+import { Button, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { IconBuildingStore, IconLock, IconMail, IconPhone, IconUser } from '@tabler/icons-react';
 import { Link, useNavigate } from 'react-router-dom';
 import httpClient from '../../services/httpClient';
 import { rememberLicenseFromSignIn } from '../../services/licenseService';
 import { useAuthStore } from '../../store/authStore';
 import type { AuthTokens, AuthUser } from '../../store/authStore';
+import AuthShell from './AuthShell';
+import { AUTH_BRAND, authClasses, authFieldClassNames } from './authFieldClasses';
 
 interface RegisterForm {
   companyName: string;
@@ -29,6 +31,8 @@ interface SignUpResult {
   tokens: AuthTokens;
   license: unknown;
 }
+
+const ICON = { size: 18, stroke: 1.5 } as const;
 
 const Register = () => {
   const navigate = useNavigate();
@@ -104,74 +108,76 @@ const Register = () => {
     }
   };
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflowY: 'auto',
-        padding: 16,
-      }}
-    >
-      <div style={{ width: 380 }}>
-        <Title order={3} ta="center" mb={4}>
-          Create your company account
-        </Title>
-        <Text size="sm" c="dimmed" ta="center" mb="lg">
-          You will be the admin. Add cashiers from the admin panel afterwards.
-        </Text>
+  const field = { size: 'md', radius: 2, classNames: authFieldClassNames } as const;
 
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <TextInput label="Company / shop name" placeholder="Corner Shop" required mb="sm" {...form.getInputProps('companyName')} />
-          <TextInput label="Your name" placeholder="Aoife Byrne" required mb="sm" autoComplete="name" {...form.getInputProps('name')} />
+  return (
+    <AuthShell caption="Create your company account">
+      <form onSubmit={form.onSubmit(handleSubmit)} noValidate>
+        <Stack gap={12}>
           <TextInput
-            label="Email"
-            placeholder="you@yourcompany.com"
-            required
-            mb="sm"
+            {...field}
+            placeholder="Company or shop name"
+            aria-label="Company or shop name"
+            autoComplete="organization"
+            leftSection={<IconBuildingStore {...ICON} />}
+            {...form.getInputProps('companyName')}
+          />
+          <TextInput
+            {...field}
+            placeholder="Your name"
+            aria-label="Your name"
+            autoComplete="name"
+            leftSection={<IconUser {...ICON} />}
+            {...form.getInputProps('name')}
+          />
+          <TextInput
+            {...field}
+            placeholder="Email"
+            aria-label="Email"
             autoComplete="username"
+            leftSection={<IconMail {...ICON} />}
             {...form.getInputProps('email')}
           />
-          <TextInput label="Phone" placeholder="Optional" mb="sm" autoComplete="tel" {...form.getInputProps('phone')} />
+          <TextInput
+            {...field}
+            placeholder="Phone (optional)"
+            aria-label="Phone, optional"
+            autoComplete="tel"
+            leftSection={<IconPhone {...ICON} />}
+            {...form.getInputProps('phone')}
+          />
           <PasswordInput
-            label="Password"
-            placeholder="At least 8 characters"
-            required
-            mb="sm"
+            {...field}
+            placeholder="Password"
+            aria-label="Password, at least 8 characters"
             autoComplete="new-password"
+            leftSection={<IconLock {...ICON} />}
             {...form.getInputProps('password')}
           />
           <PasswordInput
-            label="Confirm password"
-            required
-            mb="xs"
+            {...field}
+            placeholder="Confirm password"
+            aria-label="Confirm password"
             autoComplete="new-password"
+            leftSection={<IconLock {...ICON} />}
             {...form.getInputProps('confirmPassword')}
           />
 
-          {error && (
-            <Text c="red" size="xs" mb="sm">
-              {error}
-            </Text>
-          )}
+          {error && <Text className={authClasses.error}>{error}</Text>}
 
-          <Button fullWidth mt="md" type="submit" loading={loading} color="blue" size="md" radius="md">
+          <Button type="submit" fullWidth size="md" radius={2} color={AUTH_BRAND} loading={loading} className={authClasses.submit} mt={10}>
             Create account
           </Button>
-        </form>
+        </Stack>
+      </form>
 
-        <Text size="sm" ta="center" mt="lg">
-          Already have an account?{' '}
-          <Anchor component={Link} to="/login" size="sm">
-            Sign in
-          </Anchor>
-        </Text>
-      </div>
-    </div>
+      <p className={authClasses.footer}>
+        Already have an account?{' '}
+        <Link to="/login" className={authClasses.link}>
+          Sign in
+        </Link>
+      </p>
+    </AuthShell>
   );
 };
 

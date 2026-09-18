@@ -43,10 +43,12 @@ export async function refreshLicenseStatus(): Promise<LicenseStatus> {
   return fetchLicenseStatus();
 }
 
-const errorMessage = (error: unknown, fallback: string): string =>
-  (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-  (error as Error)?.message ??
-  fallback;
+const errorMessage = (error: unknown, fallback: string): string => {
+  const response = (error as { response?: { data?: { message?: string } } })?.response;
+  // No response at all means the request never reached the server.
+  if (!response) return 'Could not reach the server. Check the internet connection and try again.';
+  return response.data?.message ?? fallback;
+};
 
 /** Apply a key the operator sent. */
 export async function activateLicense(key: string): Promise<ActivationResult> {

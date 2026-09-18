@@ -1,41 +1,101 @@
 /**
- * The licence screen.
+ * Licence page.
  *
- * Doubles as the lock screen: when the licence has run out the route guard
- * sends every page here, and the only ways forward are pasting the key the
- * operator sent, checking whether a renewal has been recorded, or signing
- * out. With a valid licence it simply shows the expiry and lets an admin
- * apply a new key ahead of time.
+ * Modelled on Windows activation screens: the brand blue fills the screen,
+ * the licence is stated plainly, and a new key goes into a single field. It doubles as the lock screen. Once the licence lapses the route guard
+ * sends every page here, and the only ways forward are entering a key,
+ * checking for a renewal, or signing out.
  */
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import {
-  Alert,
-  Badge,
-  Button,
-  Group,
-  Paper,
-  Stack,
-  Text,
-  Textarea,
-  Title,
-} from '@mantine/core';
-import { IconAlertTriangle, IconCheck, IconKey, IconLogout, IconRefresh } from '@tabler/icons-react';
+import { Loader } from '@mantine/core';
+import { IconAlertCircle, IconCircleCheck, IconInfoCircle } from '@tabler/icons-react';
 import { useAuthStore } from '../../store/authStore';
 import { isLicenseBlocking, useLicenseStore } from '../../store/licenseStore';
 import type { LicenseStatus } from '../../store/licenseStore';
 import { activateLicense, fetchLicenseStatus, refreshLicenseStatus } from '../../services/licenseService';
 import { signOutEverywhere } from '../../services/sessionService';
+import classes from './LicensePage.module.css';
+import { LICENSE_KEY_PREFIX, inspectLicenseKey, maskLicenseKey } from './licenseKeyFormat';
 
-const STATE_LABEL: Record<LicenseStatus['state'], { label: string; color: string }> = {
-  active: { label: 'Active', color: 'teal' },
-  expired: { label: 'Expired', color: 'red' },
-  missing: { label: 'No licence', color: 'red' },
-  invalid: { label: 'Invalid', color: 'red' },
-  unknown: { label: 'Checking…', color: 'gray' },
-};
+type NoticeTone = 'error' | 'success' | 'info';
 
-const formatDate = (iso: string | null): string => (iso ? new Date(iso).toLocaleDateString() : '—');
+interface Notice {
+  tone: NoticeTone;
+  text: string;
+}
+
+/** A licence ending within this many days is shown as a warning. */
+const WARNING_DAYS = 7;
+
+const EXAMPLE_KEY = `${LICENSE_KEY_PREFIX}.XXXXXXXX…XXXXXXXX`;
+
+const KIND_LABEL = { paid: 'Full licence', trial: 'Free trial' } as const;
+
+const NOTICE_ICON = {
+  error: <IconAlertCircle size={20} />,
+  success: <IconCircleCheck size={20} />,
+  info: <IconInfoCircle size={20} />,
+} as const;
+
+const plural = (count: number, word: string): string => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+const formatDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+
+const formatTime = (iso: string): string =>
+  new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+const endsSoon = (status: LicenseStatus): boolean =>
+  status.state === 'active' && (status.daysLeft ?? Number.POSITIVE_INFINITY) <= WARNING_DAYS;
+
+function title(status: LicenseStatus): string {
+  switch (status.state) {
+    case 'active':
+      if (!endsSoon(status)) return 'Activated';
+      return (status.daysLeft ?? 0) <= 0 ? 'Licence ends today' : `Licence ends in ${plural(status.daysLeft ?? 0, 'day')}`;
+    case 'expired':
+      return 'Licence expired';
+    case 'missing':
+      return 'Enter a licence key';
+    case 'invalid':
+      return "This licence can't be used";
+    default:
+      return 'Checking licence…';
+  }
+}
+
+/** One sentence that matters more than the details below it, or nothing. */
+function lead(status: LicenseStatus): string | null {
+  const until = status.expiresAt ? formatDate(status.expiresAt) : null;
+
+  if (status.state === 'expired' && until) return `Your licence ended on ${until}. Enter a new licence key to keep using the app.`;
+  if (status.state === 'invalid') return status.message;
+  if (endsSoon(status) && until) return `Renew before ${until} to keep using the app without interruption.`;
+  return null;
+}
+
+function statusLabel(status: LicenseStatus): string {
+  const state = {
+    active: 'Active',
+    expired: 'Expired',
+    missing: 'Not activated',
+    invalid: 'Invalid',
+    unknown: 'Checking…',
+  }[status.state];
+
+  return status.kind ? `${state} · ${KIND_LABEL[status.kind]}` : state;
+}
+
+function validity(status: LicenseStatus): string | null {
+  if (!status.expiresAt) return null;
+
+  const date = formatDate(status.expiresAt);
+  if (status.daysLeft === null) return date;
+  if (status.state === 'expired' || status.daysLeft < 0) return `Ended ${date}`;
+  return `${date} (${status.daysLeft === 0 ? 'ends today' : `${plural(status.daysLeft, 'day')} left`})`;
+}
 
 const LicensePage = () => {
   const navigate = useNavigate();
@@ -44,8 +104,9 @@ const LicensePage = () => {
   const status = useLicenseStore((state) => state.status);
 
   const [key, setKey] = useState('');
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState<'activate' | 'refresh' | null>(null);
-  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
     if (user) fetchLicenseStatus().catch(() => undefined);
@@ -54,149 +115,164 @@ const LicensePage = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   const locked = isLicenseBlocking(status);
-  const home = isAdmin() ? '/admin' : '/';
+  const inspection = inspectLicenseKey(key);
+  const maskedKey = maskLicenseKey(status.keyHint);
+  const validUntil = validity(status);
+  const leadText = lead(status);
 
-  const handleActivate = async () => {
-    if (!key.trim()) {
-      setNotice({ ok: false, text: 'Paste the licence key first' });
-      return;
-    }
+  // An action's result wins over the live format check.
+  const message: Notice | null =
+    notice ?? (touched && inspection.verdict === 'invalid' ? { tone: 'error', text: inspection.problem ?? '' } : null);
+
+  const activate = async (event: FormEvent) => {
+    event.preventDefault();
+    setTouched(true);
+    if (inspection.verdict !== 'plausible' || busy) return;
 
     setBusy('activate');
     setNotice(null);
     try {
-      const result = await activateLicense(key);
-      setNotice({ ok: result.success, text: result.message });
-      if (result.success) setKey('');
+      const result = await activateLicense(inspection.key);
+      if (result.success) {
+        setKey('');
+        setTouched(false);
+        setNotice({
+          tone: 'success',
+          text: result.status.expiresAt
+            ? `Licence activated. It is valid until ${formatDate(result.status.expiresAt)}.`
+            : 'Licence activated.',
+        });
+      } else {
+        setNotice({ tone: 'error', text: result.message });
+      }
+    } catch {
+      setNotice({ tone: 'error', text: 'The key could not be activated right now. Try again in a moment.' });
     } finally {
       setBusy(null);
     }
   };
 
-  const handleRefresh = async () => {
+  const checkForRenewal = async () => {
     setBusy('refresh');
     setNotice(null);
     try {
       const refreshed = await refreshLicenseStatus();
-      setNotice({
-        ok: refreshed.state === 'active',
-        text: refreshed.offline
-          ? 'Could not reach the server. Paste the key you were sent to renew offline.'
-          : refreshed.message,
-      });
+      if (refreshed.offline) {
+        setNotice({ tone: 'info', text: 'Could not reach the server. Enter the key you were sent to activate offline.' });
+      } else if (refreshed.state === 'active') {
+        setNotice({ tone: 'success', text: 'Your licence is up to date.' });
+      } else {
+        setNotice({ tone: 'info', text: 'No renewal has been recorded yet. Enter the key you were sent, or try again later.' });
+      }
     } catch {
-      setNotice({ ok: false, text: 'Could not check the licence right now' });
+      setNotice({ tone: 'error', text: 'Could not check for a renewal right now. Try again in a moment.' });
     } finally {
       setBusy(null);
     }
   };
 
-  const handleSignOut = async () => {
+  const signOut = async () => {
     await signOutEverywhere();
     navigate('/login', { replace: true });
   };
 
-  const badge = STATE_LABEL[status.state];
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--mantine-color-gray-0)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        overflowY: 'auto',
-      }}
-    >
-      <Paper p="xl" radius="md" style={{ width: '100%', maxWidth: 520 }}>
-        <Stack gap="md">
-          <Group justify="space-between" align="flex-start">
-            <div>
-              <Title order={3}>{locked ? 'Licence needed' : 'Licence'}</Title>
-              <Text size="sm" c="dimmed">
-                {user.tenantName}
-              </Text>
-            </div>
-            <Badge color={badge.color} variant="light" size="lg" leftSection={<IconKey size={12} />}>
-              {badge.label}
-            </Badge>
-          </Group>
+    <main className={classes.page}>
+      <form className={classes.content} onSubmit={activate} noValidate>
+        <h1 className={classes.title}>{title(status)}</h1>
+        {leadText && <p className={classes.lead}>{leadText}</p>}
 
-          <Alert
-            color={locked ? 'red' : status.state === 'active' && (status.daysLeft ?? 99) <= 7 ? 'orange' : 'blue'}
-            icon={locked ? <IconAlertTriangle size={18} /> : <IconCheck size={18} />}
-            variant="light"
-          >
-            <Text size="sm">{status.message}</Text>
-            {status.expiresAt && (
-              <Text size="xs" c="dimmed" mt={4}>
-                {status.state === 'active' ? 'Expires' : 'Expired'} on {formatDate(status.expiresAt)}
-                {status.daysLeft !== null && status.daysLeft >= 0 ? ` · ${status.daysLeft} day(s) left` : ''}
-                {status.kind === 'trial' ? ' · trial' : ''}
-              </Text>
-            )}
-          </Alert>
-
-          {locked && (
-            <Text size="sm">
-              To renew, contact Deviction Technologies. Once your payment is confirmed you will receive a licence
-              key; paste it below, or press <b>Check for renewal</b> if this device is online.
-            </Text>
+        <dl className={classes.facts}>
+          <dt>Company</dt>
+          <dd>{user.tenantName}</dd>
+          <dt>Status</dt>
+          <dd>{statusLabel(status)}</dd>
+          {validUntil && (
+            <>
+              <dt>Valid until</dt>
+              <dd>{validUntil}</dd>
+            </>
           )}
+          {maskedKey && (
+            <>
+              <dt>Licence key</dt>
+              <dd className={classes.mono}>{maskedKey}</dd>
+            </>
+          )}
+        </dl>
 
-          <Textarea
-            label="Licence key"
-            placeholder="POS1.…"
-            description="Paste the full key exactly as it was sent to you"
-            autosize
-            minRows={3}
+        <hr className={classes.rule} />
+
+        <p className={classes.text}>Your licence key is in the email Deviction Technologies sent you after payment.</p>
+        <p className={classes.example}>
+          The licence key looks similar to this:
+          <br />
+          LICENCE KEY: <span className={classes.mono}>{EXAMPLE_KEY}</span>
+        </p>
+
+        <label className={classes.label} htmlFor="licence-key">
+          Licence key
+        </label>
+        <div className={classes.fieldRow}>
+          <input
+            id="licence-key"
+            className={classes.input}
             value={key}
-            onChange={(event) => setKey(event.currentTarget.value)}
-            styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+            onChange={(event) => {
+              setKey(event.currentTarget.value);
+              setNotice(null);
+            }}
+            onBlur={() => setTouched(true)}
+            placeholder={`${LICENSE_KEY_PREFIX}.…`}
+            spellCheck={false}
+            autoComplete="off"
+            autoCapitalize="off"
+            autoFocus={locked}
+            aria-invalid={touched && inspection.verdict === 'invalid'}
+            aria-describedby="licence-message"
           />
+          <span className={classes.spinner} aria-hidden={!busy}>
+            {busy && <Loader size={24} color="white" />}
+          </span>
+        </div>
 
-          {notice && (
-            <Text size="sm" c={notice.ok ? 'teal' : 'red'}>
-              {notice.text}
-            </Text>
+        <div id="licence-message" className={classes.message} data-tone={message?.tone} role="status" aria-live="polite">
+          {message && (
+            <>
+              {NOTICE_ICON[message.tone]}
+              <span>{message.text}</span>
+            </>
           )}
+        </div>
 
-          <Group grow>
-            <Button
-              leftSection={<IconKey size={16} />}
-              onClick={handleActivate}
-              loading={busy === 'activate'}
-              disabled={busy !== null}
-            >
-              Activate key
-            </Button>
-            <Button
-              variant="default"
-              leftSection={<IconRefresh size={16} />}
-              onClick={handleRefresh}
-              loading={busy === 'refresh'}
-              disabled={busy !== null}
-            >
-              Check for renewal
-            </Button>
-          </Group>
+        <div className={classes.actions}>
+          <button type="button" className={`${classes.button} ${classes.secondary}`} onClick={checkForRenewal} disabled={busy !== null}>
+            Check for renewal
+          </button>
+          <button type="submit" className={`${classes.button} ${classes.primary}`} disabled={busy !== null || inspection.verdict !== 'plausible'}>
+            Activate
+          </button>
+        </div>
+      </form>
 
-          <Group justify="space-between" mt="xs">
-            <Button variant="subtle" color="red" leftSection={<IconLogout size={16} />} onClick={handleSignOut}>
-              Sign out
-            </Button>
-            {!locked && (
-              <Button variant="light" onClick={() => navigate(home)}>
-                Back to the app
-              </Button>
-            )}
-          </Group>
-        </Stack>
-      </Paper>
-    </div>
+      <footer className={classes.footer}>
+        <span>
+          Signed in as {user.name}
+          {status.checkedAt ? ` · checked ${formatTime(status.checkedAt)}` : ''}
+          {status.offline ? ' · offline' : ''}
+        </span>
+        <span className={classes.links}>
+          {!locked && (
+            <button type="button" className={classes.link} onClick={() => navigate(isAdmin() ? '/admin' : '/')}>
+              Back to the app
+            </button>
+          )}
+          <button type="button" className={classes.link} onClick={signOut}>
+            Sign out
+          </button>
+        </span>
+      </footer>
+    </main>
   );
 };
 

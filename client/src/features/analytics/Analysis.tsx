@@ -6,6 +6,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { IconChartAreaLine, IconTrophy, IconWallet, IconCategory } from '@tabler/icons-react';
+import { currencySymbol } from '../../utils/money';
 
 interface MonthlyData {
   month: string;
@@ -111,7 +112,7 @@ const Analysis = () => {
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" width={80} fontSize={10} />
                 <Tooltip cursor={{fill: '#f8f9fa'}} contentStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="totalRevenue" fill="#228be6" radius={[0, 4, 4, 0]} name="Revenue (€)" />
+                <Bar dataKey="totalRevenue" fill="#228be6" radius={[0, 4, 4, 0]} name={`Revenue (${currencySymbol()})`} />
               </BarChart>
             </ResponsiveContainer>
           </div>

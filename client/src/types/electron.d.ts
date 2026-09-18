@@ -32,6 +32,7 @@ interface DesktopLicenseStatus {
   daysLeft: number | null;
   message: string;
   checkedAt: string;
+  keyHint: string | null;
 }
 
 interface DesktopLoginResult {

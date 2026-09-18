@@ -8,6 +8,7 @@ import {
   IconClipboardList, IconAlertCircle, IconCalendar, IconUser, IconHash,
   IconTrash
 } from '@tabler/icons-react';
+import { currencySymbol, formatMoney } from '../../utils/money';
 
 // ==========================================
 // 1. SUPPLIER PAYMENTS
@@ -141,7 +142,7 @@ export const SupplierPayments = () => {
             <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total Outstanding Balance</Text>
             <IconAlertCircle size={20} style={{ color: 'var(--mantine-color-red-filled)' }} />
           </Group>
-          <Text size="xl" fw={700} mt="xs">€ {totalOutstanding.toLocaleString()}</Text>
+          <Text size="xl" fw={700} mt="xs">{formatMoney(totalOutstanding)}</Text>
           <Text size="xs" c={pendingInvoicesCount > 0 ? 'red' : 'green'} mt="xs" fw={500}>
             {pendingInvoicesCount} Invoice{pendingInvoicesCount !== 1 ? 's' : ''} Pending
           </Text>
@@ -151,7 +152,7 @@ export const SupplierPayments = () => {
             <Text size="xs" c="dimmed" fw={700} tt="uppercase">Paid to Suppliers</Text>
             <IconCash size={20} style={{ color: 'var(--mantine-color-green-filled)' }} />
           </Group>
-          <Text size="xl" fw={700} mt="xs">€ {totalPaid.toLocaleString()}</Text>
+          <Text size="xl" fw={700} mt="xs">{formatMoney(totalPaid)}</Text>
           <Text size="xs" c="green" mt="xs" fw={500}>All clear payouts</Text>
         </Paper>
         <Paper withBorder radius="md" p="md">
@@ -183,10 +184,10 @@ export const SupplierPayments = () => {
               <Table.Tr key={row.id}>
                 <Table.Td fw={500}>{row.supplier}</Table.Td>
                 <Table.Td>{row.invoiceNo}</Table.Td>
-                <Table.Td>€ {row.amount.toLocaleString()}</Table.Td>
-                <Table.Td c="green">€ {row.paid.toLocaleString()}</Table.Td>
+                <Table.Td>{formatMoney(row.amount)}</Table.Td>
+                <Table.Td c="green">{formatMoney(row.paid)}</Table.Td>
                 <Table.Td c={row.balance > 0 ? 'red' : 'dimmed'} fw={row.balance > 0 ? 600 : 400}>
-                  € {row.balance.toLocaleString()}
+                  {formatMoney(row.balance)}
                 </Table.Td>
                 <Table.Td>
                   <Badge 
@@ -263,7 +264,7 @@ export const SupplierPayments = () => {
             />
             <SimpleGrid cols={2}>
               <NumberInput
-                label="Total Invoice Amount (€)"
+                label={`Total Invoice Amount (${currencySymbol()})`}
                 placeholder="0"
                 min={0}
                 value={newAmount}
@@ -271,7 +272,7 @@ export const SupplierPayments = () => {
                 required
               />
               <NumberInput
-                label="Amount Paid (€)"
+                label={`Amount Paid (${currencySymbol()})`}
                 placeholder="0"
                 min={0}
                 value={newPaid}
@@ -317,17 +318,17 @@ export const SupplierPayments = () => {
                 <SimpleGrid cols={2} mt="xs">
                   <div>
                     <Text size="xs" c="dimmed">Total Amount</Text>
-                    <Text fw={600} size="sm">€ {selectedPayment.amount.toLocaleString()}</Text>
+                    <Text fw={600} size="sm">{formatMoney(selectedPayment.amount)}</Text>
                   </div>
                   <div>
                     <Text size="xs" c="dimmed">Remaining Balance</Text>
-                    <Text fw={600} size="sm" c="red">€ {selectedPayment.balance.toLocaleString()}</Text>
+                    <Text fw={600} size="sm" c="red">{formatMoney(selectedPayment.balance)}</Text>
                   </div>
                 </SimpleGrid>
               </Paper>
 
               <NumberInput
-                label="Payout Amount (€)"
+                label={`Payout Amount (${currencySymbol()})`}
                 placeholder="Enter amount to pay"
                 min={1}
                 max={selectedPayment.balance}
@@ -384,11 +385,11 @@ export const SupplierPayments = () => {
               </div>
               <div>
                 <Text size="xs" c="dimmed">Total Invoice Amount</Text>
-                <Text fw={600}>€ {selectedPayment.amount.toLocaleString()}</Text>
+                <Text fw={600}>{formatMoney(selectedPayment.amount)}</Text>
               </div>
               <div>
                 <Text size="xs" c="dimmed">Total Paid Amount</Text>
-                <Text fw={600} c="green">€ {selectedPayment.paid.toLocaleString()}</Text>
+                <Text fw={600} c="green">{formatMoney(selectedPayment.paid)}</Text>
               </div>
             </SimpleGrid>
 
@@ -522,7 +523,7 @@ export const ManageProductCodes = () => {
 
                   <Group justify="space-between" style={{ width: '100%' }} mt="xs">
                     <Text size="xs" fw={700}>SKU: {productData.find(p => p.name === selectedProduct)?.sku}</Text>
-                    <Text size="xs" fw={700} c="blue">€ {productData.find(p => p.name === selectedProduct)?.price.toLocaleString()}</Text>
+                    <Text size="xs" fw={700} c="blue">{formatMoney(productData.find(p => p.name === selectedProduct)?.price)}</Text>
                   </Group>
                 </Stack>
               </Card>

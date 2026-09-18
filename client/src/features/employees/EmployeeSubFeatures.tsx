@@ -10,6 +10,7 @@ import {
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
+import { currencySymbol, formatMoney } from '../../utils/money';
 
 // ==========================================
 // 1. SALARY MANAGEMENT
@@ -80,7 +81,7 @@ export const SalaryManagement = () => {
   const handleReceipt = (name: string, amount: number, date: string) => {
     notifications.show({
       title: 'Salary Receipt',
-      message: `Receipt generated: ${name} was paid € ${amount.toLocaleString()} on ${date}.`,
+      message: `Receipt generated: ${name} was paid ${formatMoney(amount)} on ${date}.`,
       color: 'blue',
       icon: <IconCash size={16} />,
     });
@@ -152,7 +153,7 @@ export const SalaryManagement = () => {
                 <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total Payroll Paid</Text>
                 <IconCash size={20} style={{ color: 'var(--mantine-color-green-filled)' }} />
               </Group>
-              <Text size="xl" fw={700} mt="xs">€ {totalPaid.toLocaleString()}</Text>
+              <Text size="xl" fw={700} mt="xs">{formatMoney(totalPaid)}</Text>
               <Text size="xs" c="green" mt="xs" fw={500}>For Current Month</Text>
             </Paper>
             <Paper withBorder radius="md" p="md">
@@ -160,7 +161,7 @@ export const SalaryManagement = () => {
                 <Text size="xs" c="dimmed" fw={700} tt="uppercase">Pending Payouts</Text>
                 <IconCash size={20} style={{ color: 'var(--mantine-color-orange-filled)' }} />
               </Group>
-              <Text size="xl" fw={700} mt="xs">€ {pendingPaid.toLocaleString()}</Text>
+              <Text size="xl" fw={700} mt="xs">{formatMoney(pendingPaid)}</Text>
               <Text size="xs" c="orange" mt="xs" fw={500}>{pendingCount} Employee{pendingCount !== 1 ? 's' : ''} Remaining</Text>
             </Paper>
             <Paper withBorder radius="md" p="md">
@@ -190,7 +191,7 @@ export const SalaryManagement = () => {
                   <Table.Tr key={row.id}>
                     <Table.Td fw={500}>{row.employee}</Table.Td>
                     <Table.Td>{row.role}</Table.Td>
-                    <Table.Td>€ {row.salary.toLocaleString()}</Table.Td>
+                    <Table.Td>{formatMoney(row.salary)}</Table.Td>
                     <Table.Td>
                       <Badge color={row.status === 'Paid' ? 'green' : 'orange'} variant="light">
                         {row.status}
@@ -363,8 +364,8 @@ export const Damages = () => {
                 <Table.Tr key={row._id}>
                   <Table.Td fw={500}>{row.employeeName}</Table.Td>
                   <Table.Td>{row.item}</Table.Td>
-                  <Table.Td>€ {Number(row.value).toLocaleString()}</Table.Td>
-                  <Table.Td>€ {Number(row.deduction).toLocaleString()}</Table.Td>
+                  <Table.Td>{formatMoney(Number(row.value))}</Table.Td>
+                  <Table.Td>{formatMoney(Number(row.deduction))}</Table.Td>
                   <Table.Td>
                     <Badge color={row.status === 'Resolved' ? 'green' : row.status === 'Deducted' ? 'blue' : 'red'} variant="light">
                       {row.status}
@@ -396,7 +397,7 @@ export const Damages = () => {
             required
           />
           <TextInput
-            label="Asset Value (€)"
+            label={`Asset Value (${currencySymbol()})`}
             type="number"
             placeholder="e.g. 4500"
             value={assetValue}
@@ -404,7 +405,7 @@ export const Damages = () => {
             required
           />
           <TextInput
-            label="Salary Deduction (€)"
+            label={`Salary Deduction (${currencySymbol()})`}
             type="number"
             placeholder="e.g. 1500"
             value={deductionValue}
@@ -1219,8 +1220,8 @@ export const OverTimeDetails = () => {
                   <Table.Td fw={500}>{o.name}</Table.Td>
                   <Table.Td>{o.date}</Table.Td>
                   <Table.Td fw={500}>{o.hours} hrs</Table.Td>
-                  <Table.Td>€ {o.rate}</Table.Td>
-                  <Table.Td fw={700} c="green">€ {o.total.toLocaleString()}</Table.Td>
+                  <Table.Td>{formatMoney(o.rate)}</Table.Td>
+                  <Table.Td fw={700} c="green">{formatMoney(o.total)}</Table.Td>
                   <Table.Td>
                     <Badge color={o.status === 'Approved' ? 'green' : 'orange'} variant="light">
                       {o.status}
@@ -1252,7 +1253,7 @@ export const OverTimeDetails = () => {
             required
           />
           <TextInput 
-            label="Hourly Premium Rate (€)" 
+            label={`Hourly Premium Rate (${currencySymbol()})`} 
             type="number"
             placeholder="e.g. 300"
             value={hourlyRate}

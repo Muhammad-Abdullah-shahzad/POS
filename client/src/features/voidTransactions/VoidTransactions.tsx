@@ -7,6 +7,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconReceipt, IconUser, IconCalendar, IconAlertCircle } from '@tabler/icons-react';
 import api from '../../services/api';
+import { formatMoney } from '../../utils/money';
 
 interface VoidOrder {
   _id: string;
@@ -22,7 +23,7 @@ interface VoidOrder {
   voidedByEmployeeName?: string;
 }
 
-const formatCurrency = (value: number) => `€ ${(Number(value) || 0).toFixed(2)}`;
+const formatCurrency = (value: number) => formatMoney(value);
 const formatDate = (d: string) => new Date(d).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
 const formatVoidedBy = (order: VoidOrder) => {
   const employeeName =

@@ -1,13 +1,22 @@
 import { useState } from 'react';
-import { Anchor, Box, Button, PasswordInput, SegmentedControl, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, PasswordInput, Stack, Text, TextInput, UnstyledButton } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { IconLock, IconUser } from '@tabler/icons-react';
 import { Link, useNavigate } from 'react-router-dom';
 import httpClient from '../../services/httpClient';
 import { rememberLicenseFromSignIn } from '../../services/licenseService';
 import { useAuthStore } from '../../store/authStore';
 import type { AuthTokens, AuthUser } from '../../store/authStore';
+import AuthShell from './AuthShell';
+import InfoDialog from './InfoDialog';
+import { AUTH_BRAND, authClasses, authFieldClassNames } from './authFieldClasses';
 
 type LoginMode = 'cashier' | 'admin';
+
+const MODES: { value: LoginMode; label: string }[] = [
+  { value: 'cashier', label: 'Cashier' },
+  { value: 'admin', label: 'Admin' },
+];
 
 interface SignInResult {
   user: AuthUser;
@@ -34,6 +43,7 @@ const Login = () => {
   const [mode, setMode] = useState<LoginMode>('cashier');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showResetHelp, setShowResetHelp] = useState(false);
 
   const form = useForm({
     initialValues: { email: '', password: '' },
@@ -75,14 +85,14 @@ const Login = () => {
 
       const isManager = user.role === 'admin' || user.role === 'manager';
 
-      // The toggle is a convenience, not a security control: the server decides
+      // The switch is a convenience, not a security control: the server decides
       // what each role may actually do.
       if (mode === 'admin' && !isManager) {
-        setError('This account is not an admin. Use the cashier login.');
+        setError('This account is not an admin. Switch to Cashier to sign in.');
         return;
       }
       if (mode === 'cashier' && isManager) {
-        setError('This is an admin account. Use the admin login.');
+        setError('This is an admin account. Switch to Admin to sign in.');
         return;
       }
 
@@ -101,76 +111,77 @@ const Login = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ width: 360 }}>
-        <Title order={3} ta="center" mb="lg">
-          Sign in
-        </Title>
-
-        <Box mb="lg">
-          <SegmentedControl
-            fullWidth
-            value={mode}
-            onChange={(value) => {
-              setMode(value as LoginMode);
+    <AuthShell>
+      <div className={authClasses.modes} role="tablist" aria-label="Sign in as">
+        {MODES.map(({ value, label }) => (
+          <UnstyledButton
+            key={value}
+            role="tab"
+            aria-selected={mode === value}
+            data-active={mode === value || undefined}
+            className={authClasses.mode}
+            onClick={() => {
+              setMode(value);
               setError('');
             }}
-            data={[
-              { label: 'Cashier', value: 'cashier' },
-              { label: 'Admin', value: 'admin' },
-            ]}
-            color="blue"
-            size="sm"
-            radius="md"
-          />
-        </Box>
+          >
+            {label}
+          </UnstyledButton>
+        ))}
+      </div>
 
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form onSubmit={form.onSubmit(handleSubmit)} noValidate>
+        <Stack gap={14}>
           <TextInput
-            label="Email"
-            placeholder="you@yourcompany.com"
-            required
-            mb="sm"
+            placeholder="Email"
+            aria-label="Email"
+            size="md"
+            radius={2}
             autoComplete="username"
+            leftSection={<IconUser size={18} stroke={1.5} />}
+            classNames={authFieldClassNames}
             {...form.getInputProps('email')}
           />
           <PasswordInput
-            label="Password"
-            placeholder="••••••••"
-            required
-            mb="xs"
+            placeholder="Password"
+            aria-label="Password"
+            size="md"
+            radius={2}
             autoComplete="current-password"
+            leftSection={<IconLock size={18} stroke={1.5} />}
+            classNames={authFieldClassNames}
             {...form.getInputProps('password')}
           />
 
-          {error && (
-            <Text c="red" size="xs" mb="sm">
-              {error}
-            </Text>
-          )}
+          {error && <Text className={authClasses.error}>{error}</Text>}
 
-          <Button fullWidth mt="md" type="submit" loading={loading} color="blue" size="md" radius="md">
-            {mode === 'admin' ? 'Sign in as admin' : 'Sign in as cashier'}
+          <Button type="submit" fullWidth size="md" radius={2} color={AUTH_BRAND} loading={loading} className={authClasses.submit} mt={10}>
+            Login
           </Button>
-        </form>
+        </Stack>
+      </form>
 
-        <Text size="sm" ta="center" mt="lg">
-          New company?{' '}
-          <Anchor component={Link} to="/register" size="sm">
-            Create an account
-          </Anchor>
-        </Text>
-      </div>
-    </div>
+      <Group justify="flex-end" mt={12}>
+        <UnstyledButton className={authClasses.link} onClick={() => setShowResetHelp(true)}>
+          Forgot password?
+        </UnstyledButton>
+      </Group>
+
+      {/* There is no self-service reset: passwords are reset by the shop admin. */}
+      <InfoDialog opened={showResetHelp} onClose={() => setShowResetHelp(false)} title="Forgot your password?">
+        <p>
+          Ask your shop admin to set a new password for you. Admins who cannot sign in can contact Deviction
+          Technologies.
+        </p>
+      </InfoDialog>
+
+      <p className={authClasses.footer}>
+        New company?{' '}
+        <Link to="/register" className={authClasses.link}>
+          Create an account
+        </Link>
+      </p>
+    </AuthShell>
   );
 };
 

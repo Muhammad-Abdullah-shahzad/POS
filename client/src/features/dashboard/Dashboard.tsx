@@ -11,6 +11,7 @@ import JsBarcode from 'jsbarcode';
 import api from '../../services/api';
 import { fetchQuickProducts, loadQuickProducts, type QuickProductButton } from '../products/QuickProducts';
 import SyncButton from '../sync/SyncButton';
+import { currencySymbol, formatMoney } from '../../utils/money';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
 
@@ -370,7 +371,7 @@ const Dashboard = () => {
         if (discountPct > 0) {
           notifications.show({
             title: 'Discount Applied!',
-            message: `${discountPct}% discount applied to ${product.name}. Price: € ${discountedPrice.toFixed(2)}`,
+            message: `${discountPct}% discount applied to ${product.name}. Price: ${formatMoney(discountedPrice)}`,
             color: 'teal',
             icon: <IconCheck size={16} />,
           });
@@ -449,7 +450,7 @@ const Dashboard = () => {
     if (discountPct > 0) {
       notifications.show({
         title: 'Discount Applied!',
-        message: `${discountPct}% discount applied to ${product.name}. Price: € ${discountedPrice.toFixed(2)}`,
+        message: `${discountPct}% discount applied to ${product.name}. Price: ${formatMoney(discountedPrice)}`,
         color: 'teal',
         icon: <IconCheck size={16} />,
       });
@@ -969,7 +970,7 @@ const Dashboard = () => {
     if (splitTotal < total) {
       notifications.show({
         title: 'Insufficient Payment',
-        message: `Total entered (€ ${splitTotal.toFixed(2)}) is less than the bill (€ ${total.toFixed(2)}).`,
+        message: `Total entered (${formatMoney(splitTotal)}) is less than the bill (${formatMoney(total)}).`,
         color: 'red'
       });
       return;
@@ -1032,7 +1033,7 @@ const Dashboard = () => {
       deposit: splitTotal,
       total,
       date: new Date().toLocaleString(),
-      paymentMethod: `SPLIT (Cash: €${cashAmt.toFixed(2)} / Card: €${cardAmt.toFixed(2)})`,
+      paymentMethod: `SPLIT (Cash: ${formatMoney(cashAmt)} / Card: ${formatMoney(cardAmt)})`,
       discount: flatDiscountVal,
       totalDRS,
     };
@@ -1057,7 +1058,7 @@ const Dashboard = () => {
     } else {
       notifications.show({
         title: 'Split Payment Complete',
-        message: `Cash: €${cashAmt.toFixed(2)}  |  Card: €${cardAmt.toFixed(2)}`,
+        message: `Cash: ${formatMoney(cashAmt)}  |  Card: ${formatMoney(cardAmt)}`,
         color: 'teal',
         icon: <IconCheck size={16} />,
       });
@@ -1983,18 +1984,18 @@ const Dashboard = () => {
                           <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
                           {totalDiscountAmt > 0 && (
                             <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                              Discount: {discountPct > 0 ? `-${discountPct}% ` : ''}(-€{totalDiscountAmt.toFixed(2)})
+                              Discount: {discountPct > 0 ? `-${discountPct}% ` : ''}(-{formatMoney(totalDiscountAmt)})
                             </div>
                           )}
                           {totalDRSAmt > 0 && (
                             <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                              DRS Deposit: +€{totalDRSAmt.toFixed(2)}
+                              DRS Deposit: +{formatMoney(totalDRSAmt)}
                             </div>
                           )}
                         </td>
                         <td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.qty}</td>
-                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>€{originalPrice.toFixed(2)}</td>
-                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>€{totalItemAmt.toFixed(2)}</td>
+                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{formatMoney(originalPrice)}</td>
+                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatMoney(totalItemAmt)}</td>
                       </tr>
                     );
                   })}
@@ -2004,23 +2005,23 @@ const Dashboard = () => {
               <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                   <span>Subtotal:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€{lastTransaction.subTotal.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(lastTransaction.subTotal)}</span>
                 </div>
                 {lastTransaction.discount && lastTransaction.discount > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
                     <span>Flat Discount:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>-€{lastTransaction.discount.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>-{formatMoney(lastTransaction.discount)}</span>
                   </div>
                 ) : null}
                 {lastTransaction.totalDRS && lastTransaction.totalDRS > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
                     <span>Total DRS:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>€{lastTransaction.totalDRS.toFixed(2)}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(lastTransaction.totalDRS)}</span>
                   </div>
                 ) : null}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px', color: '#000' }}>
                   <span>TOTAL:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>€{lastTransaction.total.toFixed(2)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(lastTransaction.total)}</span>
                 </div>
                 {(lastTransaction as any).splitCash !== undefined && (
                   <>
@@ -2055,7 +2056,7 @@ const Dashboard = () => {
                     </div>
                     {(lastTransaction as any).loyaltyRewardThreshold && (
                       <div style={{ fontSize: '9px', marginTop: '4px', color: '#555' }}>
-                        Reward at {(lastTransaction as any).loyaltyRewardThreshold} pts = €{(lastTransaction as any).loyaltyRewardValue} free shopping
+                        Reward at {(lastTransaction as any).loyaltyRewardThreshold} pts = {formatMoney((lastTransaction as any).loyaltyRewardValue)} free shopping
                       </div>
                     )}
                   </div>
@@ -2142,7 +2143,7 @@ const Dashboard = () => {
                       </Box>
                       <Box bg="teal.6" p="sm" style={{ borderTop: '4px solid #12b886', minHeight: 62, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <Text c="white" size="sm" fw={700} ta="center" lineClamp={2} style={{ lineHeight: 1.15 }}>{product.name}</Text>
-                        <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>€ {product.price.toFixed(2)}</Text>
+                        <Text c="white" size="xs" ta="center" style={{ opacity: 0.85 }}>{formatMoney(product.price)}</Text>
                       </Box>
                     </Paper>
                   );
@@ -2176,7 +2177,7 @@ const Dashboard = () => {
         <Flex direction="column" align="center" justify="center" p="xl">
           <Text size="md" c="dimmed" mb="sm">Amount to return to customer:</Text>
           <Text size="48px" fw={900} c={returnAmount >= 0 ? 'green.7' : 'red.7'}>
-            {returnAmount >= 0 ? `€ ${returnAmount.toFixed(2)}` : `-€ ${Math.abs(returnAmount).toFixed(2)}`}
+            {formatMoney(returnAmount)}
           </Text>
           <Box mt="lg" px="xl" py="sm" style={{ backgroundColor: '#f1f3f5', borderRadius: '8px', textAlign: 'center', minWidth: '220px' }}>
             <Text size="11px" c="dimmed" fw={600} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Transactions</Text>
@@ -2250,7 +2251,7 @@ const Dashboard = () => {
       <Modal opened={voidModalOpened} onClose={() => setVoidModalOpened(false)} title="Void Transaction">
         <Select 
           label="Select Order" 
-          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - € ${o.total.toFixed(2)}` }))} 
+          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - ${formatMoney(o.total)}` }))} 
           value={selectedOrderId}
           onChange={(val) => setSelectedOrderId(val || '')}
         />
@@ -2492,7 +2493,7 @@ const Dashboard = () => {
 
             <SimpleGrid cols={3} spacing="xs">
               <NumberInput
-                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Selling Price (€)</Text>}
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Selling Price ({currencySymbol()})</Text>}
                 value={quickProductPrice}
                 onChange={(val) => setQuickProductPrice(val)}
                 min={0}
@@ -2507,7 +2508,7 @@ const Dashboard = () => {
                 }}
               />
               <NumberInput
-                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Cost Price (€)</Text>}
+                label={<Text size="xs" fw={600} c="rgba(255,255,255,0.6)">Cost Price ({currencySymbol()})</Text>}
                 value={quickProductCostPrice}
                 onChange={(val) => setQuickProductCostPrice(val)}
                 min={0}
@@ -2665,7 +2666,7 @@ const Dashboard = () => {
 
           <SimpleGrid cols={3} spacing="sm">
             <NumberInput
-              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">Unit Price (€)</Text>}
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">Unit Price ({currencySymbol()})</Text>}
               value={editDetailForm.originalPrice}
               onChange={(val) => setEditDetailForm(prev => ({ ...prev, originalPrice: val }))}
               min={0}
@@ -2693,7 +2694,7 @@ const Dashboard = () => {
               }}
             />
             <NumberInput
-              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">DRS Deposit (€)</Text>}
+              label={<Text size="xs" fw={600} c="rgba(255,255,255,0.7)">DRS Deposit ({currencySymbol()})</Text>}
               value={editDetailForm.drs}
               onChange={(val) => setEditDetailForm(prev => ({ ...prev, drs: val }))}
               min={0}
@@ -2720,11 +2721,11 @@ const Dashboard = () => {
               <Box style={{ background: 'rgba(126,200,227,0.12)', border: '1px solid rgba(126,200,227,0.4)', borderRadius: '6px', padding: '12px' }}>
                 <Flex justify="space-between" mb={4}>
                   <Text size="xs" c="rgba(255,255,255,0.7)">Discounted Unit Price</Text>
-                  <Text size="xs" fw={700} c="white">€ {unit.toFixed(2)}</Text>
+                  <Text size="xs" fw={700} c="white">{formatMoney(unit)}</Text>
                 </Flex>
                 <Flex justify="space-between">
                   <Text size="sm" fw={700} c="#7ec8e3">Line Total ({qty} × )</Text>
-                  <Text size="sm" fw={800} c="#7ec8e3">€ {lineTotal.toFixed(2)}</Text>
+                  <Text size="sm" fw={800} c="#7ec8e3">{formatMoney(lineTotal)}</Text>
                 </Flex>
               </Box>
             );
@@ -2782,13 +2783,13 @@ const Dashboard = () => {
           <Box p="sm" style={{ backgroundColor: '#f1f8e9', border: '1px solid #a5d6a7', borderRadius: 6 }}>
             <Flex justify="space-between" align="center">
               <Text size="sm" c="dimmed">Bill Total</Text>
-              <Text size="xl" fw={900} c="dark">€ {total.toFixed(2)}</Text>
+              <Text size="xl" fw={900} c="dark">{formatMoney(total)}</Text>
             </Flex>
           </Box>
 
           {/* Cash input */}
           <NumberInput
-            label="Cash Amount (€)"
+            label={`Cash Amount (${currencySymbol()})`}
             placeholder="0.00"
             min={0}
             decimalScale={2}
@@ -2801,7 +2802,7 @@ const Dashboard = () => {
               setSplitCardAmount(parseFloat(remaining.toFixed(2)));
             }}
             size="md"
-            leftSection={<Text size="sm" fw={700} c="dark">€</Text>}
+            leftSection={<Text size="sm" fw={700} c="dark">{currencySymbol()}</Text>}
             styles={{
               input: { fontSize: '18px', fontWeight: 700, textAlign: 'right', borderColor: '#2e7d32', borderWidth: 2 }
             }}
@@ -2809,7 +2810,7 @@ const Dashboard = () => {
 
           {/* Card input */}
           <NumberInput
-            label="Card Amount (€)"
+            label={`Card Amount (${currencySymbol()})`}
             placeholder="0.00"
             min={0}
             decimalScale={2}
@@ -2822,7 +2823,7 @@ const Dashboard = () => {
               setSplitCashAmount(parseFloat(remaining.toFixed(2)));
             }}
             size="md"
-            leftSection={<Text size="sm" fw={700} c="dark">€</Text>}
+            leftSection={<Text size="sm" fw={700} c="dark">{currencySymbol()}</Text>}
             styles={{
               input: { fontSize: '18px', fontWeight: 700, textAlign: 'right', borderColor: '#1565c0', borderWidth: 2 }
             }}
@@ -2840,13 +2841,13 @@ const Dashboard = () => {
               <Box p="sm" style={{ backgroundColor: isShort ? '#fff3e0' : '#e8f5e9', border: `1px solid ${isShort ? '#ffb74d' : '#81c784'}`, borderRadius: 6 }}>
                 <Flex justify="space-between" mb={4}>
                   <Text size="sm" c="dimmed">Total Entered</Text>
-                  <Text size="sm" fw={700} c={isShort ? 'orange' : 'green'}>€ {entered.toFixed(2)}</Text>
+                  <Text size="sm" fw={700} c={isShort ? 'orange' : 'green'}>{formatMoney(entered)}</Text>
                 </Flex>
                 {isShort && (
-                  <Text size="xs" c="orange.7" fw={600}>Warning: Still short by € {Math.abs(diff).toFixed(2)}</Text>
+                  <Text size="xs" c="orange.7" fw={600}>Warning: Still short by {formatMoney(Math.abs(diff))}</Text>
                 )}
                 {isOver && (
-                  <Text size="xs" c="green.7" fw={600}>Change to return: € {diff.toFixed(2)}</Text>
+                  <Text size="xs" c="green.7" fw={600}>Change to return: {formatMoney(diff)}</Text>
                 )}
                 {!isShort && !isOver && entered > 0 && (
                   <Text size="xs" c="green.7" fw={600}>Exact amount</Text>
@@ -2888,7 +2889,7 @@ const Dashboard = () => {
             size="sm"
           />
           <NumberInput
-            label="Amount to Pay (€)"
+            label={`Amount to Pay (${currencySymbol()})`}
             placeholder="0.00"
             min={0}
             size="sm"
@@ -2956,7 +2957,7 @@ const Dashboard = () => {
         <Flex direction="column" gap="md" p="sm">
           <Text size="sm" c="dimmed">Manage the cash drawer for this shift.</Text>
           <NumberInput
-            label="Opening Cash Balance (€)"
+            label={`Opening Cash Balance (${currencySymbol()})`}
             placeholder="Enter opening float..."
             min={0}
             size="sm"
@@ -2991,11 +2992,11 @@ const Dashboard = () => {
           </Flex>
           <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#f8f9fa', borderRadius: 8, border: '1px solid #dee2e6' }}>
             <Text size="sm" c="dimmed">Sub Total</Text>
-            <Text fw={700}>€ {subTotal.toFixed(2)}</Text>
+            <Text fw={700}>{formatMoney(subTotal)}</Text>
           </Flex>
           <Flex justify="space-between" align="center" p="sm" style={{ backgroundColor: '#e8f5e9', borderRadius: 8, border: '1px solid #a5d6a7' }}>
             <Text size="md" fw={700}>Total Amount</Text>
-            <Text size="xl" fw={900} c="green">€ {total.toFixed(2)}</Text>
+            <Text size="xl" fw={900} c="green">{formatMoney(total)}</Text>
           </Flex>
           <Select
             label="Payment Method"

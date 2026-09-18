@@ -14,14 +14,6 @@ const theme = createTheme({
         root: { fontWeight: 600, letterSpacing: '0.3px' },
       },
     },
-    NavLink: {
-      styles: {
-        root: { 
-          borderRadius: 'var(--mantine-radius-md)',
-          fontWeight: 500,
-        },
-      },
-    },
     Paper: {
       defaultProps: { withBorder: true, shadow: 'xs' },
     },

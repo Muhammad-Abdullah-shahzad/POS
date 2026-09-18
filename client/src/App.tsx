@@ -36,6 +36,7 @@ import VoidTransactions from './features/voidTransactions/VoidTransactions';
 import SettingsPage from './features/settings/SettingsPage';
 import { useAuthStore } from './store/authStore';
 import { isLicenseBlocking, useLicenseStore } from './store/licenseStore';
+import { useCurrencyStore } from './store/currencyStore';
 
 /**
  * Route guards.
@@ -98,6 +99,11 @@ function App() {
   // Re-checks the licence while signed in; on the desktop this is what locks
   // the till at expiry with no internet connection.
   useLicenseWatcher();
+
+  // Amounts are formatted from the currency store while rendering. Subscribing
+  // here re-renders the open screen the moment an admin switches currency,
+  // without remounting it, so nothing on screen (such as the cart) is lost.
+  useCurrencyStore((state) => state.code);
 
   return (
     <Routes>

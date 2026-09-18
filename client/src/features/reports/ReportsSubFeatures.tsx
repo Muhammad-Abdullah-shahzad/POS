@@ -2,12 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Paper, Text, Title, Table, Badge, Button, Group, Stack, 
-  TextInput, Select, SimpleGrid, ThemeIcon, Box, Loader, Center,
+  TextInput, Select, SimpleGrid, Box, Loader, Center,
   Modal, ActionIcon
 } from '@mantine/core';
 import { 
   IconFileSpreadsheet, IconPrinter, IconSearch, IconCalendar, 
-  IconTrendingUp, IconTrendingDown, IconBuildingStore, IconLock,
+  IconTrendingUp, IconTrendingDown, IconLock,
   IconTrash, IconEdit, IconCheck, IconX, IconQuestionMark
 } from '@tabler/icons-react';
 import {
@@ -15,6 +15,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import api from '../../services/api';
+import { currencySymbol, formatMoney } from '../../utils/money';
 
 // Color Palette for charts
 const COLORS = ['#228be6', '#40c057', '#fab005', '#fa5252', '#7950f2', '#15aabf', '#fd7e14', '#e64980'];
@@ -175,7 +176,7 @@ export const ReportsSubFeatures = () => {
     categorySaleData.forEach(c => {
       if (c.revenue > maxCatRevenue) {
         maxCatRevenue = c.revenue;
-        topCategory = `${c.category} (€ ${c.revenue.toLocaleString()})`;
+        topCategory = `${c.category} (${formatMoney(c.revenue)})`;
       }
     });
 
@@ -252,9 +253,9 @@ export const ReportsSubFeatures = () => {
         headers: ['Date', 'Orders Count', 'Gross Revenue', 'Discounts', 'Net Revenue', 'Avg Ticket Size'],
         mockData: salesSummaryData,
         summaryCards: [
-          { label: 'Total Net Sales', value: `€ ${sum(orders, 'total').toLocaleString()}`, isPositive: true },
+          { label: 'Total Net Sales', value: formatMoney(sum(orders, 'total')), isPositive: true },
           { label: 'Total Invoices', value: `${orders.length} Bills`, isPositive: true },
-          { label: 'Total Discounts Given', value: `€ ${sum(orders, 'discount').toLocaleString()}`, isNegative: true },
+          { label: 'Total Discounts Given', value: formatMoney(sum(orders, 'discount')), isNegative: true },
         ]
       },
       'transaction-sales': {
@@ -281,19 +282,15 @@ export const ReportsSubFeatures = () => {
         summaryCards: [
           {
             label: 'Cash Sales',
-            value: `€ ${(
-              sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total') +
+            value: formatMoney(sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total') +
               orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split')
-                    .reduce((acc: number, o: any) => acc + (Number(o.splitCash) || 0), 0)
-            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                    .reduce((acc: number, o: any) => acc + (Number(o.splitCash) || 0), 0))
           },
           {
             label: 'Card Sales',
-            value: `€ ${(
-              sum(orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'card'), 'total') +
+            value: formatMoney(sum(orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'card'), 'total') +
               orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split')
-                    .reduce((acc: number, o: any) => acc + (Number(o.splitCard) || 0), 0)
-            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                    .reduce((acc: number, o: any) => acc + (Number(o.splitCard) || 0), 0))
           },
           {
             label: 'Split Transactions',
@@ -311,7 +308,7 @@ export const ReportsSubFeatures = () => {
         mockData: categorySaleData,
         summaryCards: [
           { label: 'Top Category', value: topCategory },
-          { label: 'Total Tax Collected', value: `€ ${sum(orders, 'totalVAT').toLocaleString()}` },
+          { label: 'Total Tax Collected', value: formatMoney(sum(orders, 'totalVAT')) },
           { label: 'Items Sold Total', value: `${sum(categorySaleData, 'qty').toLocaleString()} Units` },
         ]
       },
@@ -324,8 +321,8 @@ export const ReportsSubFeatures = () => {
         mockData: topSaleProductsData,
         summaryCards: [
           { label: 'Top Seller', value: topSaleProductsData[0] ? `${topSaleProductsData[0].product} (${topSaleProductsData[0].qty} Units)` : 'None' },
-          { label: 'Total Product Sales', value: `€ ${sum(productSalesData, 'revenue').toLocaleString()}` },
-          { label: 'Gross Product Profit', value: `€ ${sum(productSalesData, 'profit').toLocaleString()}` },
+          { label: 'Total Product Sales', value: formatMoney(sum(productSalesData, 'revenue')) },
+          { label: 'Gross Product Profit', value: formatMoney(sum(productSalesData, 'profit')) },
         ]
       },
       'products-sale': {
@@ -342,7 +339,7 @@ export const ReportsSubFeatures = () => {
         })),
         summaryCards: [
           { label: 'Total SKU Volume', value: `${sum(productSalesData, 'qty').toLocaleString()} Units` },
-          { label: 'Total Net Revenue', value: `€ ${sum(productSalesData, 'revenue').toLocaleString()}` },
+          { label: 'Total Net Revenue', value: formatMoney(sum(productSalesData, 'revenue')) },
           { label: 'Active SKUs Sold', value: `${productSalesData.length} SKUs` },
         ]
       },
@@ -398,14 +395,14 @@ export const ReportsSubFeatures = () => {
           };
         }),
         summaryCards: [
-          { label: 'Total Gross Profit', value: `€ ${orders.reduce((acc, order) => {
+          { label: 'Total Gross Profit', value: formatMoney(orders.reduce((acc, order) => {
             const orderCogs = (order.items || []).reduce((sumC: number, item: any) => {
               const prod = productMap[item.product] || {};
               const cost = Number(prod.costPrice) || (Number(item.price) * 0.8);
               return sumC + ((Number(item.quantity) || 0) * cost);
             }, 0);
             return acc + (order.total - orderCogs);
-          }, 0).toLocaleString()}` },
+          }, 0)) },
           { label: 'Top Profit Category', value: topCategory },
           { label: 'Gross Margin', value: orders.length > 0 ? '18.4%' : '0%' },
         ]
@@ -431,7 +428,7 @@ export const ReportsSubFeatures = () => {
         }),
         summaryCards: [
           { label: 'At-risk Batches', value: `${products.filter(p => p.stock > 0).slice(0, 10).length} Batches`, isNegative: true },
-          { label: 'Valuation at Risk', value: `€ ${products.filter(p => p.stock > 0).slice(0, 10).reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0).toLocaleString()}`, isNegative: true },
+          { label: 'Valuation at Risk', value: formatMoney(products.filter(p => p.stock > 0).slice(0, 10).reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0)), isNegative: true },
           { label: 'Alert Status', value: products.length > 0 ? 'Review Required' : 'No Items' },
         ]
       },
@@ -440,7 +437,7 @@ export const ReportsSubFeatures = () => {
         description: 'Cashier transaction volume, register logs, and performance metrics.',
         hasChart: orders.length > 0 ? 'bar' : 'none',
         chartDataKey: 'sales',
-        headers: ['Employee Name', 'Transactions Count', 'Total Sales (€)', 'Avg Order Value'],
+        headers: ['Employee Name', 'Transactions Count', `Total Sales (${currencySymbol()})`, 'Avg Order Value'],
         mockData: orders.length > 0 ? [
           {
             employee: 'Admin User',
@@ -452,14 +449,14 @@ export const ReportsSubFeatures = () => {
         summaryCards: [
           { label: 'Top Cashier', value: orders.length > 0 ? 'Admin User' : 'None' },
           { label: 'Active Cashiers', value: orders.length > 0 ? '1' : '0' },
-          { label: 'Total Logged Sales', value: `€ ${sum(orders, 'total').toLocaleString()}` },
+          { label: 'Total Logged Sales', value: formatMoney(sum(orders, 'total')) },
         ]
       },
       'purchase-sales-history': {
         title: 'Product Purchase - Sales History',
         description: 'Detailed history comparing bulk product purchase costs vs POS retail sales prices.',
         hasChart: 'none',
-        headers: ['Product Name', 'Purchase Cost (€)', 'POS Sale Price (€)', 'Spread/Margin', 'Markup %', 'Last Updated'],
+        headers: ['Product Name', `Purchase Cost (${currencySymbol()})`, `POS Sale Price (${currencySymbol()})`, 'Spread/Margin', 'Markup %', 'Last Updated'],
         mockData: products.slice(0, 15).map(p => {
           const purchase = p.costPrice || (p.price * 0.8);
           const spread = p.price - purchase;
@@ -475,7 +472,7 @@ export const ReportsSubFeatures = () => {
         }),
         summaryCards: [
           { label: 'Total Unique SKU Profiles', value: `${products.length} Products` },
-          { label: 'Average Spread Value', value: `€ ${products.length > 0 ? (sum(products.map(p => ({ spread: p.price - (p.costPrice || p.price * 0.8) })), 'spread') / products.length).toFixed(2) : 0}` },
+          { label: 'Average Spread Value', value: formatMoney(products.length > 0 ? (sum(products.map(p => ({ spread: p.price - (p.costPrice || p.price * 0.8) })), 'spread') / products.length) : 0) },
           { label: 'Max Margin Product', value: products.length > 0 ? products[0].name : 'None' },
         ]
       },
@@ -498,11 +495,11 @@ export const ReportsSubFeatures = () => {
               transactionId: o.invoiceId || 'N/A',
               date: o.createdAt ? new Date(o.createdAt).toLocaleString() : 'N/A',
               product: productNames.length > 30 ? productNames.substring(0, 27) + '...' : productNames,
-              totalPrice: `€ ${(Number(o.total) || 0).toFixed(2)}`,
-              vat: `€ ${totalItemVat.toFixed(2)}`,
-              discount: `€ ${totalItemDiscount.toFixed(2)}`,
-              flatDiscount: `€ ${(Number(o.discount) || 0).toFixed(2)}`,
-              drs: `€ ${totalItemDrs.toFixed(2)}`,
+              totalPrice: formatMoney(Number(o.total) || 0),
+              vat: formatMoney(totalItemVat),
+              discount: formatMoney(totalItemDiscount),
+              flatDiscount: formatMoney(Number(o.discount) || 0),
+              drs: formatMoney(totalItemDrs),
               customerName: o.customerName || 'Walk-in',
               rowKey: o._id || o.invoiceId
             });
@@ -510,9 +507,9 @@ export const ReportsSubFeatures = () => {
           return rows;
         })(),
         summaryCards: [
-          { label: 'Daily Net Receipts', value: `€ ${sum(orders, 'total').toLocaleString()}` },
-          { label: 'Total VAT Collected', value: `€ ${sum(orders, 'totalVAT').toLocaleString()}` },
-          { label: 'Total Flat Discounts', value: `€ ${sum(orders, 'discount').toLocaleString()}`, isNegative: true },
+          { label: 'Daily Net Receipts', value: formatMoney(sum(orders, 'total')) },
+          { label: 'Total VAT Collected', value: formatMoney(sum(orders, 'totalVAT')) },
+          { label: 'Total Flat Discounts', value: formatMoney(sum(orders, 'discount')), isNegative: true },
         ]
       },
       'sales-analysis': {
@@ -548,7 +545,7 @@ export const ReportsSubFeatures = () => {
         })(),
         summaryCards: [
           { label: 'Total Invoiced Hours', value: `${orders.length} Txns` },
-          { label: 'Total Period Sales', value: `€ ${sum(orders, 'total').toLocaleString()}` },
+          { label: 'Total Period Sales', value: formatMoney(sum(orders, 'total')) },
           { label: 'Peak Sales Rate', value: orders.length > 0 ? '100%' : '0%' },
         ]
       },
@@ -597,16 +594,16 @@ export const ReportsSubFeatures = () => {
           });
         })(),
         summaryCards: [
-          { label: 'Total Revenue', value: `€ ${sum(orders, 'total').toLocaleString()}`, isPositive: true },
-          { label: 'Total Expenditures', value: `€ ${sum(expenses, 'amount').toLocaleString()}`, isNegative: true },
-          { label: 'Store Profit Result', value: `€ ${(sum(orders, 'total') - sum(expenses, 'amount')).toLocaleString()}`, isPositive: (sum(orders, 'total') - sum(expenses, 'amount')) >= 0 },
+          { label: 'Total Revenue', value: formatMoney(sum(orders, 'total')), isPositive: true },
+          { label: 'Total Expenditures', value: formatMoney(sum(expenses, 'amount')), isNegative: true },
+          { label: 'Store Profit Result', value: formatMoney(sum(orders, 'total') - sum(expenses, 'amount')), isPositive: (sum(orders, 'total') - sum(expenses, 'amount')) >= 0 },
         ]
       },
       'product-stock': {
         title: 'Product Stock Report',
         description: 'Active stock-on-hand quantities, cost valuations, and reorder alerts.',
         hasChart: 'none',
-        headers: ['Product Name', 'SKU', 'Available Stock', 'Unit Cost (€)', 'Retail Price (€)', 'Stock Value at Cost'],
+        headers: ['Product Name', 'SKU', 'Available Stock', `Unit Cost (${currencySymbol()})`, `Retail Price (${currencySymbol()})`, 'Stock Value at Cost'],
         mockData: products.slice(0, 50).map(p => {
           const cost = p.costPrice || (p.price * 0.8);
           return {
@@ -619,7 +616,7 @@ export const ReportsSubFeatures = () => {
           };
         }),
         summaryCards: [
-          { label: 'Total Stock Valuation', value: `€ ${products.reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0).toLocaleString()}` },
+          { label: 'Total Stock Valuation', value: formatMoney(products.reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0)) },
           { label: 'Total Units in Inventory', value: `${sum(products, 'stock').toLocaleString()} Units` },
           { label: 'Critical Reorder Items', value: `${products.filter(p => p.stock <= 10).length} Items`, isNegative: products.filter(p => p.stock <= 10).length > 0 },
         ]
@@ -645,8 +642,8 @@ export const ReportsSubFeatures = () => {
           status: 'Completed'
         }))),
         summaryCards: [
-          { label: 'Total Ledger Debit', value: `€ ${sum(orders, 'total').toLocaleString()}` },
-          { label: 'Total Ledger Credit', value: `€ ${sum(expenses, 'amount').toLocaleString()}` },
+          { label: 'Total Ledger Debit', value: formatMoney(sum(orders, 'total')) },
+          { label: 'Total Ledger Credit', value: formatMoney(sum(expenses, 'amount')) },
           { label: 'Audit Trail Records', value: `${orders.length + expenses.length} Posted` },
         ]
       },
@@ -654,11 +651,11 @@ export const ReportsSubFeatures = () => {
         title: 'Bag Levy Report',
         description: 'Environmental carrier bag taxation auditor logging quantities distributed and tax collected.',
         hasChart: 'none',
-        headers: ['Date', 'Bags Count', 'Levy Per Bag (€)', 'Total Levy Collected', 'Accounting Status'],
+        headers: ['Date', 'Bags Count', `Levy Per Bag (${currencySymbol()})`, 'Total Levy Collected', 'Accounting Status'],
         mockData: [],
         summaryCards: [
           { label: 'Bags Handed Out', value: '0 Bags' },
-          { label: 'Levy Collected', value: '€ 0' },
+          { label: 'Levy Collected', value: formatMoney(0) },
           { label: 'Status', value: 'Clear' },
         ]
       },
@@ -670,8 +667,8 @@ export const ReportsSubFeatures = () => {
         mockData: [],
         summaryCards: [
           { label: 'Recycled Units Total', value: '0 Bottles/Cans' },
-          { label: 'Refunds Issued', value: '€ 0' },
-          { label: 'DRS Balance', value: '€ 0' },
+          { label: 'Refunds Issued', value: formatMoney(0) },
+          { label: 'DRS Balance', value: formatMoney(0) },
         ]
       },
       'inventory': {
@@ -683,7 +680,7 @@ export const ReportsSubFeatures = () => {
         summaryCards: [
           { label: 'Inventory Audited', value: '0 Items' },
           { label: 'Net Discrepancy Rate', value: '0.00%' },
-          { label: 'Valuation Shrinkage Cost', value: '€ 0' },
+          { label: 'Valuation Shrinkage Cost', value: formatMoney(0) },
         ]
       },
       'invoice': {
@@ -693,8 +690,8 @@ export const ReportsSubFeatures = () => {
         headers: ['Invoice No', 'Client Name', 'Due Date', 'Total Invoice', 'Amount Paid', 'Credit Status'],
         mockData: [],
         summaryCards: [
-          { label: 'Total B2B Assets', value: '€ 0' },
-          { label: 'Wholesale Receivables', value: '€ 0' },
+          { label: 'Total B2B Assets', value: formatMoney(0) },
+          { label: 'Wholesale Receivables', value: formatMoney(0) },
           { label: 'Overdue Accounts', value: '0 Clients' },
         ]
       },
@@ -702,10 +699,10 @@ export const ReportsSubFeatures = () => {
         title: 'Wastage Report',
         description: 'Register of written-off inventory due to damage, contamination, or theft.',
         hasChart: 'none',
-        headers: ['Write-Off Date', 'Product Name', 'SKU', 'Wastage Qty', 'Unit Cost (€)', 'Total Cost Loss', 'Reason'],
+        headers: ['Write-Off Date', 'Product Name', 'SKU', 'Wastage Qty', `Unit Cost (${currencySymbol()})`, 'Total Cost Loss', 'Reason'],
         mockData: [],
         summaryCards: [
-          { label: 'Total Waste Losses', value: '€ 0' },
+          { label: 'Total Waste Losses', value: formatMoney(0) },
           { label: 'Wasted Qty', value: '0 Items' },
           { label: 'Status', value: 'Clean' },
         ]
@@ -717,8 +714,8 @@ export const ReportsSubFeatures = () => {
         headers: ['Return Date', 'Original Receipt', 'Items Returned', 'Refund Amount', 'Exchange Taken', 'Reason'],
         mockData: [],
         summaryCards: [
-          { label: 'Cash Refunds Paid', value: '€ 0' },
-          { label: 'Exchanged Items Value', value: '€ 0' },
+          { label: 'Cash Refunds Paid', value: formatMoney(0) },
+          { label: 'Exchanged Items Value', value: formatMoney(0) },
           { label: 'Total Claims Received', value: '0 Claims' },
         ]
       },
@@ -728,12 +725,12 @@ export const ReportsSubFeatures = () => {
         hasChart: expensesData.length > 0 ? 'pie' : 'none',
         chartDataKey: 'amount',
         chartNameKey: 'category',
-        headers: ['Category Name', 'Total Transactions', 'Total Expenditures (€)', '% of Total Expenses'],
+        headers: ['Category Name', 'Total Transactions', `Total Expenditures (${currencySymbol()})`, '% of Total Expenses'],
         mockData: expensesData,
         summaryCards: [
-          { label: 'Total Expenses (Month)', value: `€ ${totalExpensesSum.toLocaleString()}`, isNegative: true },
+          { label: 'Total Expenses (Month)', value: formatMoney(totalExpensesSum), isNegative: true },
           { label: 'Expense Transactions', value: `${expenses.length} Invoices`, isNegative: true },
-          { label: 'Largest Category', value: expensesData[0] ? `${expensesData[0].category} (€ ${expensesData[0].amount.toLocaleString()})` : 'None' },
+          { label: 'Largest Category', value: expensesData[0] ? `${expensesData[0].category} (${formatMoney(expensesData[0].amount)})` : 'None' },
         ]
       },
       'stock-reconciliation': {
@@ -745,7 +742,7 @@ export const ReportsSubFeatures = () => {
         summaryCards: [
           { label: 'Manual Corrections', value: '0 Entries' },
           { label: 'Net Unit Adjustment', value: '0 Units' },
-          { label: 'Total Valuation Delta', value: '€ 0' },
+          { label: 'Total Valuation Delta', value: formatMoney(0) },
         ]
       },
       'stock-value': {
@@ -773,9 +770,9 @@ export const ReportsSubFeatures = () => {
           }));
         })(),
         summaryCards: [
-          { label: 'Total Assets (At Cost)', value: `€ ${products.reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0).toLocaleString()}` },
-          { label: 'Total Assets (At Retail)', value: `€ ${products.reduce((acc, p) => acc + (p.stock * p.price), 0).toLocaleString()}` },
-          { label: 'Unrealized Profit Margin', value: `€ ${products.reduce((acc, p) => acc + (p.stock * (p.price - (p.costPrice || p.price * 0.8))), 0).toLocaleString()}`, isPositive: true },
+          { label: 'Total Assets (At Cost)', value: formatMoney(products.reduce((acc, p) => acc + (p.stock * (p.costPrice || p.price * 0.8)), 0)) },
+          { label: 'Total Assets (At Retail)', value: formatMoney(products.reduce((acc, p) => acc + (p.stock * p.price), 0)) },
+          { label: 'Unrealized Profit Margin', value: formatMoney(products.reduce((acc, p) => acc + (p.stock * (p.price - (p.costPrice || p.price * 0.8))), 0)), isPositive: true },
         ]
       },
     };
@@ -813,7 +810,7 @@ export const ReportsSubFeatures = () => {
 
   if (!reportInfo) {
     return (
-      <Paper p="xl" withBorder radius="md" style={{ textAlign: 'center' }}>
+      <Paper p="xl" withBorder radius={0} style={{ textAlign: 'center' }}>
         <Title order={3} c="red" mb="md">Report Not Found</Title>
         <Text mb="lg">The requested report "{reportType}" is not configured in the POS system.</Text>
         <Button color="blue" onClick={() => navigate('/')}>Return to Dashboard</Button>
@@ -824,17 +821,8 @@ export const ReportsSubFeatures = () => {
   return (
     <Stack gap="md" style={{ height: 'calc(100vh - 100px)', overflowY: 'auto' }}>
       
-      {/* 1. HEADER SECTION */}
-      <Group justify="space-between" className="no-print">
-        <div>
-          <Group gap="xs">
-            <ThemeIcon color="blue" size="lg" radius="md">
-              <IconBuildingStore size={20} />
-            </ThemeIcon>
-            <Title order={2}>{reportInfo.title}</Title>
-          </Group>
-          <Text size="sm" c="dimmed" mt={4}>{reportInfo.description}</Text>
-        </div>
+      {/* 1. ACTIONS */}
+      <Group justify="flex-end" className="no-print">
         <Group>
           {reportType === 'z-report-print' && (
             <Button
@@ -910,14 +898,14 @@ export const ReportsSubFeatures = () => {
               value={secretSearch}
               onChange={e => setSecretSearch(e.target.value)}
             />
-            <Box style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--mantine-color-default-border)' }}>
+            <Box style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--mantine-color-default-border)' }}>
               <Table striped highlightOnHover verticalSpacing="xs">
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Invoice ID</Table.Th>
                     <Table.Th>Date</Table.Th>
                     <Table.Th>Customer</Table.Th>
-                    <Table.Th style={{ textAlign: 'right' }}>Total (€)</Table.Th>
+                    <Table.Th style={{ textAlign: 'right' }}>Total ({currencySymbol()})</Table.Th>
                     <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -953,7 +941,7 @@ export const ReportsSubFeatures = () => {
                               />
                             </Table.Td>
                             <Table.Td style={{ textAlign: 'right', fontWeight: 600 }}>
-                              € {Number(o.total).toFixed(2)}
+                              {formatMoney(Number(o.total))}
                             </Table.Td>
                             <Table.Td>
                               <Group gap={4} justify="center">
@@ -981,7 +969,7 @@ export const ReportsSubFeatures = () => {
                             </Table.Td>
                             <Table.Td style={{ fontSize: 12 }}>{o.customerName || 'Walk-in'}</Table.Td>
                             <Table.Td style={{ textAlign: 'right', fontWeight: 600 }}>
-                              € {Number(o.total).toFixed(2)}
+                              {formatMoney(Number(o.total))}
                             </Table.Td>
                             <Table.Td>
                               <Group gap={4} justify="center">
@@ -1033,7 +1021,7 @@ export const ReportsSubFeatures = () => {
       {reportInfo.summaryCards && (
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" className="no-print">
           {reportInfo.summaryCards.map((card, idx) => (
-            <Paper key={idx} withBorder p="md" radius="md" style={{ display: 'flex', flexDirection: 'column' }}>
+            <Paper key={idx} withBorder p="md" radius={0} style={{ display: 'flex', flexDirection: 'column' }}>
               <Text size="xs" c="dimmed" fw={700} tt="uppercase">{card.label}</Text>
               <Group justify="space-between" align="flex-end" mt="xs">
                 <Text size="xl" fw={700}>{card.value}</Text>
@@ -1047,7 +1035,7 @@ export const ReportsSubFeatures = () => {
 
       {/* 3. CHART VISUALIZATION (IF APPLICABLE) */}
       {reportInfo.hasChart !== 'none' && reportInfo.mockData.length > 0 && (
-        <Paper withBorder p="md" radius="md" shadow="xs" className="no-print" style={{ height: 260, display: 'flex', flexDirection: 'column' }}>
+        <Paper withBorder p="md" radius={0} shadow="xs" className="no-print" style={{ height: 260, display: 'flex', flexDirection: 'column' }}>
           <Text fw={600} size="sm" mb="xs">Visual Analytics Trend</Text>
           <Box style={{ flex: 1, minHeight: 180 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -1110,7 +1098,7 @@ export const ReportsSubFeatures = () => {
       )}
 
       {/* 4. DATA TABLE SECTION */}
-      <Paper withBorder radius="md" p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 400 }}>
+      <Paper withBorder radius={0} p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 400 }}>
         
         {/* Table Search Filters */}
         <Group justify="space-between" mb="sm" className="no-print">
@@ -1146,10 +1134,10 @@ export const ReportsSubFeatures = () => {
                   <Table.Th>Date</Table.Th>
                   <Table.Th>Time</Table.Th>
                   <Table.Th style={{ textAlign: 'right' }}>Items</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Total (€)</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Total ({currencySymbol()})</Table.Th>
                   <Table.Th style={{ textAlign: 'center' }}>Payment Type</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Cash (€)</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Card (€)</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Cash ({currencySymbol()})</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>Card ({currencySymbol()})</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -1196,10 +1184,10 @@ export const ReportsSubFeatures = () => {
                   <Table.Tfoot style={{ backgroundColor: '#f1f3f5', fontWeight: 700 }}>
                     <Table.Tr>
                       <Table.Td colSpan={4} fw={700}>TOTALS ({filteredData.length} transactions)</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }} fw={700}>€ {grandTotal.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} fw={700}>{formatMoney(grandTotal)}</Table.Td>
                       <Table.Td />
-                      <Table.Td style={{ textAlign: 'right' }} fw={700} c="green.7">€ {totalCash.toFixed(2)}</Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }} fw={700} c="blue.7">€ {totalCard.toFixed(2)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} fw={700} c="green.7">{formatMoney(totalCash)}</Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }} fw={700} c="blue.7">{formatMoney(totalCard)}</Table.Td>
                     </Table.Tr>
                   </Table.Tfoot>
                 );
@@ -1223,7 +1211,7 @@ export const ReportsSubFeatures = () => {
                     {values.slice(0, reportInfo.headers.length).map((val: any, colIdx) => {
                       const isNumber = typeof val === 'number';
                       const formattedVal = isNumber 
-                        ? (val % 1 === 0 && val > 100 ? `€ ${val.toLocaleString()}` : val)
+                        ? (val % 1 === 0 && val > 100 ? formatMoney(val) : val)
                         : String(val);
 
                       // Style badges for status columns
