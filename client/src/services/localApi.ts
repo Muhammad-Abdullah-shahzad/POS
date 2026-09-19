@@ -149,6 +149,35 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
     if (method === 'post') return ok(await eAPI().suppliers.create(mergedBody));
   }
 
+  // ── WASTAGE ───────────────────────────────────────────────────────────────
+  if (resource === 'wastage') {
+    if (method === 'get' && !id)                return ok(await eAPI().wastage.getAll());
+    if (method === 'post' && !id)               return ok(await eAPI().wastage.create(mergedBody));
+    if ((method === 'put' || method === 'patch') && id) return ok(await eAPI().wastage.update(id, mergedBody));
+    if (method === 'delete' && id)              return ok(await eAPI().wastage.delete(id));
+  }
+
+  // ── SUPPLIER INVOICES ─────────────────────────────────────────────────────
+  if (resource === 'supplier-invoices') {
+    if (method === 'get' && !id)                return ok(await eAPI().supplierInvoices.getAll());
+    if (method === 'post' && !id)               return ok(await eAPI().supplierInvoices.create(mergedBody));
+    // The server handles payments via POST /:id/payments
+    if (method === 'post' && id && sub === 'payments') {
+      // Local app just updates the paid amount in SQLite directly.
+      // We must fetch the current invoice to add to the paid amount.
+      const invoices = await eAPI().supplierInvoices.getAll();
+      const invoice = invoices.find((inv: any) => inv._id === id);
+      if (!invoice) throw new Error('Invoice not found');
+      
+      const newPaid = Number(invoice.paid) + Number(mergedBody.amount);
+      if (newPaid > Number(invoice.amount)) throw new Error('Paid cannot be more than the invoice amount');
+      
+      return ok(await eAPI().supplierInvoices.update(id, { paid: newPaid, lastPaymentAt: new Date().toISOString() }));
+    }
+    if ((method === 'put' || method === 'patch') && id) return ok(await eAPI().supplierInvoices.update(id, mergedBody));
+    if (method === 'delete' && id)              return ok(await eAPI().supplierInvoices.delete(id));
+  }
+
   // ── BANKS ─────────────────────────────────────────────────────────────────
   if (resource === 'banks') {
     if (method === 'get'  && id === 'names')    return ok(await eAPI().banks.getNames());

@@ -1,35 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Paper, Text, Title, Grid, Table, Badge, Button, Group, Stack, 
   TextInput, Select, NumberInput, Card, SimpleGrid, Modal
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { 
   IconCash, IconPrinter, IconPlus, IconTruck, 
   IconClipboardList, IconAlertCircle, IconCalendar, IconUser, IconHash,
-  IconTrash
+  IconTrash, IconCheck
 } from '@tabler/icons-react';
 import { currencySymbol, formatMoney } from '../../utils/money';
+import api from '../../services/localApi';
 
 // ==========================================
 // 1. SUPPLIER PAYMENTS
 // ==========================================
 export interface SupplierPayment {
-  id: string;
-  supplier: string;
+  _id: string;
+  supplierName: string;
   invoiceNo: string;
   amount: number;
   paid: number;
-  balance: number;
-  status: 'Paid' | 'Partial' | 'Unpaid';
   date: string;
+  // Derived fields:
+  balance?: number;
+  status?: 'Paid' | 'Partial' | 'Unpaid';
 }
 
 export const SupplierPayments = () => {
-  const [payments, setPayments] = useState<SupplierPayment[]>([
-    { id: '1', supplier: 'Sufi Oil Mill', invoiceNo: 'INV-2026-08', amount: 45000, paid: 30000, balance: 15000, status: 'Partial', date: '2026-05-10' },
-    { id: '2', supplier: 'National Foods Ltd', invoiceNo: 'INV-2026-14', amount: 82000, paid: 82000, balance: 0, status: 'Paid', date: '2026-05-15' },
-    { id: '3', supplier: 'Korangi Packaging', invoiceNo: 'INV-2026-03', amount: 12500, paid: 0, balance: 12500, status: 'Unpaid', date: '2026-05-18' },
-  ]);
+  const [payments, setPayments] = useState<SupplierPayment[]>([]);
 
   // Modal control states
   const [newPaymentModalOpened, setNewPaymentModalOpened] = useState(false);
@@ -48,75 +47,91 @@ export const SupplierPayments = () => {
   const [payoutAmount, setPayoutAmount] = useState<number | string>(0);
 
   // Derived metrics
-  const totalOutstanding = payments.reduce((acc, p) => acc + p.balance, 0);
-  const totalPaid = payments.reduce((acc, p) => acc + p.paid, 0);
-  const activeSuppliers = new Set(payments.map(p => p.supplier)).size;
-  const pendingInvoicesCount = payments.filter(p => p.balance > 0).length;
+  const enrichedPayments = payments.map(p => {
+    const balance = Math.max(0, p.amount - p.paid);
+    let status: 'Paid' | 'Partial' | 'Unpaid' = 'Unpaid';
+    if (p.paid >= p.amount) status = 'Paid';
+    else if (p.paid > 0) status = 'Partial';
+    return { ...p, balance, status };
+  });
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const totalOutstanding = enrichedPayments.reduce((acc, p) => acc + p.balance, 0);
+  const totalPaid = enrichedPayments.reduce((acc, p) => acc + (p.paid || 0), 0);
+  const activeSuppliers = new Set(enrichedPayments.map(p => p.supplierName)).size;
+  const pendingInvoicesCount = enrichedPayments.filter(p => p.balance > 0).length;
+
+  const fetchPayments = async () => {
+    try {
+      const { data } = await api.get('/supplier-invoices');
+      setPayments(data.data);
+    } catch (error) {
+      console.error('Error fetching supplier invoices:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = Number(newAmount) || 0;
     const paidNum = Number(newPaid) || 0;
-    const balanceNum = Math.max(0, amountNum - paidNum);
     
-    let statusVal: 'Paid' | 'Partial' | 'Unpaid' = 'Unpaid';
-    if (paidNum >= amountNum) statusVal = 'Paid';
-    else if (paidNum > 0) statusVal = 'Partial';
+    try {
+      await api.post('/supplier-invoices', {
+        supplierName: newSupplier || 'Unknown Supplier',
+        invoiceNo: newInvoiceNo || `INV-GEN-${Date.now().toString().slice(-4)}`,
+        amount: amountNum,
+        paid: paidNum,
+        date: newDate,
+      });
 
-    const newPaymentItem: SupplierPayment = {
-      id: String(Date.now()),
-      supplier: newSupplier || 'Unknown Supplier',
-      invoiceNo: newInvoiceNo || `INV-GEN-${Date.now().toString().slice(-4)}`,
-      amount: amountNum,
-      paid: paidNum,
-      balance: balanceNum,
-      status: statusVal,
-      date: newDate,
-    };
-
-    setPayments([newPaymentItem, ...payments]);
-    setNewPaymentModalOpened(false);
-
-    // Reset Form
-    setNewSupplier('');
-    setNewInvoiceNo('');
-    setNewAmount(0);
-    setNewPaid(0);
-    setNewDate(new Date().toISOString().substring(0, 10));
+      notifications.show({ title: 'Success', message: 'Supplier invoice created successfully.', color: 'teal', icon: <IconCheck size={16} /> });
+      setNewPaymentModalOpened(false);
+      
+      // Reset Form
+      setNewSupplier('');
+      setNewInvoiceNo('');
+      setNewAmount(0);
+      setNewPaid(0);
+      setNewDate(new Date().toISOString().substring(0, 10));
+      
+      fetchPayments();
+    } catch (error: any) {
+      notifications.show({ title: 'Error', message: error.response?.data?.message || 'Failed to create invoice.', color: 'red' });
+    }
   };
 
-  const handleRecordPayout = (e: React.FormEvent) => {
+  const handleRecordPayout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPayment) return;
 
     const payoutNum = Number(payoutAmount) || 0;
-    const newPaidNum = selectedPayment.paid + payoutNum;
-    const newBalanceNum = Math.max(0, selectedPayment.amount - newPaidNum);
 
-    let statusVal: 'Paid' | 'Partial' | 'Unpaid' = 'Unpaid';
-    if (newPaidNum >= selectedPayment.amount) statusVal = 'Paid';
-    else if (newPaidNum > 0) statusVal = 'Partial';
-
-    setPayments(payments.map(p => {
-      if (p.id === selectedPayment.id) {
-        return {
-          ...p,
-          paid: newPaidNum,
-          balance: newBalanceNum,
-          status: statusVal
-        };
-      }
-      return p;
-    }));
-
-    setPayoutModalOpened(false);
-    setSelectedPayment(null);
-    setPayoutAmount(0);
+    try {
+      await api.post(`/supplier-invoices/${selectedPayment._id}/payments`, {
+        amount: payoutNum
+      });
+      notifications.show({ title: 'Success', message: 'Payment recorded successfully.', color: 'teal', icon: <IconCheck size={16} /> });
+      setPayoutModalOpened(false);
+      setSelectedPayment(null);
+      setPayoutAmount(0);
+      fetchPayments();
+    } catch (error: any) {
+      notifications.show({ title: 'Error', message: error.response?.data?.message || 'Failed to record payment.', color: 'red' });
+    }
   };
 
-  const handleDeletePayment = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this supplier payment record?")) {
-      setPayments(prev => prev.filter(p => p.id !== id));
+  const handleDeletePayment = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this supplier invoice?")) {
+      try {
+        await api.delete(`/supplier-invoices/${id}`);
+        notifications.show({ title: 'Success', message: 'Invoice deleted successfully.', color: 'teal', icon: <IconCheck size={16} /> });
+        fetchPayments();
+      } catch (error: any) {
+        notifications.show({ title: 'Error', message: 'Failed to delete invoice.', color: 'red' });
+      }
     }
   };
 
@@ -175,63 +190,61 @@ export const SupplierPayments = () => {
               <Table.Th>Amount Paid</Table.Th>
               <Table.Th>Remaining Balance</Table.Th>
               <Table.Th>Payment Status</Table.Th>
-              <Table.Th>Invoice Date</Table.Th>
               <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {payments.map((row) => (
-              <Table.Tr key={row.id}>
-                <Table.Td fw={500}>{row.supplier}</Table.Td>
-                <Table.Td>{row.invoiceNo}</Table.Td>
-                <Table.Td>{formatMoney(row.amount)}</Table.Td>
-                <Table.Td c="green">{formatMoney(row.paid)}</Table.Td>
-                <Table.Td c={row.balance > 0 ? 'red' : 'dimmed'} fw={row.balance > 0 ? 600 : 400}>
-                  {formatMoney(row.balance)}
+            {enrichedPayments.map((row) => (
+              <Table.Tr key={row._id}>
+                <Table.Td fw={500}>{row.supplierName}</Table.Td>
+                <Table.Td>
+                  <Badge variant="light" color="gray" size="sm">{row.invoiceNo}</Badge>
                 </Table.Td>
+                <Table.Td>{row.date}</Table.Td>
+                <Table.Td>{formatMoney(row.amount)}</Table.Td>
+                <Table.Td c="green.7" fw={600}>{formatMoney(row.paid)}</Table.Td>
+                <Table.Td c="red.6" fw={700}>{formatMoney(row.balance || 0)}</Table.Td>
                 <Table.Td>
                   <Badge 
-                    color={
-                      row.status === 'Paid' ? 'green' : 
-                      row.status === 'Partial' ? 'yellow' : 'red'
-                    } 
-                    variant="light"
+                    color={row.status === 'Paid' ? 'teal' : row.status === 'Partial' ? 'orange' : 'red'}
+                    variant="dot"
                   >
                     {row.status}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{row.date}</Table.Td>
-                <Table.Td style={{ textAlign: 'right' }}>
-                  <Group gap="xs" justify="flex-end">
+                <Table.Td>
+                  <Group gap="xs" justify="flex-end" wrap="nowrap">
                     <Button 
-                      size="xs" 
+                      size="compact-xs" 
                       variant="light" 
-                      color={row.status === 'Paid' ? 'gray' : 'blue'}
+                      color="blue"
                       onClick={() => {
                         setSelectedPayment(row);
-                        if (row.status === 'Paid') {
-                          setViewDetailsOpened(true);
-                        } else {
-                          setPayoutAmount(row.balance);
-                          setPayoutModalOpened(true);
-                        }
+                        setPayoutModalOpened(true);
                       }}
+                      disabled={row.status === 'Paid'}
                     >
-                      {row.status === 'Paid' ? 'View Details' : 'Record Payout'}
+                      Pay
                     </Button>
-                    <Button 
-                      size="xs" 
-                      variant="subtle" 
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
                       color="red"
-                      onClick={() => handleDeletePayment(row.id)}
-                      title="Delete payment record"
+                      onClick={() => handleDeletePayment(row._id)}
                     >
-                      <IconTrash size={16} />
+                      <IconTrash size={14} />
                     </Button>
                   </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
+            {enrichedPayments.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={8}>
+                  <Text ta="center" py="md" c="dimmed">No supplier payments recorded yet.</Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
           </Table.Tbody>
         </Table>
       </Paper>
@@ -304,7 +317,7 @@ export const SupplierPayments = () => {
           setPayoutModalOpened(false);
           setSelectedPayment(null);
         }}
-        title={<Text size="lg" fw={700}>Record Payout - {selectedPayment?.supplier}</Text>}
+        title={<Text size="lg" fw={700}>Record Payout - {selectedPayment?.supplierName}</Text>}
         centered
         size="sm"
       >
@@ -358,7 +371,7 @@ export const SupplierPayments = () => {
           setViewDetailsOpened(false);
           setSelectedPayment(null);
         }}
-        title={<Text size="lg" fw={700}>Invoice Details - {selectedPayment?.supplier}</Text>}
+        title={<Text size="lg" fw={700}>Invoice Details - {selectedPayment?.supplierName}</Text>}
         centered
         size="sm"
       >

@@ -97,6 +97,22 @@ const api = {
     create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('suppliers:create', data),
   },
 
+  // ── WASTAGE ───────────────────────────────────────────────────────────────
+  wastage: {
+    getAll:  ()                                               => ipcRenderer.invoke('wastage:getAll'),
+    create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('wastage:create', data),
+    update:  (_id: string, data: Record<string, unknown>)     => ipcRenderer.invoke('wastage:update', _id, data),
+    delete:  (_id: string)                                    => ipcRenderer.invoke('wastage:delete', _id),
+  },
+
+  // ── SUPPLIER INVOICES ─────────────────────────────────────────────────────
+  supplierInvoices: {
+    getAll:  ()                                               => ipcRenderer.invoke('supplierInvoices:getAll'),
+    create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('supplierInvoices:create', data),
+    update:  (_id: string, data: Record<string, unknown>)     => ipcRenderer.invoke('supplierInvoices:update', _id, data),
+    delete:  (_id: string)                                    => ipcRenderer.invoke('supplierInvoices:delete', _id),
+  },
+
   // ── BANKS ─────────────────────────────────────────────────────────────────
   banks: {
     getNames:    ()                                           => ipcRenderer.invoke('banks:getNames'),

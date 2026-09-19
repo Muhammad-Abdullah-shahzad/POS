@@ -9,6 +9,8 @@ import { registerEmployeeHandlers } from './ipc/employees';
 import { registerExpenseHandlers } from './ipc/expenses';
 import { registerEmployeeDamageHandlers } from './ipc/employeeDamages';
 import { registerSupplierHandlers } from './ipc/suppliers';
+import { registerWastageHandlers } from './ipc/wastage';
+import { registerSupplierInvoiceHandlers } from './ipc/supplierInvoices';
 import { registerBankHandlers } from './ipc/banks';
 import { registerSettingsHandlers } from './ipc/settings';
 import { registerSyncHandlers } from './sync/syncManager';
@@ -61,6 +63,8 @@ app.whenReady().then(async () => {
   registerExpenseHandlers();
   registerEmployeeDamageHandlers();
   registerSupplierHandlers();
+  registerWastageHandlers();
+  registerSupplierInvoiceHandlers();
   registerBankHandlers();
   registerSettingsHandlers();
   registerSyncHandlers();

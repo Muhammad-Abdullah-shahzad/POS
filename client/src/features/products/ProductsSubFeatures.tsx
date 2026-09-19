@@ -514,10 +514,22 @@ export const ProductsSubFeatures = () => {
   const [selectedWasteId, setSelectedWasteId] = useState<string>('');
   const [wasteQty, setWasteQty] = useState<number | string>(1);
   const [wasteReason, setWasteReason] = useState<string>('Damaged');
-  const [wastageLogs, setWastageLogs] = useState<any[]>([
-    { id: '1', name: 'Sufi Cooking Oil (5L)', sku: 'SOIL-5L', qty: 2, cost: 2200, reason: 'Leaked Bottle', date: '2026-05-18' },
-    { id: '2', name: 'National Chili Sauce', sku: 'NFOOD-CS250', qty: 3, cost: 154, reason: 'Broken Jar', date: '2026-05-19' },
-  ]);
+  const [wastageLogs, setWastageLogs] = useState<any[]>([]);
+
+  const fetchWastageLogs = async () => {
+    try {
+      const { data } = await api.get('/wastage');
+      setWastageLogs(data.data);
+    } catch (error) {
+      console.error('Error fetching wastage logs:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (subPath === 'wastage') {
+      fetchWastageLogs();
+    }
+  }, [subPath]);
 
   const handleRecordWastage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -529,20 +541,18 @@ export const ProductsSubFeatures = () => {
 
     try {
       setLoading(true);
-      // Reduce the inventory stock on the backend in real-time!
-      await api.patch(`/products/${targetProd._id}/stock`, { quantity: -qtyNum });
-
-      const newLog = {
-        id: String(Date.now()),
-        name: targetProd.name,
-        sku: targetProd.sku,
-        qty: qtyNum,
-        cost: targetProd.costPrice,
+      
+      // Log it (the backend / local API will automatically reduce inventory stock)
+      await api.post('/wastage', {
+        productId: targetProd._id,
+        productName: targetProd.name,
+        sku: targetProd.sku || '',
+        quantity: qtyNum,
+        unitCost: targetProd.costPrice,
         reason: wasteReason,
-        date: new Date().toISOString().substring(0, 10)
-      };
+        date: new Date().toISOString().substring(0, 10),
+      });
 
-      setWastageLogs([newLog, ...wastageLogs]);
       notifications.show({
         title: 'Success',
         message: `Recorded wastage write-off for ${qtyNum} units of ${targetProd.name}`,
@@ -553,6 +563,7 @@ export const ProductsSubFeatures = () => {
       setSelectedWasteId('');
       setWasteQty(1);
       fetchProducts();
+      fetchWastageLogs();
     } catch (error: any) {
       notifications.show({
         title: 'Error',
@@ -1360,21 +1371,27 @@ export const ProductsSubFeatures = () => {
                 <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
+                      <Table.Th>Date</Table.Th>
                       <Table.Th>Product Name</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Qty</Table.Th>
+                      <Table.Th>SKU</Table.Th>
+                      <Table.Th>Qty</Table.Th>
+                      <Table.Th>Unit Cost</Table.Th>
+                      <Table.Th>Total Loss</Table.Th>
                       <Table.Th>Reason</Table.Th>
-                      <Table.Th style={{ textAlign: 'right' }}>Date</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {wastageLogs.map((log) => (
-                      <Table.Tr key={log.id}>
-                        <Table.Td fw={500}>{log.name}</Table.Td>
-                        <Table.Td style={{ textAlign: 'right' }} c="red" fw={600}>-{log.qty}</Table.Td>
+                      <Table.Tr key={log._id}>
+                        <Table.Td>{log.date}</Table.Td>
+                        <Table.Td fw={500}>{log.productName}</Table.Td>
                         <Table.Td>
-                          <Badge color="red" variant="light">{log.reason}</Badge>
+                          <Badge variant="light" color="gray">{log.sku}</Badge>
                         </Table.Td>
-                        <Table.Td style={{ textAlign: 'right' }}>{log.date}</Table.Td>
+                        <Table.Td>{log.quantity}</Table.Td>
+                        <Table.Td>{formatMoney(log.unitCost)}</Table.Td>
+                        <Table.Td c="red" fw={600}>{formatMoney((log.unitCost || 0) * (log.quantity || 0))}</Table.Td>
+                        <Table.Td>{log.reason}</Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>

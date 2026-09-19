@@ -249,6 +249,43 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- ─────────────────────────────────────────────
+-- WASTAGE
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wastage (
+  localId     INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id         TEXT    UNIQUE,
+  productId   TEXT    NOT NULL,
+  productName TEXT    NOT NULL,
+  sku         TEXT,
+  quantity    REAL    NOT NULL,
+  unitCost    REAL    NOT NULL DEFAULT 0,
+  reason      TEXT    NOT NULL,
+  date        TEXT    NOT NULL,
+  recordedBy  TEXT,
+  createdAt   TEXT,
+  updatedAt   TEXT,
+  isSync      INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
+-- SUPPLIER INVOICES
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS supplier_invoices (
+  localId       INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id           TEXT    UNIQUE,
+  supplierId    TEXT,
+  supplierName  TEXT    NOT NULL,
+  invoiceNo     TEXT    NOT NULL,
+  amount        REAL    NOT NULL DEFAULT 0,
+  paid          REAL    NOT NULL DEFAULT 0,
+  date          TEXT    NOT NULL,
+  lastPaymentAt TEXT,
+  createdAt     TEXT,
+  updatedAt     TEXT,
+  isSync        INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
 -- PENDING DELETES  (tracks records deleted locally that need to be deleted on the server)
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS pending_deletes (
