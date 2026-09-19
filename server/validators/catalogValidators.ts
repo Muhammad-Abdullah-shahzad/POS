@@ -1,9 +1,11 @@
 /**
  * Schemas for the smaller reference collections: categories, customers,
- * employees, suppliers, expenses and banking details.
+ * employees, wastage, suppliers and their invoices, expenses and banking
+ * details.
  */
 import { z } from 'zod';
 import { email, nonEmptyString, objectId, optionalString, positiveNumber } from './common';
+import { WASTAGE_REASONS } from '../models/WastageEntry';
 
 // ── Categories ──────────────────────────────────────────────────────────────
 export const createCategorySchema = z.object({
@@ -62,6 +64,31 @@ export const createEmployeeDamageSchema = z.object({
 });
 
 export const updateEmployeeDamageSchema = createEmployeeDamageSchema.partial();
+
+// ── Wastage ─────────────────────────────────────────────────────────────────
+export const recordWastageSchema = z.object({
+  productId: objectId,
+  quantity: z.coerce.number().int('Quantity must be a whole number').min(1, 'Quantity must be at least 1'),
+  reason: z.enum(WASTAGE_REASONS),
+});
+
+export type RecordWastageInput = z.infer<typeof recordWastageSchema>;
+
+// ── Supplier invoices ───────────────────────────────────────────────────────
+export const createSupplierInvoiceSchema = z
+  .object({
+    supplierId: objectId.optional(),
+    supplierName: nonEmptyString('Supplier', 160),
+    invoiceNo: nonEmptyString('Invoice number', 80),
+    amount: positiveNumber('Amount'),
+    paid: positiveNumber('Paid').default(0),
+    date: z.coerce.date({ message: 'A valid date is required' }),
+  })
+  .refine((invoice) => invoice.paid <= invoice.amount, { message: 'Paid cannot be more than the invoice amount', path: ['paid'] });
+
+export const supplierPaymentSchema = z.object({
+  amount: z.coerce.number({ message: 'Amount must be a number' }).positive('Amount must be more than zero'),
+});
 
 // ── Suppliers ───────────────────────────────────────────────────────────────
 export const createSupplierSchema = z.object({

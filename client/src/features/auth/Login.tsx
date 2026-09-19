@@ -176,7 +176,7 @@ const Login = () => {
       </InfoDialog>
 
       <p className={authClasses.footer}>
-        New company?{' '}
+        Want 7 Days Free Trial ?{' '}
         <Link to="/register" className={authClasses.link}>
           Create an account
         </Link>

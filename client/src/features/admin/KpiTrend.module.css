@@ -1,0 +1,39 @@
+/* "▲ 12.5% from last month", on KPI cards and in their detail views. */
+
+.change {
+  margin: 10px 0 0;
+  color: var(--pos-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.change[data-size='sm'] {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta[data-tone='good'] {
+  color: var(--pos-good);
+}
+
+.delta[data-tone='bad'] {
+  color: var(--pos-bad);
+}
+
+.delta[data-tone='neutral'] {
+  color: var(--pos-muted);
+}
+
+/* On a narrow card the phrase moves to its own line rather than breaking. */
+.since {
+  white-space: nowrap;
+}

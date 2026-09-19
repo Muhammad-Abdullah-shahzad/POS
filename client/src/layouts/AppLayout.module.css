@@ -1,6 +1,9 @@
 /*
- * App frame: a full-height blue sidebar with white text and icons, and a white
- * header to its right.
+ * App frame: a full-height sidebar with a white header to its right.
+ *
+ * The sidebar's colours are the tokens under "Sidebar palette". Change them
+ * there and every state follows: links, hover, active, the mark and the
+ * mobile close button.
  *
  * Sidebar rules are scoped under .navbar so they win over the component
  * library's own NavLink styles regardless of stylesheet order.
@@ -9,6 +12,18 @@
 .identity {
   text-align: right;
   line-height: 1.25;
+}
+
+/* ── Sidebar palette ────────────────────────────────────────────────────── */
+
+.navbar {
+  --sidebar-bg: #f0efff;
+  --sidebar-border: #e2e0f7;
+  --sidebar-text: #3d3a6b; /* 9:1 on the background */
+  --sidebar-text-strong: #1e1b4b; /* 14:1, for hover and active */
+  --sidebar-brand: #2350c9;
+  --sidebar-hover-bg: #e6e3ff;
+  --sidebar-active-bg: #dcd8ff;
 }
 
 /* ── Sidebar top: the mark, level with the header ───────────────────────── */
@@ -20,7 +35,7 @@
   justify-content: space-between;
   height: 60px;
   padding: 0 20px;
-  color: #ffffff;
+  color: var(--sidebar-brand);
 }
 
 /* The menu takes the remaining height and scrolls inside it. */
@@ -39,20 +54,20 @@
   margin-bottom: 2px;
   padding: 10px 14px;
   border-radius: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--sidebar-text);
   font-weight: 500;
   transition: background-color 120ms ease, color 120ms ease;
 }
 
 .navbar .link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-text-strong);
 }
 
 .navbar .link[data-active],
 .navbar .link[data-active]:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background-color: var(--sidebar-active-bg);
+  color: var(--sidebar-text-strong);
   font-weight: 600;
 }
 

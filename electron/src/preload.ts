@@ -121,6 +121,8 @@ const api = {
     topProducts:       (limit?: number)   => ipcRenderer.invoke('analytics:topProducts', limit),
     paymentMethods:    ()                 => ipcRenderer.invoke('analytics:paymentMethods'),
     expenseCategories: ()                 => ipcRenderer.invoke('analytics:expenseCategories'),
+    /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
+    kpis:              ()                 => ipcRenderer.invoke('analytics:kpis'),
   },
 
   // ── LICENCE ───────────────────────────────────────────────────────────────

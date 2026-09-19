@@ -13,36 +13,34 @@ interface AuthShellProps {
 }
 
 /**
- * Brand blue shapes in the corners, with a softer halo of the same blue behind
- * each. They stay clear of the centre so the form never sits on colour.
+ * Brand blue shapes pinned to three corners of the screen, each with a softer
+ * halo of the same blue. Each corner is its own small drawing sized from the
+ * viewport, so the shapes stay in their corners on any screen, phone or wall.
  */
-const SHAPE_COLOR = '#2350C9';
-
-function Backdrop() {
+function CornerShapes() {
   return (
-    <svg className={classes.backdrop} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <g fill={SHAPE_COLOR}>
-        {/* Top right */}
-        <path fillOpacity={0.1} d="M1440 0H980c-6 96 52 170 150 206 104 38 170 104 196 206 16 60 56 104 114 118V0z" />
-        <path d="M1440 0H1100c-4 64 36 116 104 142 80 30 132 84 150 164 12 50 44 86 86 98V0z" />
-
-        {/* Bottom left: concentric arcs */}
-        <circle fillOpacity={0.08} cx="0" cy="900" r="400" />
-        <circle fillOpacity={0.16} cx="0" cy="900" r="305" />
-        <circle cx="0" cy="900" r="215" />
-
-        {/* Bottom right */}
-        <path fillOpacity={0.1} d="M1440 900V600c-110 8-196 72-228 170-14 44-14 88-4 130h232z" />
-        <path d="M1440 900V700c-70 6-128 48-150 112-10 30-10 60-2 88h152z" />
-      </g>
-    </svg>
+    <>
+      <svg className={`${classes.shape} ${classes.topRight}`} viewBox="0 0 100 100" aria-hidden="true">
+        <path fillOpacity={0.12} d="M100 0H14c-2 20 9 35 29 43 20 8 32 21 37 41 3 9 10 15 20 16V0z" />
+        <path d="M100 0H42c-1 13 7 23 20 29 15 6 24 16 28 31 2 9 5 14 10 16V0z" />
+      </svg>
+      <svg className={`${classes.shape} ${classes.bottomLeft}`} viewBox="0 0 100 100" aria-hidden="true">
+        <circle fillOpacity={0.1} cx="0" cy="100" r="100" />
+        <circle fillOpacity={0.18} cx="0" cy="100" r="76" />
+        <circle cx="0" cy="100" r="54" />
+      </svg>
+      <svg className={`${classes.shape} ${classes.bottomRight}`} viewBox="0 0 100 100" aria-hidden="true">
+        <path fillOpacity={0.12} d="M100 100V26C72 28 52 45 45 69c-3 11-3 21-1 31h56z" />
+        <path d="M100 100V54c-17 2-29 12-34 27-2 7-2 13-1 19h35z" />
+      </svg>
+    </>
   );
 }
 
 export default function AuthShell({ caption, children }: AuthShellProps) {
   return (
     <main className={classes.page}>
-      <Backdrop />
+      <CornerShapes />
       <div className={classes.column}>
         <div className={classes.logo}>
           <CartMark />

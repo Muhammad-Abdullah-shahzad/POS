@@ -23,6 +23,7 @@ import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import '@mantine/notifications/styles.css';
+import './styles/tokens.css';
 
 // Electron loads the app via file:// — BrowserRouter breaks under that protocol
 // because the full filesystem path becomes the route. HashRouter works everywhere.

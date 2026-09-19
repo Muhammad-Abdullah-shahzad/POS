@@ -1,0 +1,173 @@
+/*
+ * Dashboard KPI cards: title with an info hint, a large figure, how it moved
+ * against last month, and a 30 day sparkline with its best day marked.
+ *
+ * Both the grid and each card size themselves from the space they are given,
+ * not the window, so they stay tidy whether the sidebar is open or collapsed.
+ */
+
+.gridContainer {
+  container-type: inline-size;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@container (min-width: 560px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 1180px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.card {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-height: 156px;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--pos-border);
+  border-radius: var(--pos-radius);
+  background: var(--pos-surface);
+  box-shadow: var(--pos-shadow);
+  font-family: var(--pos-font);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* Frosted, for cards laid over the artwork panel. */
+.card[data-glass] {
+  border-color: var(--pos-glass-border);
+  background: var(--pos-glass-bg);
+  box-shadow: var(--pos-glass-shadow);
+  -webkit-backdrop-filter: var(--pos-glass-blur);
+  backdrop-filter: var(--pos-glass-blur);
+}
+
+.card[data-glass][data-interactive]:hover {
+  border-color: #ffffff;
+  background: var(--pos-glass-bg-hover);
+  box-shadow: var(--pos-glass-shadow-hover);
+}
+
+.card[data-interactive] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card[data-interactive]:hover {
+  border-color: var(--pos-border-strong);
+  box-shadow: 0 8px 20px -12px rgba(16, 24, 40, 0.22);
+}
+
+.card[data-interactive]:focus-visible {
+  outline: 2px solid var(--pos-brand);
+  outline-offset: 2px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--pos-ink);
+}
+
+.info {
+  display: inline-flex;
+  color: var(--pos-subtle);
+  cursor: help;
+}
+
+/* Narrow cards stack the sparkline under the figures. */
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.figures {
+  min-width: 0;
+}
+
+.value {
+  overflow: hidden;
+  color: var(--pos-ink);
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footnote {
+  margin: 10px 0 0;
+  color: var(--pos-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* A faint dot grid behind the line, as in the reference card. */
+.chart {
+  position: relative;
+  height: 64px;
+  background-image: radial-gradient(#e6e9ef 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+/* Wider cards put the sparkline beside the figures, bottoms aligned. */
+@container (min-width: 250px) {
+  .body {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .figures {
+    flex: 1 1 auto;
+  }
+
+  .chart {
+    flex: 0 0 44%;
+    height: 86px;
+  }
+}
+
+@container (min-width: 330px) {
+  .value {
+    font-size: 30px;
+  }
+
+  .chart {
+    flex-basis: 46%;
+  }
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--pos-border);
+  border-radius: var(--pos-radius);
+  background: var(--pos-surface);
+  font-size: 14px;
+  color: var(--pos-body);
+}

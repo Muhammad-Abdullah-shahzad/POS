@@ -17,5 +17,7 @@ export { default as EmployeeDamage } from './EmployeeDamage';
 export { default as Expense } from './Expense';
 export { default as ExpenseCategory } from './ExpenseCategory';
 export { default as Supplier } from './Supplier';
+export { default as SupplierInvoice } from './SupplierInvoice';
+export { default as WastageEntry } from './WastageEntry';
 export { default as Settings } from './Settings';
 export { BankAccount, BankCard, BankName } from './Bank';

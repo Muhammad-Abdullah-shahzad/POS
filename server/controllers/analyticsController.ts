@@ -11,6 +11,7 @@ import { asyncHandler } from '../core/asyncHandler';
 import Expense from '../models/Expense';
 import Order from '../models/Order';
 import Product from '../models/Product';
+import { computeKpis } from '../services/kpiService';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -186,4 +187,9 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
   const monthly = [...summary.keys()].sort().map((key) => summary.get(key)!);
 
   res.json(successResponse({ monthly, lowStock }));
+});
+
+// GET /api/analytics/kpis
+export const getKpis = asyncHandler(async (_req: Request, res: Response) => {
+  res.json(successResponse(await computeKpis()));
 });

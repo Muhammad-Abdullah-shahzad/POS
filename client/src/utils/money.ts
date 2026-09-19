@@ -9,7 +9,7 @@ import { CURRENCIES, useCurrencyStore } from '../store/currencyStore';
 import type { CurrencyCode } from '../store/currencyStore';
 
 type Amount = number | string | null | undefined;
-type Variant = 'standard' | 'compact';
+type Variant = 'standard' | 'compact' | 'whole';
 
 // Building a formatter is comparatively slow and receipts format many lines.
 const formatters = new Map<string, Intl.NumberFormat>();
@@ -24,7 +24,9 @@ function formatter(variant: Variant, code: CurrencyCode = useCurrencyStore.getSt
       locale,
       variant === 'compact'
         ? { style: 'currency', currency: code, notation: 'compact', maximumFractionDigits: 1 }
-        : { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }
+        : variant === 'whole'
+          ? { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }
+          : { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }
     );
     formatters.set(cacheKey, cached);
   }
@@ -43,6 +45,9 @@ export const formatMoney = (amount: Amount): string => formatter('standard').for
 /** An amount in a specific currency, e.g. to preview a currency before it is saved. */
 export const formatMoneyAs = (code: CurrencyCode, amount: Amount): string =>
   formatter('standard', code).format(toNumber(amount));
+
+/** A rounded amount for headline figures, e.g. "£98,450". */
+export const formatMoneyWhole = (amount: Amount): string => formatter('whole').format(toNumber(amount));
 
 /** A short amount for dashboard tiles, e.g. "Rs 1.5M". Small amounts keep full precision. */
 export const formatMoneyCompact = (amount: Amount): string => {

@@ -20,6 +20,8 @@ import Expense from '../models/Expense';
 import ExpenseCategory from '../models/ExpenseCategory';
 import EmployeeDamage from '../models/EmployeeDamage';
 import Supplier from '../models/Supplier';
+import SupplierInvoice from '../models/SupplierInvoice';
+import WastageEntry from '../models/WastageEntry';
 import Settings from '../models/Settings';
 import { BankAccount, BankCard, BankName } from '../models/Bank';
 
@@ -34,6 +36,8 @@ export const SYNC_COLLECTIONS = {
   'expense-categories': { model: ExpenseCategory as Model<any>, label: 'expense categories' },
   'employee-damages': { model: EmployeeDamage as Model<any>, label: 'employee damages' },
   suppliers: { model: Supplier as Model<any>, label: 'suppliers' },
+  'supplier-invoices': { model: SupplierInvoice as Model<any>, label: 'supplier invoices' },
+  wastage: { model: WastageEntry as Model<any>, label: 'wastage entries' },
   'banks/names': { model: BankName as Model<any>, label: 'bank names' },
   'banks/accounts': { model: BankAccount as Model<any>, label: 'bank accounts' },
   'banks/cards': { model: BankCard as Model<any>, label: 'bank cards' },

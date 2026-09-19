@@ -181,6 +181,8 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().analytics.paymentMethods());
     if (id === 'expense-categories')
       return ok(await eAPI().analytics.expenseCategories());
+    if (id === 'kpis')
+      return ok(await eAPI().analytics.kpis());
   }
 
   // ── DASHBOARD ─────────────────────────────────────────────────────────────

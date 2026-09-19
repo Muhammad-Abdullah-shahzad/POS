@@ -15,6 +15,7 @@
     "license:keys": "ts-node scripts/generateLicenseKeys.ts",
     "license:issue": "ts-node scripts/issueLicense.ts",
     "seed:categories": "ts-node scripts/seedCategories.ts",
+    "seed:demo": "ts-node scripts/seedDemoData.ts",
     "migrate:multitenant": "ts-node scripts/migrateToMultiTenant.ts",
     "test": "vitest run",
     "test:watch": "vitest"

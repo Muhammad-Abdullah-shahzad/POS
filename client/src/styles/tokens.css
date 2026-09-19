@@ -1,0 +1,41 @@
+/*
+ * Design tokens for the dashboard surfaces: KPI cards, their detail views and
+ * anything built to match them. Change a value here and every surface using
+ * it follows. Chart colours used from TypeScript mirror these in
+ * features/admin/palette.ts.
+ */
+:root {
+  --pos-font: Inter, 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Text */
+  --pos-ink: #101828;
+  --pos-ink-strong: #161a45;
+  --pos-body: #475467;
+  --pos-muted: #667085;
+  --pos-subtle: #98a2b3;
+
+  /* Surfaces */
+  --pos-surface: #ffffff;
+  --pos-border: #e7eaf0;
+  --pos-border-strong: #d5dae4;
+  --pos-divider: #f0f2f5;
+  --pos-track: #eef0f4;
+  --pos-wash: #f4f4ff;
+  --pos-radius: 14px;
+  --pos-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+  /* Frosted surfaces, for cards laid over the artwork panels */
+  --pos-glass-bg: rgba(255, 255, 255, 0.74);
+  --pos-glass-bg-hover: rgba(255, 255, 255, 0.88);
+  --pos-glass-border: rgba(255, 255, 255, 0.9);
+  --pos-glass-shadow: 0 10px 30px -18px rgba(35, 80, 201, 0.35);
+  --pos-glass-shadow-hover: 0 14px 34px -16px rgba(35, 80, 201, 0.4);
+  --pos-glass-blur: blur(14px) saturate(140%);
+
+  /* Brand and status */
+  --pos-brand: #2350c9;
+  --pos-good: #16a34a;
+  --pos-bad: #dc2626;
+  --pos-warn: #f79009;
+  --pos-violet: #7a5af8;
+}

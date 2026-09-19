@@ -1,0 +1,413 @@
+/*
+ * Detail views behind the KPI cards, in the dashboard's design language:
+ * a lavender wash, white cards with soft borders, large tabular figures.
+ *
+ * Mantine's own styles load after ours, so modal parts are scoped under
+ * .root to win on specificity rather than on stylesheet order.
+ */
+
+/* ── Frame ───────────────────────────────────────────────────────────────── */
+
+.root .content {
+  overflow-y: auto;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(165, 180, 252, 0.4), transparent 340px),
+    linear-gradient(180deg, var(--pos-wash) 0%, #f7f8fc 360px);
+  box-shadow: 0 28px 70px -24px rgba(22, 26, 69, 0.45);
+  font-family: var(--pos-font);
+}
+
+.root .content[data-full-screen] {
+  border-radius: 0;
+}
+
+/* Frosted, so the wash shows through while the view scrolls beneath it. */
+.root .header {
+  align-items: flex-start;
+  padding: 24px 28px 14px;
+  background: rgba(244, 244, 255, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.root .body {
+  padding: 6px 28px 28px;
+}
+
+.root .close {
+  color: var(--pos-muted);
+  border-radius: 10px;
+}
+
+.root .close:hover {
+  background: rgba(35, 80, 201, 0.08);
+  color: var(--pos-ink);
+}
+
+.title {
+  display: block;
+  color: var(--pos-ink-strong);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  line-height: 1.25;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 4px;
+  color: var(--pos-body);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Stat tiles ──────────────────────────────────────────────────────────── */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.tile,
+.section {
+  border: 1px solid var(--pos-border);
+  border-radius: var(--pos-radius);
+  background: var(--pos-surface);
+  box-shadow: var(--pos-shadow);
+}
+
+.tile {
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+.tileLabel {
+  color: var(--pos-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tileValue {
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--pos-ink);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tileValue[data-tone='good'] {
+  color: var(--pos-good);
+}
+
+.tileValue[data-tone='bad'] {
+  color: var(--pos-bad);
+}
+
+.tileHint {
+  margin: 6px 0 0;
+  color: var(--pos-muted);
+  font-size: 13px;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.section {
+  overflow: hidden;
+  padding: 18px 20px;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--pos-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sectionAside {
+  color: var(--pos-muted);
+  font-size: 13px;
+}
+
+.empty {
+  margin: 0;
+  padding: 20px 0;
+  color: var(--pos-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ── Share bar ───────────────────────────────────────────────────────────── */
+
+.shareBar {
+  display: flex;
+  gap: 3px;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--pos-track);
+}
+
+.shareSegment {
+  height: 100%;
+  background: var(--segment-color);
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 20px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--segment-color);
+}
+
+.legendLabel {
+  color: var(--pos-muted);
+}
+
+.legendValue {
+  margin-left: auto;
+  color: var(--pos-ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.legendShare {
+  min-width: 44px;
+  color: var(--pos-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ── Ranked list ─────────────────────────────────────────────────────────── */
+
+.ranked {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rankRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: baseline;
+}
+
+.rankLabel {
+  overflow: hidden;
+  color: var(--pos-ink);
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rankHint {
+  margin-left: 8px;
+  color: var(--pos-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.rankValue {
+  color: var(--pos-ink);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rankTrack {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--pos-track);
+}
+
+.rankFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--bar-color);
+}
+
+/* ── Pills ───────────────────────────────────────────────────────────────── */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.pill[data-tone='brand'] {
+  background: #eef2ff;
+  color: var(--pos-brand);
+}
+
+.pill[data-tone='good'] {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.pill[data-tone='bad'] {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.pill[data-tone='warn'] {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.pill[data-tone='violet'] {
+  background: #f4f3ff;
+  color: #5925dc;
+}
+
+.pill[data-tone='neutral'] {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+/* Rows run edge to edge of their section. */
+.tableScroll {
+  overflow: auto;
+  max-height: var(--table-max-height, 300px);
+  margin: 0 -20px -18px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--pos-border);
+  background: #f9fafb;
+  color: var(--pos-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--pos-divider);
+  color: var(--pos-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover td {
+  background: #fafbff;
+}
+
+.table [data-align='end'] {
+  text-align: right;
+}
+
+.muted {
+  color: var(--pos-muted);
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.mono {
+  color: var(--pos-body);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+/* ── Chart ───────────────────────────────────────────────────────────────── */
+
+.chart {
+  height: 220px;
+  margin: 0 -6px 0 -10px;
+}
+
+@media (max-width: 600px) {
+  .root .header {
+    padding: 18px 16px 10px;
+  }
+
+  .root .body {
+    padding: 6px 16px 20px;
+  }
+
+  .tileValue {
+    font-size: 22px;
+  }
+
+  .section {
+    padding: 16px;
+  }
+
+  .tableScroll {
+    margin: 0 -16px -16px;
+  }
+
+  .table th,
+  .table td {
+    padding-inline: 16px;
+  }
+}

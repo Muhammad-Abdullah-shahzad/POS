@@ -144,6 +144,7 @@ interface ElectronAPI {
     topProducts:       (limit?: number)  => Promise<any[]>;
     paymentMethods:    ()                => Promise<any[]>;
     expenseCategories: ()                => Promise<any[]>;
+    kpis:              ()                => Promise<unknown>;
   };
   license: {
     status:   () => Promise<DesktopLicenseStatus>;

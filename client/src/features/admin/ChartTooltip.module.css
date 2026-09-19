@@ -1,0 +1,41 @@
+/* The dark hover tooltip on every dashboard and analysis chart. */
+.tip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--pos-ink);
+  box-shadow: 0 6px 16px -6px rgba(16, 24, 40, 0.45);
+  color: #ffffff;
+  font-family: var(--pos-font);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.date {
+  color: #d0d5dd;
+}
+
+.value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.row .value {
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+.swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}

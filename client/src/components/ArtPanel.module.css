@@ -1,0 +1,94 @@
+/*
+ * A lavender panel with the 3D coil artwork, a title and a subtitle.
+ *
+ * The artwork sits on its own backdrop layer. By default it fills the panel;
+ * with a backdrop height it becomes a banner at the top, and the content runs
+ * on past it onto the page, overlapping its lower part.
+ */
+
+.root {
+  position: relative;
+  isolation: isolate;
+  padding: 28px;
+}
+
+.backdrop {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto;
+  overflow: hidden;
+  height: var(--art-panel-backdrop-height, 100%);
+  min-height: 220px;
+  border: 1px solid #e3e6f6;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 8% 115%, rgba(125, 211, 252, 0.35), transparent 38%),
+    radial-gradient(circle at 55% -20%, rgba(165, 180, 252, 0.45), transparent 45%),
+    linear-gradient(115deg, #f4f5ff 0%, #eeecff 45%, #e7edff 100%);
+}
+
+.art {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The large coil, lying across the right half. */
+.artMain {
+  top: 50%;
+  right: 6%;
+  height: 170%;
+  transform: translateY(-50%) rotate(-62deg);
+  opacity: 0.85;
+}
+
+/* A smaller, softer echo on the left, like depth of field. */
+.artEcho {
+  bottom: -55%;
+  left: 24%;
+  height: 120%;
+  transform: rotate(48deg);
+  opacity: 0.35;
+  filter: blur(2px);
+}
+
+.header {
+  margin-bottom: 22px;
+}
+
+.title {
+  margin: 0;
+  color: var(--pos-ink-strong);
+  font-family: var(--pos-font);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.subtitle {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: var(--pos-body);
+  font-family: var(--pos-font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .root {
+    padding: 18px 16px;
+  }
+
+  .backdrop {
+    border-radius: 16px;
+  }
+
+  .artMain {
+    right: -30%;
+    height: 90%;
+  }
+
+  .artEcho {
+    display: none;
+  }
+}

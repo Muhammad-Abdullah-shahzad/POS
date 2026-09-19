@@ -1,0 +1,171 @@
+/*
+ * The analysis page: four frosted chart cards laid over the artwork banner,
+ * in the dashboard's design language.
+ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--pos-glass-border);
+  border-radius: var(--pos-radius);
+  background: var(--pos-glass-bg);
+  box-shadow: var(--pos-glass-shadow);
+  -webkit-backdrop-filter: var(--pos-glass-blur);
+  backdrop-filter: var(--pos-glass-blur);
+  font-family: var(--pos-font);
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--pos-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cardAside {
+  color: var(--pos-muted);
+  font-size: 13px;
+}
+
+.cardBody {
+  flex: 1;
+  min-height: 250px;
+}
+
+.chart {
+  height: 230px;
+  margin: 0 -6px 0 -10px;
+}
+
+.status {
+  margin: 0;
+  padding: 40px 0;
+  color: var(--pos-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ── Legend ──────────────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 10px;
+  padding: 0;
+  color: var(--pos-muted);
+  font-size: 13px;
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--swatch-color);
+}
+
+/* ── Donut with its breakdown ────────────────────────────────────────────── */
+
+.donutLayout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+}
+
+.donut {
+  position: relative;
+  flex: 0 0 200px;
+  height: 200px;
+  margin-inline: auto;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutValue {
+  color: var(--pos-ink);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.donutLabel {
+  color: var(--pos-muted);
+  font-size: 12px;
+}
+
+.breakdown {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breakdownItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.breakdownLabel {
+  color: var(--pos-ink);
+  font-weight: 500;
+}
+
+.breakdownHint {
+  margin-left: 6px;
+  color: var(--pos-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.breakdownValue {
+  color: var(--pos-ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdownShare {
+  min-width: 42px;
+  color: var(--pos-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

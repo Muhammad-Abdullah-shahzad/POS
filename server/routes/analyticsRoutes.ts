@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate';
 import { analyticsQuery } from '../validators/catalogValidators';
 import {
   getExpenseCategoryBreakdown,
+  getKpis,
   getMonthlySummary,
   getPaymentMethodBreakdown,
   getRevenueTrend,
@@ -19,5 +20,6 @@ router.get('/top-products', getTopProducts);
 router.get('/payment-methods', getPaymentMethodBreakdown);
 router.get('/expense-categories', getExpenseCategoryBreakdown);
 router.get('/monthly-summary', getMonthlySummary);
+router.get('/kpis', getKpis);
 
 export default router;

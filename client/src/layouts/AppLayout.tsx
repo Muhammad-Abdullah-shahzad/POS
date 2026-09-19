@@ -1,8 +1,8 @@
 /**
  * The signed in app frame shared by the cashier and admin workspaces.
  *
- * A full-height blue sidebar with white text and icons, and a white header to
- * its right. On desktop the sidebar starts collapsed to icons and the menu
+ * A full-height sidebar with a white header to its right. The sidebar's colours
+ * live in one place, the palette tokens in AppLayout.module.css. On desktop the sidebar starts collapsed to icons and the menu
  * button expands it; on phones it slides in over the page.
  */
 import { AppShell, Anchor, Burger, Button, Center, Group, Menu, NavLink, ScrollArea, Text, Title, Tooltip } from '@mantine/core';
@@ -17,8 +17,6 @@ import { useAuthStore } from '../store/authStore';
 import classes from './AppLayout.module.css';
 import type { NavItem } from './navigation';
 
-/** A lighter tint of the brand blue: calmer for a whole shift, still readable with white text. */
-const SIDEBAR_BLUE = '#4169D8';
 const HEADER_BORDER = '#e6eaf2';
 const NAV_WIDTH = { expanded: 250, collapsed: 80 };
 
@@ -141,7 +139,9 @@ export default function AppLayout({ navItems }: AppLayoutProps) {
       transitionTimingFunction="ease"
       styles={{
         header: { backgroundColor: '#ffffff', borderBottom: `1px solid ${HEADER_BORDER}` },
-        navbar: { backgroundColor: SIDEBAR_BLUE, borderRight: 'none' },
+        // The component library's own navbar styles load after ours, so the
+        // background is applied here, from the palette tokens on .navbar.
+        navbar: { backgroundColor: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' },
       }}
     >
       <AppShell.Header className="no-print">
@@ -179,7 +179,7 @@ export default function AppLayout({ navItems }: AppLayoutProps) {
         <AppShell.Section className={classes.brand} data-collapsed={!showLabels || undefined}>
           <CartMark size={showLabels ? 40 : 34} strokeWidth={4} />
           {/* On phones the sidebar covers the header's menu button, so it carries its own. */}
-          <Burger opened onClick={closeMobile} hiddenFrom="sm" size="sm" color="white" aria-label="Close navigation" />
+          <Burger opened onClick={closeMobile} hiddenFrom="sm" size="sm" color="var(--sidebar-text-strong)" aria-label="Close navigation" />
         </AppShell.Section>
 
         <AppShell.Section grow component={ScrollArea} className={classes.menu} px={showLabels ? 'sm' : 6} pb="md" scrollbarSize={6} type="hover">
