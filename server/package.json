@@ -11,6 +11,7 @@
     "db:indexes": "ts-node scripts/syncIndexes.ts",
     "tenant:create": "ts-node scripts/createTenant.ts",
     "tenant:list": "ts-node scripts/listTenants.ts",
+    "tenant:delete": "ts-node scripts/deleteTenant.ts",
     "user:create": "ts-node scripts/createUser.ts",
     "license:keys": "ts-node scripts/generateLicenseKeys.ts",
     "license:issue": "ts-node scripts/issueLicense.ts",

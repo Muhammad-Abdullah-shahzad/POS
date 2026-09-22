@@ -1867,7 +1867,9 @@ const Dashboard = () => {
                       { label: '5', bg: '#687a71' },
                       { label: '10', bg: '#cc7b7b' },
                       { label: '20', bg: '#7ba2b8' },
-                      { label: '50', bg: '#dcb882' }
+                      { label: '50', bg: '#dcb882' },
+                      { label: '500', bg: '#b298c4' },
+                      { label: '1000', bg: '#e5a593' }
                     ].map((btn) => (
                       <Button
                         key={btn.label}

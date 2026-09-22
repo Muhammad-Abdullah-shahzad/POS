@@ -14,6 +14,8 @@ import { Request } from 'express';
 import { BadRequestError } from '../core/errors';
 import { logger } from '../core/logger';
 import { deleteFromDrive, extractDriveFileId, uploadToDrive } from '../utils/googleDrive';
+// Brings in the `req.user` typing even when this module is loaded outside a request, e.g. by a script.
+import type {} from '../middleware/authenticate';
 
 const UPLOAD_ROOT = path.join(process.cwd(), 'uploads', 'products');
 const MAX_FILE_BYTES = 15 * 1024 * 1024;

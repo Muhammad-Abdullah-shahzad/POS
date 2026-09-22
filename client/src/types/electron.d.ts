@@ -125,6 +125,18 @@ interface ElectronAPI {
     getAll: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;
   };
+  wastage: {
+    getAll: () => Promise<any[]>;
+    create: (data: Record<string, unknown>) => Promise<any>;
+    update: (_id: string, data: Record<string, unknown>) => Promise<any>;
+    delete: (_id: string) => Promise<{ success: boolean }>;
+  };
+  supplierInvoices: {
+    getAll: () => Promise<any[]>;
+    create: (data: Record<string, unknown>) => Promise<any>;
+    update: (_id: string, data: Record<string, unknown>) => Promise<any>;
+    delete: (_id: string) => Promise<{ success: boolean }>;
+  };
   banks: {
     getNames: () => Promise<any[]>;
     addName: (data: Record<string, unknown>) => Promise<any>;

@@ -5,8 +5,9 @@ import api from '../../services/api';
 import { CURRENCIES, useCurrencyStore } from '../../store/currencyStore';
 import type { CurrencyCode } from '../../store/currencyStore';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconReceiptTax, IconStar } from '@tabler/icons-react';
+import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconReceiptTax, IconStar, IconUsersGroup } from '@tabler/icons-react';
 import { currencySymbol, formatMoney, formatMoneyAs } from '../../utils/money';
+import StaffLogins from './StaffLogins';
 
 const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
@@ -123,6 +124,7 @@ const SettingsPage = () => {
             <Tabs.Tab value="receipt" leftSection={<IconReceipt size={16} />}>Receipt Options</Tabs.Tab>
             <Tabs.Tab value="tax" leftSection={<IconReceiptTax size={16} />}>Tax & VAT</Tabs.Tab>
             <Tabs.Tab value="loyalty" leftSection={<IconStar size={16} />}>Loyalty Points</Tabs.Tab>
+            <Tabs.Tab value="staff" leftSection={<IconUsersGroup size={16} />}>Staff Logins</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="shop" pt="md">
@@ -264,6 +266,10 @@ const SettingsPage = () => {
                 </Paper>
               </Stack>
             </Paper>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="staff" pt="md">
+            <StaffLogins />
           </Tabs.Panel>
         </Tabs>
 
