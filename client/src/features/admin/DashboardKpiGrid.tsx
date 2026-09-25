@@ -21,11 +21,11 @@ interface MoneyKpi {
 }
 
 const MONEY_KPIS: MoneyKpi[] = [
-  { key: 'total-sales', title: 'Total Revenue', field: 'sales', info: 'Sales including VAT. Voided sales are left out.' },
-  { key: 'profit', title: 'Net Profit', field: 'profit', info: 'Revenue minus expenses.' },
+  { key: 'total-sales', title: 'Total Revenue', field: 'sales', info: 'Realized revenue (Cash + Card in drawer & bank). Unpaid credit sales are excluded.' },
+  { key: 'profit', title: 'Net Profit', field: 'profit', info: 'Realized revenue minus expenses.' },
   { key: 'expenses', title: 'Expenses', field: 'expenses', info: 'Expenses dated in the period. A fall shows in green.', goodWhenUp: false },
-  { key: 'cash', title: 'Cash Sales', field: 'cash', info: 'Cash sales plus the cash part of split payments.' },
-  { key: 'card', title: 'Card Sales', field: 'card', info: 'Card sales plus the card part of split payments.' },
+  { key: 'cash', title: 'Cash in Drawer', field: 'cash', info: 'Cash sales plus cash received from customer dues payments.' },
+  { key: 'card', title: 'Card Takings', field: 'card', info: 'Card sales plus card received from customer dues payments.' },
 ];
 
 /** Past this, a whole amount such as "Rs 12,345,678" no longer fits a card. */

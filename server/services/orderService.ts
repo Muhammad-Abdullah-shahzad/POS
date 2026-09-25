@@ -11,6 +11,7 @@ import { BadRequestError, NotFoundError } from '../core/errors';
 import { logger } from '../core/logger';
 import Order, { IOrder, IOrderItem } from '../models/Order';
 import Product from '../models/Product';
+import Customer from '../models/Customer';
 import { nextSequence } from '../models/Counter';
 import type { CreateOrderInput, OrderItemInput } from '../validators/orderValidators';
 
@@ -88,6 +89,12 @@ export async function createOrder(input: CreateOrderInput): Promise<IOrder> {
     // Receipt numbers come from an atomic per-company counter, so they stay
     // sequential per shop without scanning the orders collection.
     const receiptNumber = await nextSequence(RECEIPT_SEQUENCE);
+
+    if (input.paymentMethod === 'credit' && input.customerId) {
+      await Customer.findByIdAndUpdate(input.customerId, {
+        $inc: { outstandingBalance: input.total }
+      });
+    }
 
     return await Order.create({
       invoiceId: String(receiptNumber),

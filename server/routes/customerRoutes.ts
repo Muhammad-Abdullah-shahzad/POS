@@ -9,9 +9,11 @@ import {
   updateCustomerSchema,
 } from '../validators/catalogValidators';
 import {
+  addPayment,
   createCustomer,
   deleteCustomer,
   getCustomers,
+  getLedger,
   recordCustomerTransaction,
   resetLoyaltyPoints,
   updateCustomer,
@@ -38,4 +40,9 @@ router.post(
 );
 router.post('/:id/reset-points', validate({ params: idParam }), resetLoyaltyPoints);
 
+// Credit ledger & manual payments
+router.get('/:id/ledger', validate({ params: idParam }), getLedger);
+router.post('/:id/payments', validate({ params: idParam }), addPayment);
+
 export default router;
+

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon, Badge, SimpleGrid } from '@mantine/core';
+import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, ActionIcon, Badge, SimpleGrid, Select } from '@mantine/core';
 import { IconTrash, IconBarcode, IconPlus, IconMinus, IconCash, IconGift, IconCashRegister, IconReceipt } from '@tabler/icons-react';
 import { usePosStore } from '../../store/posStore';
 import api from '../../services/api';
@@ -80,6 +80,11 @@ const POS = () => {
     addToCart, removeFromCart, clearCart, updateQuantity, setLastTransaction,
   } = usePosStore();
 
+  const [customers, setCustomers] = useState<any[]>([]);
+  useEffect(() => {
+    api.get('/customers').then(res => setCustomers(res.data.data || [])).catch(() => {});
+  }, []);
+
   const handlePrint = useReactToPrint({ contentRef: componentRef });
 
   // Handler for PAY DUES button
@@ -156,8 +161,7 @@ const POS = () => {
     });
   };
 
-  // Handler for PAYBILL button
-  const handlePayBill = () => {
+  const processCheckout = (method: string) => {
     if (cart.length === 0) {
       notifications.show({
         title: 'Empty Cart',
@@ -167,21 +171,60 @@ const POS = () => {
       });
       return;
     }
-    
+
+    if (method === 'credit') {
+      let selectedCustomer: string | null = null;
+      modals.open({
+        title: 'Select Customer for Credit Sale',
+        centered: true,
+        children: (
+          <div>
+            <Select
+              label="Customer"
+              placeholder="Select a customer"
+              data={customers.map(c => ({ value: c._id, label: `${c.name} (Bal: ${formatMoney(c.outstandingBalance || 0)})` }))}
+              searchable
+              onChange={(v) => { selectedCustomer = v; }}
+            />
+            <Button 
+              fullWidth mt="md" color="dark"
+              onClick={() => {
+                if (!selectedCustomer) {
+                  notifications.show({ title: 'Error', message: 'Customer is required for credit sales', color: 'red' });
+                  return;
+                }
+                const c = customers.find(x => x._id === selectedCustomer);
+                
+                if (c && c.creditLimit > 0 && ((c.outstandingBalance || 0) + total) > c.creditLimit) {
+                  notifications.show({ title: 'Credit Limit Exceeded', message: `Customer credit limit is ${formatMoney(c.creditLimit)}`, color: 'red' });
+                  return;
+                }
+
+                modals.closeAll();
+                handleCheckout('credit', c?._id, c?.name);
+              }}
+            >
+              Confirm Credit Sale
+            </Button>
+          </div>
+        )
+      });
+      return;
+    }
+
+    // Cash or Card
     modals.openConfirmModal({
-      title: 'Alternative Payment Method',
+      title: `Confirm ${method.toUpperCase()} Payment`,
       centered: true,
       children: (
         <Text size="sm">
-          Process payment of <strong>{formatMoney(total)}</strong> using alternative payment method?
+          Process <strong>{method.toUpperCase()}</strong> payment of <strong>{formatMoney(total)}</strong>?
           {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes {formatMoney(totalDiscount)} discount</Text></>}
-          <br /><br />
-          <Text size="xs" c="dimmed">This can be used for card payments, mobile wallets, or credit transactions.</Text>
         </Text>
       ),
-      labels: { confirm: 'Process Payment', cancel: 'Cancel' },
-      confirmProps: { color: 'blue' },
-      onConfirm: handleCheckout,
+      labels: { confirm: 'Confirm Payment', cancel: 'Cancel' },
+      confirmProps: { color: method === 'cash' ? 'green' : 'blue' },
+      onConfirm: () => handleCheckout(method),
     });
   };
 
@@ -284,7 +327,7 @@ const POS = () => {
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (method: string, customerId?: string, customerName?: string) => {
     if (cart.length === 0) return;
     try {
       const { data } = await api.post('/orders', {
@@ -294,7 +337,9 @@ const POS = () => {
         discount: totalDiscount,
         totalDRS,
         total,
-        paymentMethod: 'cash',
+        paymentMethod: method,
+        customerId,
+        customerName,
       });
 
       const order = data?.data;
@@ -434,27 +479,17 @@ const POS = () => {
               <Title order={4} c="blue">{formatMoney(total)}</Title>
             </Group>
 
-            <Button
-              fullWidth size="xl" color="green"
-              onClick={() => {
-                modals.openConfirmModal({
-                  title: 'Confirm Payment',
-                  centered: true,
-                  children: (
-                    <Text size="sm">
-                      Process payment of <strong>{formatMoney(total)}</strong>?
-                      {totalDiscount > 0 && <><br /><Text size="xs" c="teal" component="span">Includes {formatMoney(totalDiscount)} discount</Text></>}
-                    </Text>
-                  ),
-                  labels: { confirm: 'Confirm Payment', cancel: 'No, Wait' },
-                  confirmProps: { color: 'green' },
-                  onConfirm: handleCheckout,
-                });
-              }}
-              disabled={cart.length === 0}
-            >
-              Pay {formatMoney(total)}
-            </Button>
+            <SimpleGrid cols={3} spacing="xs">
+              <Button fullWidth size="md" color="green" onClick={() => processCheckout('cash')} disabled={cart.length === 0}>
+                Cash
+              </Button>
+              <Button fullWidth size="md" color="blue" onClick={() => processCheckout('card')} disabled={cart.length === 0}>
+                Card
+              </Button>
+              <Button fullWidth size="md" color="red" onClick={() => processCheckout('credit')} disabled={cart.length === 0}>
+                Credit
+              </Button>
+            </SimpleGrid>
             <Button fullWidth mt="md" variant="light" color="red" onClick={() => { clearCart(); inputRef.current?.focus(); }} disabled={cart.length === 0}>
               Clear Cart
             </Button>
@@ -478,7 +513,7 @@ const POS = () => {
                 onClick={handleShowOffers}
                 size="sm"
               >
-                SHOW ALL OFFERS
+                SHOW OFFERS
               </Button>
               <Button
                 variant="light"
@@ -493,10 +528,10 @@ const POS = () => {
                 variant="light"
                 color="violet"
                 leftSection={<IconReceipt size={16} />}
-                onClick={handlePayBill}
+                onClick={() => processCheckout('card')}
                 size="sm"
               >
-                PAYBILL
+                PAY CARD
               </Button>
             </SimpleGrid>
           </Paper>

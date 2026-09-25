@@ -4,6 +4,7 @@ import { asyncHandler } from '../core/asyncHandler';
 import Expense from '../models/Expense';
 import Order from '../models/Order';
 import Product from '../models/Product';
+import CustomerPayment from '../models/CustomerPayment';
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -21,10 +22,10 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
   const range = month ? monthRange(month) : null;
   const period = range ? { $gte: range.start, $lt: range.end } : undefined;
 
-  const [totals, expenseTotals, lowStock] = await Promise.all([
-    // Voided orders are excluded: the money was handed back.
+  const [totals, paymentTotals, expenseTotals, lowStock] = await Promise.all([
+    // Voided and unpaid credit orders are excluded: only real money counts as revenue.
     Order.aggregate([
-      { $match: { status: { $ne: 'voided' }, ...(period && { createdAt: period }) } },
+      { $match: { status: { $ne: 'voided' }, paymentMethod: { $ne: 'credit' }, ...(period && { createdAt: period }) } },
       {
         $group: {
           _id: null,
@@ -33,6 +34,10 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
           orderCount: { $sum: 1 },
         },
       },
+    ]),
+    CustomerPayment.aggregate([
+      { $match: { ...(period && { createdAt: period }) } },
+      { $group: { _id: null, total: { $sum: '$amountPaid' } } },
     ]),
     Expense.aggregate([
       { $match: { ...(period && { date: period }) } },
@@ -44,7 +49,7 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       .limit(5),
   ]);
 
-  const totalRevenue = totals[0]?.revenue ?? 0;
+  const totalRevenue = (totals[0]?.revenue ?? 0) + (paymentTotals[0]?.total ?? 0);
   const totalExpenses = expenseTotals[0]?.total ?? 0;
 
   res.json(

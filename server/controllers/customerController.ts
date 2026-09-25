@@ -6,6 +6,8 @@ import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
 import { NotFoundError } from '../core/errors';
 import Customer from '../models/Customer';
+import CustomerPayment from '../models/CustomerPayment';
+import Order from '../models/Order';
 import Settings from '../models/Settings';
 import { searchFilter } from '../utils/query';
 
@@ -19,7 +21,12 @@ export const getCustomers = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const createCustomer = asyncHandler(async (req: Request, res: Response) => {
-  const customer = await Customer.create(req.body);
+  // If an openingBalance is provided, initialise outstandingBalance to match
+  const body = { ...req.body };
+  if (body.openingBalance && !body.outstandingBalance) {
+    body.outstandingBalance = body.openingBalance;
+  }
+  const customer = await Customer.create(body);
   res.status(201).json(successResponse(customer, 'Customer created'));
 });
 
@@ -79,3 +86,54 @@ export const resetLoyaltyPoints = asyncHandler(async (req: Request, res: Respons
 
   res.json(successResponse(customer, 'Loyalty points reset'));
 });
+
+/**
+ * Return the full credit ledger for a customer: all their orders plus all
+ * manual payments they have made against their outstanding balance.
+ */
+export const getLedger = asyncHandler(async (req: Request, res: Response) => {
+  const customerId = String(req.params.id);
+
+  const [orders, payments, customer] = await Promise.all([
+    Order.find({ customerId, status: { $ne: 'voided' } }).sort({ createdAt: -1 }).lean(),
+    CustomerPayment.find({ customerId }).sort({ createdAt: -1 }).lean(),
+    Customer.findById(customerId).lean(),
+  ]);
+
+  res.json(successResponse({ orders, payments, customer }));
+});
+
+/**
+ * Record a manual payment from a customer to reduce their outstanding balance.
+ */
+export const addPayment = asyncHandler(async (req: Request, res: Response) => {
+  const customerId = String(req.params.id);
+  const { amountPaid, paymentMethod, customerName, notes } = req.body as {
+    amountPaid: number;
+    paymentMethod: string;
+    customerName?: string;
+    notes?: string;
+  };
+
+  const customer = await Customer.findById(customerId);
+  if (!customer) throw new NotFoundError('Customer');
+
+  const payment = await CustomerPayment.create({
+    customerId,
+    customerName: customerName || customer.name,
+    amountPaid,
+    paymentMethod,
+    date: new Date().toISOString().split('T')[0],
+    notes: notes || '',
+  });
+
+  // Reduce outstanding balance
+  const updatedCustomer = await Customer.findByIdAndUpdate(
+    customerId,
+    { $inc: { outstandingBalance: -amountPaid } },
+    { new: true }
+  );
+
+  res.status(201).json(successResponse({ payment, customer: updatedCustomer }, 'Payment recorded'));
+});
+

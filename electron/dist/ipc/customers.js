@@ -13,10 +13,12 @@ function registerCustomerHandlers() {
         (0, database_1.dbRun)(`INSERT INTO customers
          (_id, name, contactNum1, contactNum2, email, address, eircode,
           qrCode, barcode, birthday, anniversary, timesVisited, totalAmount,
+          outstandingBalance, openingBalance, creditLimit,
           lastVisit, loyaltyPoints, createdAt, updatedAt, isSync)
        VALUES
          ($id, $name, $c1, $c2, $email, $address, $eircode,
           $qrCode, $barcode, $birthday, $anniversary, $timesVisited, $totalAmount,
+          $outstandingBalance, $openingBalance, $creditLimit,
           $lastVisit, $loyaltyPoints, $createdAt, $updatedAt, 0)`, {
             $id: _id, $name: (0, database_1.v)(data.name), $c1: (0, database_1.v)(data.contactNum1),
             $c2: (0, database_1.v)(data.contactNum2, ''), $email: (0, database_1.v)(data.email, ''),
@@ -24,6 +26,9 @@ function registerCustomerHandlers() {
             $qrCode: (0, database_1.v)(data.qrCode, ''), $barcode: (0, database_1.v)(data.barcode, ''),
             $birthday: (0, database_1.v)(data.birthday), $anniversary: (0, database_1.v)(data.anniversary),
             $timesVisited: (0, database_1.v)(data.timesVisited, 0), $totalAmount: (0, database_1.v)(data.totalAmount, 0),
+            $outstandingBalance: (0, database_1.v)(data.openingBalance, 0), // Init outstanding with opening
+            $openingBalance: (0, database_1.v)(data.openingBalance, 0),
+            $creditLimit: (0, database_1.v)(data.creditLimit, 0),
             $lastVisit: (0, database_1.v)(data.lastVisit, ''), $loyaltyPoints: (0, database_1.v)(data.loyaltyPoints, 0),
             $createdAt: ts, $updatedAt: ts,
         });
@@ -34,7 +39,8 @@ function registerCustomerHandlers() {
          name=$name, contactNum1=$c1, contactNum2=$c2, email=$email,
          address=$address, eircode=$eircode, qrCode=$qrCode, barcode=$barcode,
          birthday=$birthday, anniversary=$anniversary, timesVisited=$timesVisited,
-         totalAmount=$totalAmount, lastVisit=$lastVisit, loyaltyPoints=$loyaltyPoints,
+         totalAmount=$totalAmount, creditLimit=$creditLimit,
+         lastVisit=$lastVisit, loyaltyPoints=$loyaltyPoints,
          updatedAt=$ts, isSync=0
        WHERE _id=$id AND deletedAt IS NULL`, {
             $id: _id, $name: (0, database_1.v)(data.name), $c1: (0, database_1.v)(data.contactNum1),
@@ -43,6 +49,7 @@ function registerCustomerHandlers() {
             $qrCode: (0, database_1.v)(data.qrCode, ''), $barcode: (0, database_1.v)(data.barcode, ''),
             $birthday: (0, database_1.v)(data.birthday), $anniversary: (0, database_1.v)(data.anniversary),
             $timesVisited: (0, database_1.v)(data.timesVisited, 0), $totalAmount: (0, database_1.v)(data.totalAmount, 0),
+            $creditLimit: (0, database_1.v)(data.creditLimit, 0),
             $lastVisit: (0, database_1.v)(data.lastVisit, ''), $loyaltyPoints: (0, database_1.v)(data.loyaltyPoints, 0),
             $ts: (0, database_1.now)(),
         });
@@ -61,6 +68,33 @@ function registerCustomerHandlers() {
     (0, licenseGuard_1.handleLicensed)('customers:resetPoints', (_e, _id) => {
         (0, database_1.dbRun)(`UPDATE customers SET loyaltyPoints=0, updatedAt=$ts, isSync=0 WHERE _id=$id AND deletedAt IS NULL`, { $id: _id, $ts: (0, database_1.now)() });
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
+    });
+    (0, licenseGuard_1.handleLicensed)('customers:getLedger', (_e, _id) => {
+        const orders = (0, database_1.dbAll)(`SELECT * FROM orders WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+        const payments = (0, database_1.dbAll)(`SELECT * FROM customer_payments WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+        return {
+            orders: orders.map((r) => ({ ...r, items: JSON.parse(r.items || '[]') })),
+            payments
+        };
+    });
+    (0, licenseGuard_1.handleLicensed)('customers:addPayment', (_e, data) => {
+        const _id = (0, database_1.generateLocalId)();
+        const ts = (0, database_1.now)();
+        // Add payment
+        (0, database_1.dbRun)(`INSERT INTO customer_payments (_id, customerId, customerName, amountPaid, paymentMethod, date, notes, createdAt, updatedAt, isSync)
+       VALUES ($id, $cid, $cname, $amount, $method, $date, $notes, $ts, $ts, 0)`, {
+            $id: _id,
+            $cid: (0, database_1.v)(data.customerId),
+            $cname: (0, database_1.v)(data.customerName),
+            $amount: Number(data.amountPaid ?? 0),
+            $method: (0, database_1.v)(data.paymentMethod),
+            $date: (0, database_1.v)(data.date, new Date().toISOString().split('T')[0]),
+            $notes: (0, database_1.v)(data.notes, ''),
+            $ts: ts
+        });
+        // Deduct from outstanding balance
+        (0, database_1.dbRun)(`UPDATE customers SET outstandingBalance = outstandingBalance - $amount, updatedAt=$ts, isSync=0 WHERE _id=$cid`, { $amount: Number(data.amountPaid ?? 0), $ts: ts, $cid: (0, database_1.v)(data.customerId) });
+        return (0, database_1.dbGet)('SELECT * FROM customer_payments WHERE _id = $id', { $id: _id });
     });
 }
 //# sourceMappingURL=customers.js.map

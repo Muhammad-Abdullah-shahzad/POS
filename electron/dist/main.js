@@ -14,6 +14,8 @@ const employees_1 = require("./ipc/employees");
 const expenses_1 = require("./ipc/expenses");
 const employeeDamages_1 = require("./ipc/employeeDamages");
 const suppliers_1 = require("./ipc/suppliers");
+const wastage_1 = require("./ipc/wastage");
+const supplierInvoices_1 = require("./ipc/supplierInvoices");
 const banks_1 = require("./ipc/banks");
 const settings_1 = require("./ipc/settings");
 const syncManager_1 = require("./sync/syncManager");
@@ -59,6 +61,8 @@ electron_1.app.whenReady().then(async () => {
     (0, expenses_1.registerExpenseHandlers)();
     (0, employeeDamages_1.registerEmployeeDamageHandlers)();
     (0, suppliers_1.registerSupplierHandlers)();
+    (0, wastage_1.registerWastageHandlers)();
+    (0, supplierInvoices_1.registerSupplierInvoiceHandlers)();
     (0, banks_1.registerBankHandlers)();
     (0, settings_1.registerSettingsHandlers)();
     (0, syncManager_1.registerSyncHandlers)();

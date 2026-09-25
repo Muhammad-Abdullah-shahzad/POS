@@ -48,13 +48,15 @@ function registerOrderHandlers() {
                 }
             }
             d.run(`INSERT INTO orders
-           (_id, invoiceId, items, subtotal, totalVAT, discount, totalDRS, total,
+           (_id, invoiceId, customerId, customerName, items, subtotal, totalVAT, discount, totalDRS, total,
             paymentMethod, splitCash, splitCard, status, createdAt, updatedAt, isSync)
          VALUES
-           ($id, $invoiceId, $items, $subtotal, $totalVAT, $discount, $totalDRS, $total,
+           ($id, $invoiceId, $customerId, $customerName, $items, $subtotal, $totalVAT, $discount, $totalDRS, $total,
             $paymentMethod, $splitCash, $splitCard, 'completed', $createdAt, $updatedAt, 0)`, {
                 $id: _id,
                 $invoiceId: invoiceId,
+                $customerId: data.customerId ? String(data.customerId) : null,
+                $customerName: data.customerName ? String(data.customerName) : null,
                 $items: itemsJson,
                 $subtotal: Number(data.subtotal ?? 0),
                 $totalVAT: Number(data.totalVAT ?? 0),
@@ -67,6 +69,10 @@ function registerOrderHandlers() {
                 $createdAt: ts,
                 $updatedAt: ts,
             });
+            // If credit sale, update customer balance
+            if (String(data.paymentMethod) === 'credit' && data.customerId) {
+                d.run(`UPDATE customers SET outstandingBalance = outstandingBalance + $total, updatedAt=$ts, isSync=0 WHERE _id=$cid`, { $total: Number(data.total ?? 0), $ts: ts, $cid: String(data.customerId) });
+            }
         });
         const row = (0, database_1.dbGet)('SELECT * FROM orders WHERE _id = $id', { $id: _id });
         return { ...row, items: JSON.parse(row?.items || '[]') };

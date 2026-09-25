@@ -15,6 +15,7 @@ import Product from '../models/Product';
 import Category from '../models/Category';
 import Order from '../models/Order';
 import Customer from '../models/Customer';
+import CustomerPayment from '../models/CustomerPayment';
 import Employee from '../models/Employee';
 import Expense from '../models/Expense';
 import ExpenseCategory from '../models/ExpenseCategory';
@@ -31,6 +32,7 @@ export const SYNC_COLLECTIONS = {
   categories: { model: Category as Model<any>, label: 'categories' },
   orders: { model: Order as Model<any>, label: 'orders' },
   customers: { model: Customer as Model<any>, label: 'customers' },
+  'customer-payments': { model: CustomerPayment as Model<any>, label: 'customer payments' },
   employees: { model: Employee as Model<any>, label: 'employees' },
   expenses: { model: Expense as Model<any>, label: 'expenses' },
   'expense-categories': { model: ExpenseCategory as Model<any>, label: 'expense categories' },

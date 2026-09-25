@@ -109,6 +109,10 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().customers.updateStats(id, mergedBody.amount));
     if (method === 'post' && id && sub === 'reset-points')
       return ok(await eAPI().customers.resetPoints(id));
+    if (method === 'get' && id && sub === 'ledger')
+      return ok(await eAPI().customers.getLedger(id));
+    if (method === 'post' && id && sub === 'payments')
+      return ok(await eAPI().customers.addPayment({ ...mergedBody, customerId: id }));
   }
 
   // ── EMPLOYEES ─────────────────────────────────────────────────────────────

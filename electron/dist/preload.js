@@ -54,6 +54,8 @@ const api = {
         delete: (_id) => electron_1.ipcRenderer.invoke('customers:delete', _id),
         updateStats: (_id, amount) => electron_1.ipcRenderer.invoke('customers:updateStats', _id, amount),
         resetPoints: (_id) => electron_1.ipcRenderer.invoke('customers:resetPoints', _id),
+        getLedger: (_id) => electron_1.ipcRenderer.invoke('customers:getLedger', _id),
+        addPayment: (data) => electron_1.ipcRenderer.invoke('customers:addPayment', data),
     },
     // ── EMPLOYEES ─────────────────────────────────────────────────────────────
     employees: {
@@ -85,6 +87,20 @@ const api = {
         getAll: () => electron_1.ipcRenderer.invoke('suppliers:getAll'),
         create: (data) => electron_1.ipcRenderer.invoke('suppliers:create', data),
     },
+    // ── WASTAGE ───────────────────────────────────────────────────────────────
+    wastage: {
+        getAll: () => electron_1.ipcRenderer.invoke('wastage:getAll'),
+        create: (data) => electron_1.ipcRenderer.invoke('wastage:create', data),
+        update: (_id, data) => electron_1.ipcRenderer.invoke('wastage:update', _id, data),
+        delete: (_id) => electron_1.ipcRenderer.invoke('wastage:delete', _id),
+    },
+    // ── SUPPLIER INVOICES ─────────────────────────────────────────────────────
+    supplierInvoices: {
+        getAll: () => electron_1.ipcRenderer.invoke('supplierInvoices:getAll'),
+        create: (data) => electron_1.ipcRenderer.invoke('supplierInvoices:create', data),
+        update: (_id, data) => electron_1.ipcRenderer.invoke('supplierInvoices:update', _id, data),
+        delete: (_id) => electron_1.ipcRenderer.invoke('supplierInvoices:delete', _id),
+    },
     // ── BANKS ─────────────────────────────────────────────────────────────────
     banks: {
         getNames: () => electron_1.ipcRenderer.invoke('banks:getNames'),
@@ -107,6 +123,8 @@ const api = {
         topProducts: (limit) => electron_1.ipcRenderer.invoke('analytics:topProducts', limit),
         paymentMethods: () => electron_1.ipcRenderer.invoke('analytics:paymentMethods'),
         expenseCategories: () => electron_1.ipcRenderer.invoke('analytics:expenseCategories'),
+        /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
+        kpis: () => electron_1.ipcRenderer.invoke('analytics:kpis'),
     },
     // ── LICENCE ───────────────────────────────────────────────────────────────
     // The key is verified in the main process against the public key baked into

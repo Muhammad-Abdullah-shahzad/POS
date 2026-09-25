@@ -5,7 +5,7 @@
 import api from './api';
 
 export interface KpiTotals {
-  /** Sales including VAT. */
+  /** Realized sales/revenue (money received in drawer & bank). */
   sales: number;
   orders: number;
   cash: number;
@@ -13,6 +13,8 @@ export interface KpiTotals {
   expenses: number;
   profit: number;
   newCustomers: number;
+  duesCollected?: number;
+  creditSales?: number;
 }
 
 export interface KpiDay extends KpiTotals {
@@ -31,6 +33,12 @@ export interface KpiBreakdown {
     splitOrders: number;
     splitCash: number;
     splitCard: number;
+    creditOrders?: number;
+    creditOnly?: number;
+    duesOrders?: number;
+    duesCash?: number;
+    duesCard?: number;
+    duesTotal?: number;
   };
   expenseCategories: { category: string; total: number; count: number }[];
   expenseCount: number;

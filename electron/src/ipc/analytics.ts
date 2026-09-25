@@ -61,13 +61,33 @@ function addSale(totals: KpiTotals, row: Record<string, unknown>): void {
   const total = Number(row.total) || 0;
   const method = String(row.paymentMethod ?? '').toLowerCase();
 
-  totals.sales += total;
   totals.orders += 1;
-  if (method === 'cash') totals.cash += total;
-  else if (method === 'card') totals.card += total;
-  else if (method.startsWith('split')) {
-    totals.cash += Number(row.splitCash) || 0;
-    totals.card += Number(row.splitCard) || 0;
+  if (method === 'cash') {
+    totals.cash += total;
+    totals.sales += total;
+  } else if (method === 'card') {
+    totals.card += total;
+    totals.sales += total;
+  } else if (method.startsWith('split')) {
+    const cash = Number(row.splitCash) || 0;
+    const card = Number(row.splitCard) || 0;
+    totals.cash += cash;
+    totals.card += card;
+    totals.sales += (cash + card);
+  } else if (method === 'credit') {
+    // Credit sale: no money enters drawer yet, so realized sales = 0
+  }
+}
+
+function addCustomerPayment(totals: KpiTotals, row: Record<string, unknown>): void {
+  const amount = Number(row.amountPaid) || 0;
+  const method = String(row.paymentMethod ?? '').toLowerCase();
+
+  totals.sales += amount; // Realized money in drawer/bank
+  if (method === 'card') {
+    totals.card += amount;
+  } else {
+    totals.cash += amount;
   }
 }
 
@@ -97,6 +117,11 @@ export function registerAnalyticsHandlers(): void {
        WHERE status != 'voided' AND (deletedAt IS NULL OR deletedAt = '') AND createdAt >= $since`,
       { $since: since }
     );
+    const custPayments = dbAll(
+      `SELECT amountPaid, paymentMethod, createdAt FROM customer_payments
+       WHERE (deletedAt IS NULL OR deletedAt = '') AND createdAt >= $since`,
+      { $since: since }
+    );
     // Expense dates are stored in more than one format, so they are filtered after parsing.
     const expenses = dbAll(`SELECT amount, category, date FROM expenses WHERE (deletedAt IS NULL OR deletedAt = '')`);
     const newCustomers = dbAll(
@@ -124,11 +149,26 @@ export function registerAnalyticsHandlers(): void {
     };
 
     for (const row of orders) place(new Date(String(row.createdAt)), (totals) => addSale(totals, row));
+    for (const row of custPayments) place(new Date(String(row.createdAt)), (totals) => addCustomerPayment(totals, row));
     for (const row of expenses) place(new Date(String(row.date)), (totals) => { totals.expenses += Number(row.amount) || 0; });
     for (const row of newCustomers) place(new Date(String(row.createdAt)), (totals) => { totals.newCustomers += 1; });
 
     // Detail behind this month's totals, for the dashboard's drill-down views.
-    const payments = { cashOrders: 0, cashOnly: 0, cardOrders: 0, cardOnly: 0, splitOrders: 0, splitCash: 0, splitCard: 0 };
+    const payments = {
+      cashOrders: 0,
+      cashOnly: 0,
+      cardOrders: 0,
+      cardOnly: 0,
+      splitOrders: 0,
+      splitCash: 0,
+      splitCard: 0,
+      creditOrders: 0,
+      creditOnly: 0,
+      duesOrders: 0,
+      duesCash: 0,
+      duesCard: 0,
+      duesTotal: 0,
+    };
     const products = new Map<string, { name: string; quantity: number; revenue: number }>();
     for (const row of orders) {
       if (new Date(String(row.createdAt)) < windows.currentFrom) continue;
@@ -145,6 +185,9 @@ export function registerAnalyticsHandlers(): void {
         payments.splitOrders += 1;
         payments.splitCash += Number(row.splitCash) || 0;
         payments.splitCard += Number(row.splitCard) || 0;
+      } else if (method === 'credit') {
+        payments.creditOrders += 1;
+        payments.creditOnly += total;
       }
 
       let items: Array<Record<string, unknown>> = [];
@@ -156,6 +199,19 @@ export function registerAnalyticsHandlers(): void {
         entry.quantity += Number(item.quantity) || 0;
         entry.revenue += Number(item.totalPrice) || 0;
         products.set(key, entry);
+      }
+    }
+
+    for (const row of custPayments) {
+      if (new Date(String(row.createdAt)) < windows.currentFrom) continue;
+      const amount = Number(row.amountPaid) || 0;
+      const method = String(row.paymentMethod ?? '').toLowerCase();
+      payments.duesOrders += 1;
+      payments.duesTotal += amount;
+      if (method === 'card') {
+        payments.duesCard += amount;
+      } else {
+        payments.duesCash += amount;
       }
     }
 

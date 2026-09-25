@@ -12,6 +12,7 @@ import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { currencySymbol, formatMoney } from '../../utils/money';
+import { CustomerProfile } from './CustomerProfile';
 
 interface Customer {
   _id?: string;
@@ -29,18 +30,24 @@ interface Customer {
   totalAmount: number;
   lastVisit: string;
   loyaltyPoints: number;
+  outstandingBalance?: number;
+  openingBalance?: number;
+  creditLimit?: number;
 }
 
 const emptyForm = () => ({
   name: '', contactNum1: '', contactNum2: '', email: '',
   address: '', eircode: '', qrCode: '', barcode: '',
   birthday: null as Date | null, anniversary: null as Date | null,
+  openingBalance: 0, creditLimit: 0,
 });
 
 const Customers = () => {
   const [customers, setCustomers]           = useState<Customer[]>([]);
   const [search, setSearch]                 = useState('');
   const [modalOpened, setModalOpened]       = useState(false);
+  const [profileOpened, setProfileOpened]   = useState(false);
+  const [profileCustomer, setProfileCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm]                     = useState(emptyForm());
   const [loading, setLoading]               = useState(false);
@@ -55,11 +62,13 @@ const Customers = () => {
     try {
       setLoading(true);
       const { data } = await api.get('/customers');
-      setCustomers((data.data || []).map((c: any) => ({
+      const mapped = (data.data || []).map((c: any) => ({
         ...c,
         birthday:    c.birthday    ? new Date(c.birthday)    : null,
         anniversary: c.anniversary ? new Date(c.anniversary) : null,
-      })));
+      }));
+      setCustomers(mapped);
+      setProfileCustomer(prev => (prev ? mapped.find((c: any) => c._id === prev._id) || prev : null));
     } catch (e: any) {
       notifications.show({ title: 'Error', message: e.message, color: 'red' });
     } finally { setLoading(false); }
@@ -107,8 +116,14 @@ const Customers = () => {
       email: c.email || '', address: c.address || '', eircode: c.eircode || '',
       qrCode: c.qrCode || '', barcode: c.barcode || '',
       birthday: c.birthday, anniversary: c.anniversary,
+      openingBalance: c.openingBalance || 0, creditLimit: c.creditLimit || 0,
     });
     setModalOpened(true);
+  };
+
+  const openProfile = (c: Customer) => {
+    setProfileCustomer(c);
+    setProfileOpened(true);
   };
 
   const handleSave = async () => {
@@ -222,7 +237,7 @@ const Customers = () => {
           <Table highlightOnHover verticalSpacing="sm" fz="sm">
             <Table.Thead>
               <Table.Tr>
-                {['Name', 'Phone', 'Email', 'Visits', 'Total Spent', 'Points', 'Last Visit', ''].map(h => (
+                {['Name', 'Phone', 'Email', 'Visits', 'Total Spent', 'Balance', 'Points', 'Last Visit', ''].map(h => (
                   <Table.Th key={h}>
                     <Text size="xs" fw={600} tt="uppercase" c="dimmed">{h}</Text>
                   </Table.Th>
@@ -252,6 +267,11 @@ const Customers = () => {
                   <Table.Td><Text fw={500}>{c.timesVisited}</Text></Table.Td>
                   <Table.Td><Text fw={500}>{formatMoney(c.totalAmount)}</Text></Table.Td>
                   <Table.Td>
+                    <Text fw={500} c={(c.outstandingBalance || 0) > 0 ? 'red' : 'green'}>
+                      {formatMoney(c.outstandingBalance || 0)}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
                     <Text fw={500} c={(c.loyaltyPoints || 0) > 0 ? '#111' : 'dimmed'}>
                       {c.loyaltyPoints || 0} pts
                     </Text>
@@ -259,6 +279,9 @@ const Customers = () => {
                   <Table.Td><Text c="dimmed">{c.lastVisit || '—'}</Text></Table.Td>
                   <Table.Td>
                     <Group gap={4} justify="flex-end">
+                      <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => openProfile(c)}>
+                        <IconUser size={14} />
+                      </ActionIcon>
                       <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => openEdit(c)}>
                         <IconEdit size={14} />
                       </ActionIcon>
@@ -358,6 +381,14 @@ const Customers = () => {
             <DateInput label="Anniversary" placeholder="DD/MM/YYYY" valueFormat="DD/MM/YYYY"
               value={form.anniversary} onChange={v => setField('anniversary', v)} />
           </Grid.Col>
+          <Grid.Col span={6}>
+            <NumberInput label="Opening Balance" description="Pre-existing debt (only set once)" min={0} disabled={!!editingCustomer}
+              value={form.openingBalance} onChange={v => setField('openingBalance', Number(v) || 0)} />
+          </Grid.Col>
+          <Grid.Col span={6}>
+            <NumberInput label="Credit Limit" description="Max allowed debt (0 = no limit)" min={0}
+              value={form.creditLimit} onChange={v => setField('creditLimit', Number(v) || 0)} />
+          </Grid.Col>
         </Grid>
 
         <Button mt="lg" color="dark" fullWidth size="md" loading={loading} onClick={handleSave}>
@@ -414,6 +445,13 @@ const Customers = () => {
           </Group>
         </Stack>
       </Modal>
+
+      <CustomerProfile 
+        customer={profileCustomer} 
+        opened={profileOpened} 
+        onClose={() => setProfileOpened(false)} 
+        onUpdate={fetchCustomers} 
+      />
     </Box>
   );
 };

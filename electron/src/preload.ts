@@ -60,6 +60,8 @@ const api = {
     delete:       (_id: string)                               => ipcRenderer.invoke('customers:delete', _id),
     updateStats:  (_id: string, amount: number)               => ipcRenderer.invoke('customers:updateStats', _id, amount),
     resetPoints:  (_id: string)                               => ipcRenderer.invoke('customers:resetPoints', _id),
+    getLedger:    (_id: string)                               => ipcRenderer.invoke('customers:getLedger', _id),
+    addPayment:   (data: Record<string, unknown>)             => ipcRenderer.invoke('customers:addPayment', data),
   },
 
   // ── EMPLOYEES ─────────────────────────────────────────────────────────────

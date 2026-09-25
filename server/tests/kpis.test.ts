@@ -1,6 +1,10 @@
 /**
  * Dashboard KPIs: month to date against the same days of last month, cash and
  * card split correctly, voided sales and other companies left out.
+ *
+ * Realized revenue & drawer reconciliation:
+ * - Credit sales (uncollected) do NOT increase revenue.
+ * - Customer debt repayments (CustomerPayment) DO increase drawer cash & revenue.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
@@ -94,12 +98,71 @@ describe('dashboard KPIs', () => {
       splitOrders: 1,
       splitCash: 20,
       splitCard: 30,
+      creditOrders: 0,
+      creditOnly: 0,
+      duesOrders: 0,
+      duesCash: 0,
+      duesCard: 0,
+      duesTotal: 0,
     });
     expect(breakdown.expenseCategories).toEqual([{ category: 'Rent', total: 20, count: 1 }]);
     expect(breakdown.expenseCount).toBe(1);
     // Voided and last month's sales are left out.
     expect(breakdown.topProducts).toEqual([{ name: 'Item', quantity: 3, revenue: 120 }]);
     expect(breakdown.lowStockItems).toEqual([]);
+  });
+
+  it('does not increase revenue for credit sales, but increases revenue when customer pays debt', async () => {
+    // Initial state before credit sale
+    const resBefore = await request(app).get('/api/analytics/kpis').set('Authorization', `Bearer ${token}`);
+    const salesBefore = resBefore.body.data.current.sales;
+    const cashBefore = resBefore.body.data.current.cash;
+
+    // Create a customer
+    const custRes = await request(app)
+      .post('/api/customers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Credit Customer', contactNum1: '123456789' });
+    const customerId = custRes.body.data._id;
+
+    // 1. Customer buys 1500 on credit
+    await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        items: [{ name: 'Credit Item', quantity: 1, price: 1500, vatRate: 0, vatAmount: 0, totalPrice: 1500 }],
+        subtotal: 1500,
+        totalVAT: 0,
+        discount: 0,
+        total: 1500,
+        paymentMethod: 'credit',
+        customerId,
+      });
+
+    // Verify revenue did NOT increase (no money entered the drawer!)
+    const resAfterCredit = await request(app).get('/api/analytics/kpis').set('Authorization', `Bearer ${token}`);
+    expect(resAfterCredit.body.data.current.sales).toBe(salesBefore); // Unchanged!
+    expect(resAfterCredit.body.data.current.cash).toBe(cashBefore);   // Unchanged!
+    expect(resAfterCredit.body.data.breakdown.payments.creditOrders).toBe(1);
+    expect(resAfterCredit.body.data.breakdown.payments.creditOnly).toBe(1500);
+
+    // 2. Customer pays 400 cash towards their debt
+    await request(app)
+      .post(`/api/customers/${customerId}/payments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ amountPaid: 400, paymentMethod: 'cash' });
+
+    // Verify money in drawer and revenue increased by exactly 400!
+    const resAfterPayment = await request(app).get('/api/analytics/kpis').set('Authorization', `Bearer ${token}`);
+    expect(resAfterPayment.body.data.current.cash).toBe(cashBefore + 400);
+    expect(resAfterPayment.body.data.current.sales).toBe(salesBefore + 400);
+    expect(resAfterPayment.body.data.breakdown.payments.duesCash).toBe(400);
+    expect(resAfterPayment.body.data.breakdown.payments.duesOrders).toBe(1);
+
+    // Invariant: Revenue strictly equals Cash + Card in drawer & bank!
+    expect(resAfterPayment.body.data.current.sales).toBe(
+      resAfterPayment.body.data.current.cash + resAfterPayment.body.data.current.card
+    );
   });
 
   it('is limited to admins and managers', async () => {

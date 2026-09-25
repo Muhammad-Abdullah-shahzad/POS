@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS orders (
   localId              INTEGER PRIMARY KEY AUTOINCREMENT,
   _id                  TEXT    UNIQUE,
   invoiceId            TEXT    NOT NULL UNIQUE,
+  customerId           TEXT,
+  customerName         TEXT,
   items                TEXT    NOT NULL DEFAULT '[]',  -- JSON array
   subtotal             REAL    NOT NULL DEFAULT 0,
   totalVAT             REAL    NOT NULL DEFAULT 0,
@@ -94,8 +96,28 @@ CREATE TABLE IF NOT EXISTS customers (
   anniversary   TEXT,
   timesVisited  INTEGER          DEFAULT 0,
   totalAmount   REAL             DEFAULT 0,
+  outstandingBalance REAL        DEFAULT 0,
+  openingBalance     REAL        DEFAULT 0,
+  creditLimit        REAL        DEFAULT 0,
   lastVisit     TEXT             DEFAULT '',
   loyaltyPoints INTEGER          DEFAULT 0,
+  createdAt     TEXT,
+  updatedAt     TEXT,
+  isSync        INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
+-- CUSTOMER PAYMENTS (Ledger for paying off credit)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS customer_payments (
+  localId       INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id           TEXT    UNIQUE,
+  customerId    TEXT    NOT NULL,
+  customerName  TEXT    NOT NULL,
+  amountPaid    REAL    NOT NULL,
+  paymentMethod TEXT    NOT NULL,
+  date          TEXT    NOT NULL,
+  notes         TEXT,
   createdAt     TEXT,
   updatedAt     TEXT,
   isSync        INTEGER NOT NULL DEFAULT 0
@@ -248,6 +270,43 @@ CREATE TABLE IF NOT EXISTS settings (
   createdAt              TEXT,
   updatedAt              TEXT,
   isSync                 INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
+-- WASTAGE
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wastage (
+  localId     INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id         TEXT    UNIQUE,
+  productId   TEXT    NOT NULL,
+  productName TEXT    NOT NULL,
+  sku         TEXT,
+  quantity    REAL    NOT NULL,
+  unitCost    REAL    NOT NULL DEFAULT 0,
+  reason      TEXT    NOT NULL,
+  date        TEXT    NOT NULL,
+  recordedBy  TEXT,
+  createdAt   TEXT,
+  updatedAt   TEXT,
+  isSync      INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
+-- SUPPLIER INVOICES
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS supplier_invoices (
+  localId       INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id           TEXT    UNIQUE,
+  supplierId    TEXT,
+  supplierName  TEXT    NOT NULL,
+  invoiceNo     TEXT    NOT NULL,
+  amount        REAL    NOT NULL DEFAULT 0,
+  paid          REAL    NOT NULL DEFAULT 0,
+  date          TEXT    NOT NULL,
+  lastPaymentAt TEXT,
+  createdAt     TEXT,
+  updatedAt     TEXT,
+  isSync        INTEGER NOT NULL DEFAULT 0
 );
 
 -- ─────────────────────────────────────────────

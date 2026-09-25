@@ -14,10 +14,12 @@ export function registerCustomerHandlers(): void {
       `INSERT INTO customers
          (_id, name, contactNum1, contactNum2, email, address, eircode,
           qrCode, barcode, birthday, anniversary, timesVisited, totalAmount,
+          outstandingBalance, openingBalance, creditLimit,
           lastVisit, loyaltyPoints, createdAt, updatedAt, isSync)
        VALUES
          ($id, $name, $c1, $c2, $email, $address, $eircode,
           $qrCode, $barcode, $birthday, $anniversary, $timesVisited, $totalAmount,
+          $outstandingBalance, $openingBalance, $creditLimit,
           $lastVisit, $loyaltyPoints, $createdAt, $updatedAt, 0)`,
       {
         $id: _id, $name: v(data.name), $c1: v(data.contactNum1),
@@ -26,6 +28,9 @@ export function registerCustomerHandlers(): void {
         $qrCode: v(data.qrCode, ''), $barcode: v(data.barcode, ''),
         $birthday: v(data.birthday), $anniversary: v(data.anniversary),
         $timesVisited: v(data.timesVisited, 0), $totalAmount: v(data.totalAmount, 0),
+        $outstandingBalance: v(data.openingBalance, 0), // Init outstanding with opening
+        $openingBalance: v(data.openingBalance, 0),
+        $creditLimit: v(data.creditLimit, 0),
         $lastVisit: v(data.lastVisit, ''), $loyaltyPoints: v(data.loyaltyPoints, 0),
         $createdAt: ts, $updatedAt: ts,
       }
@@ -39,7 +44,8 @@ export function registerCustomerHandlers(): void {
          name=$name, contactNum1=$c1, contactNum2=$c2, email=$email,
          address=$address, eircode=$eircode, qrCode=$qrCode, barcode=$barcode,
          birthday=$birthday, anniversary=$anniversary, timesVisited=$timesVisited,
-         totalAmount=$totalAmount, lastVisit=$lastVisit, loyaltyPoints=$loyaltyPoints,
+         totalAmount=$totalAmount, creditLimit=$creditLimit,
+         lastVisit=$lastVisit, loyaltyPoints=$loyaltyPoints,
          updatedAt=$ts, isSync=0
        WHERE _id=$id AND deletedAt IS NULL`,
       {
@@ -49,6 +55,7 @@ export function registerCustomerHandlers(): void {
         $qrCode: v(data.qrCode, ''), $barcode: v(data.barcode, ''),
         $birthday: v(data.birthday), $anniversary: v(data.anniversary),
         $timesVisited: v(data.timesVisited, 0), $totalAmount: v(data.totalAmount, 0),
+        $creditLimit: v(data.creditLimit, 0),
         $lastVisit: v(data.lastVisit, ''), $loyaltyPoints: v(data.loyaltyPoints, 0),
         $ts: now(),
       }
@@ -77,5 +84,48 @@ export function registerCustomerHandlers(): void {
       { $id: _id, $ts: now() }
     );
     return dbGet('SELECT * FROM customers WHERE _id = $id', { $id: _id });
+  });
+
+  handleLicensed('customers:getLedger', (_e, _id: string) => {
+    const orders = dbAll(`SELECT * FROM orders WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+    const payments = dbAll(`SELECT * FROM customer_payments WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+    const customer = dbGet(`SELECT * FROM customers WHERE _id = $id`, { $id: _id });
+    return {
+      orders: orders.map((r: any) => ({ ...r, items: JSON.parse((r.items as string) || '[]') })),
+      payments,
+      customer
+    };
+  });
+
+  handleLicensed('customers:addPayment', (_e, data: Record<string, unknown>) => {
+    const _id = generateLocalId();
+    const ts = now();
+    
+    // Add payment
+    dbRun(
+      `INSERT INTO customer_payments (_id, customerId, customerName, amountPaid, paymentMethod, date, notes, createdAt, updatedAt, isSync)
+       VALUES ($id, $cid, $cname, $amount, $method, $date, $notes, $ts, $ts, 0)`,
+      {
+        $id: _id,
+        $cid: v(data.customerId),
+        $cname: v(data.customerName),
+        $amount: Number(data.amountPaid ?? 0),
+        $method: v(data.paymentMethod),
+        $date: v(data.date, new Date().toISOString().split('T')[0]),
+        $notes: v(data.notes, ''),
+        $ts: ts
+      }
+    );
+
+    // Deduct from outstanding balance
+    dbRun(
+      `UPDATE customers SET outstandingBalance = outstandingBalance - $amount, updatedAt=$ts, isSync=0 WHERE _id=$cid`,
+      { $amount: Number(data.amountPaid ?? 0), $ts: ts, $cid: v(data.customerId) }
+    );
+
+    const payment = dbGet('SELECT * FROM customer_payments WHERE _id = $id', { $id: _id });
+    const customer = dbGet('SELECT * FROM customers WHERE _id = $id', { $id: v(data.customerId) });
+
+    return { payment, customer };
   });
 }

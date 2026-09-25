@@ -17,6 +17,9 @@ export interface ICustomer extends Document<Types.ObjectId> {
   totalAmount: number;
   lastVisit?: string;
   loyaltyPoints: number;
+  outstandingBalance: number;
+  openingBalance: number;
+  creditLimit: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +40,9 @@ const CustomerSchema = new Schema<ICustomer>(
     totalAmount: { type: Number, default: 0 },
     lastVisit: { type: String, default: '' },
     loyaltyPoints: { type: Number, default: 0, min: 0 },
+    outstandingBalance: { type: Number, default: 0 },
+    openingBalance: { type: Number, default: 0 },
+    creditLimit: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

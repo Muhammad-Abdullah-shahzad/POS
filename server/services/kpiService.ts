@@ -6,27 +6,38 @@
  * this month with the whole of last month would show a fall every month, so
  * the comparison is like for like. A 30 day daily series feeds the sparklines.
  *
+ * Realized Revenue & Cash Drawer Reconciliation:
+ * - Realized revenue equals physical money received into the business (Cash + Card).
+ * - Credit sales (uncollected debt) do NOT increase revenue until paid.
+ * - Customer debt repayments (CustomerPayment) DO increase cash/card and revenue
+ *   when received, matching real money in the till/bank.
+ *
  * Every pipeline runs through the tenant plugin, so all figures belong to the
  * caller's company only.
  */
 import type { PipelineStage } from 'mongoose';
 import Customer from '../models/Customer';
+import CustomerPayment from '../models/CustomerPayment';
 import Expense from '../models/Expense';
 import Order from '../models/Order';
 import Product from '../models/Product';
 
 export interface KpiTotals {
-  /** Sales including VAT. */
+  /** Realized sales/revenue (money received in drawer & bank). */
   sales: number;
   orders: number;
-  /** Cash taken, including the cash part of split payments. */
+  /** Cash taken, including cash orders, cash part of split, and cash customer dues payments. */
   cash: number;
-  /** Card taken, including the card part of split payments. */
+  /** Card taken, including card orders, card part of split, and card customer dues payments. */
   card: number;
   expenses: number;
-  /** Sales minus expenses. */
+  /** Realized sales minus expenses. */
   profit: number;
   newCustomers: number;
+  /** Dues collected from customers this period. */
+  duesCollected?: number;
+  /** Credit sales issued (uncollected). */
+  creditSales?: number;
 }
 
 export interface KpiDay extends KpiTotals {
@@ -46,6 +57,12 @@ export interface KpiBreakdown {
     splitOrders: number;
     splitCash: number;
     splitCard: number;
+    creditOrders: number;
+    creditOnly: number;
+    duesOrders: number;
+    duesCash: number;
+    duesCard: number;
+    duesTotal: number;
   };
   expenseCategories: { category: string; total: number; count: number }[];
   expenseCount: number;
@@ -114,10 +131,41 @@ const withPaymentMethod: PipelineStage = {
 };
 
 const isSplit = { $regexMatch: { input: '$method', regex: '^split' } };
+const isCredit = { $eq: ['$method', 'credit'] };
 
-/** Sums shared by the period totals and the daily series. */
+/**
+ * Realized sales from orders:
+ * Cash, Card, and Split add to sales & cash/card drawers.
+ * Credit sales add 0 to realized sales (money has not entered drawer yet).
+ */
 const salesAccumulators = {
-  sales: { $sum: '$total' },
+  sales: {
+    $sum: {
+      $cond: [
+        isCredit,
+        0,
+        {
+          $cond: [
+            { $eq: ['$method', 'cash'] },
+            '$total',
+            {
+              $cond: [
+                { $eq: ['$method', 'card'] },
+                '$total',
+                {
+                  $cond: [
+                    isSplit,
+                    { $add: [{ $ifNull: ['$splitCash', 0] }, { $ifNull: ['$splitCard', 0] }] },
+                    '$total',
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
   orders: { $sum: 1 },
   cash: {
     $sum: {
@@ -129,6 +177,11 @@ const salesAccumulators = {
       $cond: [{ $eq: ['$method', 'card'] }, '$total', { $cond: [isSplit, { $ifNull: ['$splitCard', 0] }, 0] }],
     },
   },
+  creditSales: {
+    $sum: {
+      $cond: [isCredit, '$total', 0],
+    },
+  },
 };
 
 interface SalesRow {
@@ -137,6 +190,7 @@ interface SalesRow {
   orders: number;
   cash: number;
   card: number;
+  creditSales: number;
 }
 
 function salesPipeline(range: Range, byDay: boolean): PipelineStage[] {
@@ -152,8 +206,41 @@ function salesPipeline(range: Range, byDay: boolean): PipelineStage[] {
   ];
 }
 
+// ── Customer Payments (Debt Repayments) ──────────────────────────────────────
+
+interface CustomerPaymentRow {
+  _id: string | null;
+  sales: number;
+  cash: number;
+  card: number;
+  count: number;
+}
+
+function customerPaymentPipeline(range: Range, byDay: boolean): PipelineStage[] {
+  return [
+    { $match: { createdAt: range } },
+    {
+      $group: {
+        _id: byDay ? { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TIME_ZONE } } : null,
+        sales: { $sum: '$amountPaid' },
+        cash: {
+          $sum: {
+            $cond: [{ $eq: [{ $toLower: '$paymentMethod' }, 'card'] }, 0, '$amountPaid'],
+          },
+        },
+        card: {
+          $sum: {
+            $cond: [{ $eq: [{ $toLower: '$paymentMethod' }, 'card'] }, '$amountPaid', 0],
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+  ];
+}
+
 interface PaymentRow {
-  _id: 'cash' | 'card' | 'split' | 'other';
+  _id: 'cash' | 'card' | 'split' | 'credit' | 'other';
   orders: number;
   total: number;
   splitCash: number;
@@ -171,6 +258,7 @@ function paymentPipeline(range: Range): PipelineStage[] {
             branches: [
               { case: { $eq: ['$method', 'cash'] }, then: 'cash' },
               { case: { $eq: ['$method', 'card'] }, then: 'card' },
+              { case: { $eq: ['$method', 'credit'] }, then: 'credit' },
               { case: isSplit, then: 'split' },
             ],
             default: 'other',
@@ -236,16 +324,26 @@ function customerPipeline(range: Range): PipelineStage[] {
   ];
 }
 
-function toTotals(sales: Partial<SalesRow> | undefined, expenses: number, newCustomers: number): KpiTotals {
-  const salesTotal = sales?.sales ?? 0;
+function toTotals(
+  sales: Partial<SalesRow> | undefined,
+  custPayments: Partial<CustomerPaymentRow> | undefined,
+  expenses: number,
+  newCustomers: number
+): KpiTotals {
+  const realizedSales = (sales?.sales ?? 0) + (custPayments?.sales ?? 0);
+  const realizedCash = (sales?.cash ?? 0) + (custPayments?.cash ?? 0);
+  const realizedCard = (sales?.card ?? 0) + (custPayments?.card ?? 0);
+
   return {
-    sales: round2(salesTotal),
+    sales: round2(realizedSales),
     orders: sales?.orders ?? 0,
-    cash: round2(sales?.cash ?? 0),
-    card: round2(sales?.card ?? 0),
+    cash: round2(realizedCash),
+    card: round2(realizedCard),
     expenses: round2(expenses),
-    profit: round2(salesTotal - expenses),
+    profit: round2(realizedSales - expenses),
     newCustomers,
+    duesCollected: round2(custPayments?.sales ?? 0),
+    creditSales: round2(sales?.creditSales ?? 0),
   };
 }
 
@@ -258,11 +356,14 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
   const [
     [currentSales],
     [previousSales],
+    [currentCustPayments],
+    [previousCustPayments],
     [currentExpenses],
     [previousExpenses],
     currentCustomers,
     previousCustomers,
     dailySales,
+    dailyCustPayments,
     dailyExpenses,
     dailyCustomers,
     products,
@@ -277,11 +378,14 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
   ] = await Promise.all([
     Order.aggregate<SalesRow>(salesPipeline(current, false)),
     Order.aggregate<SalesRow>(salesPipeline(previous, false)),
+    CustomerPayment.aggregate<CustomerPaymentRow>(customerPaymentPipeline(current, false)),
+    CustomerPayment.aggregate<CustomerPaymentRow>(customerPaymentPipeline(previous, false)),
     Expense.aggregate<{ total: number }>(expensePipeline(current, false)),
     Expense.aggregate<{ total: number }>(expensePipeline(previous, false)),
     Customer.countDocuments({ createdAt: current }),
     Customer.countDocuments({ createdAt: previous }),
     Order.aggregate<SalesRow>(salesPipeline(series, true)),
+    CustomerPayment.aggregate<CustomerPaymentRow>(customerPaymentPipeline(series, true)),
     Expense.aggregate<{ _id: string; total: number }>(expensePipeline(series, true)),
     Customer.aggregate<{ _id: string; count: number }>(customerPipeline(series)),
     Product.countDocuments(),
@@ -302,6 +406,7 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
   const byKind = new Map(payments.map((row) => [row._id, row]));
 
   const salesByDay = new Map(dailySales.map((row) => [row._id as string, row]));
+  const custPaymentsByDay = new Map(dailyCustPayments.map((row) => [row._id as string, row]));
   const expensesByDay = new Map(dailyExpenses.map((row) => [row._id, row.total]));
   const customersByDay = new Map(dailyCustomers.map((row) => [row._id, row.count]));
 
@@ -311,13 +416,13 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
     const key = localDayKey(day);
     return {
       date: key,
-      ...toTotals(salesByDay.get(key), expensesByDay.get(key) ?? 0, customersByDay.get(key) ?? 0),
+      ...toTotals(salesByDay.get(key), custPaymentsByDay.get(key), expensesByDay.get(key) ?? 0, customersByDay.get(key) ?? 0),
     };
   });
 
   return {
-    current: toTotals(currentSales, currentExpenses?.total ?? 0, currentCustomers),
-    previous: toTotals(previousSales, previousExpenses?.total ?? 0, previousCustomers),
+    current: toTotals(currentSales, currentCustPayments, currentExpenses?.total ?? 0, currentCustomers),
+    previous: toTotals(previousSales, previousCustPayments, previousExpenses?.total ?? 0, previousCustomers),
     daily,
     breakdown: {
       payments: {
@@ -328,6 +433,12 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
         splitOrders: byKind.get('split')?.orders ?? 0,
         splitCash: round2(byKind.get('split')?.splitCash ?? 0),
         splitCard: round2(byKind.get('split')?.splitCard ?? 0),
+        creditOrders: byKind.get('credit')?.orders ?? 0,
+        creditOnly: round2(byKind.get('credit')?.total ?? 0),
+        duesOrders: currentCustPayments?.count ?? 0,
+        duesCash: round2(currentCustPayments?.cash ?? 0),
+        duesCard: round2(currentCustPayments?.card ?? 0),
+        duesTotal: round2(currentCustPayments?.sales ?? 0),
       },
       expenseCategories: expenseCategories.map((row) => ({ category: row._id, total: round2(row.total), count: row.count })),
       expenseCount: expenseCategories.reduce((sum, row) => sum + row.count, 0),

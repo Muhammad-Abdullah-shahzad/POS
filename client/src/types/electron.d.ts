@@ -99,6 +99,8 @@ interface ElectronAPI {
     delete: (_id: string) => Promise<{ success: boolean }>;
     updateStats: (_id: string, amount: number) => Promise<any>;
     resetPoints: (_id: string) => Promise<any>;
+    getLedger: (_id: string) => Promise<{ orders: any[], payments: any[] }>;
+    addPayment: (data: Record<string, unknown>) => Promise<any>;
   };
   employees: {
     getAll: () => Promise<any[]>;

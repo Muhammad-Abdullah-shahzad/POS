@@ -203,6 +203,11 @@ const Dashboard = () => {
   const [quickProductLoading, setQuickProductLoading] = useState(false);
 
   const [payDuesModalOpened, setPayDuesModalOpened] = useState(false);
+  const [payDuesCustomerId, setPayDuesCustomerId] = useState<string | null>(null);
+  const [payDuesAmount, setPayDuesAmount] = useState<number | string>('');
+  const [payDuesMethod, setPayDuesMethod] = useState<string>('cash');
+  const [payDuesNotes, setPayDuesNotes] = useState<string>('');
+  const [payDuesLoading, setPayDuesLoading] = useState(false);
   const [showOffersModalOpened, setShowOffersModalOpened] = useState(false);
   const [openTillModalOpened, setOpenTillModalOpened] = useState(false);
   const [payBillModalOpened, setPayBillModalOpened] = useState(false);
@@ -818,6 +823,19 @@ const Dashboard = () => {
   const handleCheckout = async (method: string = 'MIXED') => {
     if (cartItems.length === 0) return;
 
+    if (method === 'CREDIT') {
+      if (!activeCart.customerId) {
+        notifications.show({ title: 'Customer Required', message: 'You must select a customer for credit sales', color: 'red' });
+        return;
+      }
+      
+      const c = dbCustomers.find(c => c._id === activeCart.customerId);
+      if (c && c.creditLimit > 0 && ((c.outstandingBalance || 0) + total) > c.creditLimit) {
+        notifications.show({ title: 'Credit Limit Exceeded', message: `Customer credit limit is ${formatMoney(c.creditLimit)}`, color: 'red' });
+        return;
+      }
+    }
+
     if (method === 'CASH') {
       const retAmt = depositVal - total;
       setReturnAmount(retAmt);
@@ -1071,6 +1089,50 @@ const Dashboard = () => {
     setSplitCashAmount('');
     setSplitCardAmount('');
     setFlatDiscount('');
+  };
+
+  const handleConfirmPayDues = async () => {
+    if (!payDuesCustomerId) {
+      notifications.show({ title: 'Select Customer', message: 'Please select a customer first.', color: 'red' });
+      return;
+    }
+    const amt = Number(payDuesAmount) || 0;
+    if (amt <= 0) {
+      notifications.show({ title: 'Invalid Amount', message: 'Please enter a valid amount to pay.', color: 'red' });
+      return;
+    }
+    const targetCust = dbCustomers.find(c => c._id === payDuesCustomerId);
+    if (!targetCust) return;
+
+    try {
+      setPayDuesLoading(true);
+      await api.post(`/customers/${payDuesCustomerId}/payments`, {
+        amountPaid: amt,
+        paymentMethod: payDuesMethod,
+        customerName: targetCust.name,
+        notes: payDuesNotes,
+      });
+
+      // Update customer balance locally in dbCustomers
+      setDbCustomers(prev => prev.map(c => 
+        c._id === payDuesCustomerId 
+          ? { ...c, outstandingBalance: Math.max(0, (c.outstandingBalance || 0) - amt) }
+          : c
+      ));
+
+      const remaining = Math.max(0, (targetCust.outstandingBalance || 0) - amt);
+      notifications.show({
+        title: 'Payment Received',
+        message: `Successfully received ${formatMoney(amt)} from ${targetCust.name}. Remaining dues: ${formatMoney(remaining)}.`,
+        color: 'green',
+        icon: <IconCheck size={16} />
+      });
+      setPayDuesModalOpened(false);
+    } catch (e: any) {
+      notifications.show({ title: 'Payment Failed', message: e.message || 'Failed to record payment', color: 'red' });
+    } finally {
+      setPayDuesLoading(false);
+    }
   };
 
   const handleRePrint = () => {    if (lastTransaction) {
@@ -1764,14 +1826,14 @@ const Dashboard = () => {
                   <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
                     <Flex h={totalDRS > 0 ? 105 : 85}>
                       {/* CASH PAY BUTTON */}
-                      <Box w="16%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
+                      <Box w="14%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
                         <Flex align="center" justify="center" h="100%">
-                          <Text fw="bold" size="16px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br />PAY</Text>
+                          <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br />PAY</Text>
                         </Flex>
                       </Box>
 
                       {/* TOTALS GRID */}
-                      <Box w="46%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
+                      <Box w="44%" style={{ borderRight: `1px solid ${customColors.border}`, display: 'flex', flexDirection: 'column' }}>
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
                             <Text size="13px" c="black">Sub Total</Text>
@@ -1833,7 +1895,7 @@ const Dashboard = () => {
 
                       {/* SPLIT PAY BUTTON */}
                       <Box
-                        w="20%"
+                        w="14%"
                         style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px', background: 'linear-gradient(135deg, #2e7d32 0%, #43a047 100%)' }}
                         onClick={() => {
                           if (cartItems.length === 0) {
@@ -1852,10 +1914,17 @@ const Dashboard = () => {
                       </Box>
 
                       {/* CARD PAY BUTTON */}
-                      <Box w="18%" style={{ position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
+                      <Box w="14%" style={{ borderRight: `1px solid ${customColors.border}`, position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
                         <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
                         <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
                           <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br />PAY</Text>
+                        </Flex>
+                      </Box>
+                      
+                      {/* CREDIT PAY BUTTON */}
+                      <Box w="14%" style={{ position: 'relative', cursor: 'pointer', padding: '2px', background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)' }} onClick={() => handleCheckout('CREDIT')}>
+                        <Flex align="center" justify="center" h="100%" direction="column" gap={2}>
+                          <Text fw="bold" size="14px" ta="center" style={{ lineHeight: 1.2, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>CREDIT<br />PAY</Text>
                         </Flex>
                       </Box>
                     </Flex>
@@ -1898,7 +1967,13 @@ const Dashboard = () => {
                             : opt === 'OPTIONS'
                               ? () => setOptionsModalOpened(true)
                               : opt === 'PAY DUES'
-                                ? () => setPayDuesModalOpened(true)
+                                ? () => {
+                                    setPayDuesCustomerId(activeCart.customerId || null);
+                                    setPayDuesAmount('');
+                                    setPayDuesNotes('');
+                                    setPayDuesMethod('cash');
+                                    setPayDuesModalOpened(true);
+                                  }
                                 : opt === 'SHOW ALL OFFERS'
                                   ? () => setShowOffersModalOpened(true)
                                   : opt === 'OPEN TILL'
@@ -2880,30 +2955,124 @@ const Dashboard = () => {
         centered
         size="md"
       >
-        <Flex direction="column" gap="md" p="sm">
-          <Text size="sm" c="dimmed">
-            Use this to accept payment for a customer's outstanding credit balance or dues.
+        <Flex direction="column" gap="sm">
+          <Text size="xs" c="dimmed">
+            Accept partial or full payments towards a customer's outstanding balance. Each payment reduces their total debt and is logged in the customer ledger.
           </Text>
-          <Autocomplete
+
+          <Select
             label="Select Customer"
-            placeholder="Search by name or phone..."
-            data={dbCustomers.map(c => `${c.name} (${c.contactNum1})`)}
-            size="sm"
+            placeholder="Search customer by name..."
+            searchable
+            clearable
+            value={payDuesCustomerId}
+            onChange={(val) => {
+              setPayDuesCustomerId(val);
+              setPayDuesAmount('');
+            }}
+            data={dbCustomers.map(c => ({
+              value: c._id,
+              label: `${c.name} (${c.contactNum1 || 'No Phone'}) — Due: ${formatMoney(c.outstandingBalance || 0)}`
+            }))}
           />
-          <NumberInput
-            label={`Amount to Pay (${currencySymbol()})`}
-            placeholder="0.00"
-            min={0}
-            size="sm"
-          />
+
+          {(() => {
+            const selCust = dbCustomers.find(c => c._id === payDuesCustomerId);
+            const balance = selCust ? (selCust.outstandingBalance || 0) : 0;
+            const amt = Number(payDuesAmount) || 0;
+            const remaining = Math.max(0, balance - amt);
+
+            if (!selCust) return null;
+
+            return (
+              <Flex direction="column" gap="xs">
+                <Paper withBorder p="xs" radius="sm" bg={balance > 0 ? 'red.0' : 'green.0'}>
+                  <Flex justify="space-between" align="center">
+                    <Text size="sm" c="dimmed">Current Outstanding Balance:</Text>
+                    <Text size="md" fw={700} c={balance > 0 ? 'red' : 'green'}>{formatMoney(balance)}</Text>
+                  </Flex>
+                </Paper>
+
+                <NumberInput
+                  label={`Amount to Pay (${currencySymbol()})`}
+                  placeholder="e.g. 400"
+                  min={0}
+                  max={balance}
+                  decimalScale={2}
+                  value={payDuesAmount}
+                  onChange={(val) => setPayDuesAmount(val ?? '')}
+                  size="md"
+                  leftSection={<Text size="sm" fw={700}>{currencySymbol()}</Text>}
+                />
+
+                <Flex gap="xs">
+                  <Button 
+                    size="xs" 
+                    variant="outline" 
+                    color="dark" 
+                    onClick={() => setPayDuesAmount(balance)}
+                    disabled={balance <= 0}
+                  >
+                    Pay Full ({formatMoney(balance)})
+                  </Button>
+                  {balance > 500 && (
+                    <>
+                      <Button size="xs" variant="subtle" color="gray" onClick={() => setPayDuesAmount(100)}>+100</Button>
+                      <Button size="xs" variant="subtle" color="gray" onClick={() => setPayDuesAmount(200)}>+200</Button>
+                      <Button size="xs" variant="subtle" color="gray" onClick={() => setPayDuesAmount(500)}>+500</Button>
+                    </>
+                  )}
+                </Flex>
+
+                {amt > 0 && (
+                  <Paper withBorder p="xs" radius="sm" bg={remaining === 0 ? 'green.0' : 'blue.0'}>
+                    <Flex justify="space-between" align="center">
+                      <Text size="xs" c="dimmed">Remaining Balance After Payment:</Text>
+                      <Text size="sm" fw={700} c={remaining === 0 ? 'green' : 'blue'}>
+                        {formatMoney(remaining)} {remaining === 0 ? '(Fully Cleared!)' : ''}
+                      </Text>
+                    </Flex>
+                  </Paper>
+                )}
+
+                <Text size="xs" fw={600} c="dimmed" mt={4}>PAYMENT METHOD</Text>
+                <Flex gap="xs">
+                  <Button 
+                    flex={1} 
+                    variant={payDuesMethod === 'cash' ? 'filled' : 'outline'} 
+                    color="dark" 
+                    onClick={() => setPayDuesMethod('cash')}
+                  >
+                    Cash
+                  </Button>
+                  <Button 
+                    flex={1} 
+                    variant={payDuesMethod === 'card' ? 'filled' : 'outline'} 
+                    color="dark" 
+                    onClick={() => setPayDuesMethod('card')}
+                  >
+                    Card
+                  </Button>
+                </Flex>
+
+                <TextInput
+                  label="Notes / Reference (Optional)"
+                  placeholder="e.g. Installment 1, partial payment, etc."
+                  value={payDuesNotes}
+                  onChange={(e) => setPayDuesNotes(e.currentTarget.value)}
+                  size="sm"
+                />
+              </Flex>
+            );
+          })()}
+
           <Flex gap="sm" justify="flex-end" mt="xs">
             <Button variant="subtle" color="gray" onClick={() => setPayDuesModalOpened(false)}>Cancel</Button>
             <Button
               style={{ backgroundColor: customColors.orangeBtn, color: '#fff' }}
-              onClick={() => {
-                setPayDuesModalOpened(false);
-                notifications.show({ title: 'Dues Recorded', message: 'Customer dues payment recorded successfully.', color: 'green', icon: <IconCheck size={16} /> });
-              }}
+              onClick={handleConfirmPayDues}
+              loading={payDuesLoading}
+              disabled={!payDuesCustomerId || (Number(payDuesAmount) || 0) <= 0}
             >
               Confirm Payment
             </Button>

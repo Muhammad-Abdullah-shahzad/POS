@@ -29,6 +29,9 @@ export const createCustomerSchema = z.object({
   barcode: optionalString(80),
   birthday: z.coerce.date().nullish(),
   anniversary: z.coerce.date().nullish(),
+  outstandingBalance: z.coerce.number().min(0).default(0),
+  openingBalance: z.coerce.number().min(0).default(0),
+  creditLimit: z.coerce.number().min(0).default(0),
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial().extend({

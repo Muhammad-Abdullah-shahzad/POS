@@ -236,7 +236,10 @@ export function CashView({ kpis }: DetailContext) {
       <StatGrid>
         <StatTile label="Cash sales" value={formatMoney(payments.cashOnly)} hint={plural(payments.cashOrders, 'sale', 'sales')} />
         <StatTile label="Cash part of split" value={formatMoney(payments.splitCash)} hint={plural(payments.splitOrders, 'split sale', 'split sales')} />
-        <StatTile label="Total cash taken" value={formatMoney(current.cash)} trend={{ percent: change('cash', kpis) }} />
+        {payments.duesCash !== undefined && payments.duesCash > 0 && (
+          <StatTile label="Customer dues (cash)" value={formatMoney(payments.duesCash)} hint="Debt repayments" />
+        )}
+        <StatTile label="Total cash in drawer" value={formatMoney(current.cash)} trend={{ percent: change('cash', kpis) }} />
       </StatGrid>
       <Section title="Cash and card" aside="Share of this month's takings">
         <PaymentMix current={current} />
@@ -257,6 +260,9 @@ export function CardView({ kpis, orders }: DetailContext) {
       <StatGrid>
         <StatTile label="Card sales" value={formatMoney(payments.cardOnly)} hint={plural(payments.cardOrders, 'sale', 'sales')} />
         <StatTile label="Card part of split" value={formatMoney(payments.splitCard)} hint={plural(payments.splitOrders, 'split sale', 'split sales')} />
+        {payments.duesCard !== undefined && payments.duesCard > 0 && (
+          <StatTile label="Customer dues (card)" value={formatMoney(payments.duesCard)} hint="Debt repayments" />
+        )}
         <StatTile label="Total card taken" value={formatMoney(current.card)} trend={{ percent: change('card', kpis) }} />
       </StatGrid>
       <Section title="Cash and card" aside="Share of this month's takings">

@@ -35,7 +35,7 @@ const StaffLogins = () => {
     validate: {
       name: (val) => (val.trim().length >= 2 ? null : 'Name must be at least 2 characters'),
       email: (val) => (/^\S+@\S+\.\S+$/.test(val) ? null : 'Invalid email'),
-      password: (val, values) => {
+      password: (val) => {
         if (editUser && !val) return null;
         return val.length >= 8 ? null : 'Password must be at least 8 characters';
       },

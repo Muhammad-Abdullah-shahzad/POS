@@ -8,6 +8,7 @@
 import { Request, Response } from 'express';
 import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
+import CustomerPayment from '../models/CustomerPayment';
 import Expense from '../models/Expense';
 import Order from '../models/Order';
 import Product from '../models/Product';
@@ -31,14 +32,23 @@ export const getRevenueTrend = asyncHandler(async (req: Request, res: Response) 
   const days = (req.validatedQuery?.days as number) ?? 30;
   const startDate = startOfDaysAgo(days);
 
-  const [orders, expenses] = await Promise.all([
+  const [orders, custPayments, expenses] = await Promise.all([
     Order.aggregate([
-      { $match: { ...completedOrders, createdAt: { $gte: startDate } } },
+      { $match: { ...completedOrders, paymentMethod: { $ne: 'credit' }, createdAt: { $gte: startDate } } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
           revenue: { $sum: { $subtract: ['$total', '$totalVAT'] } },
           orders: { $sum: 1 },
+        },
+      },
+    ]),
+    CustomerPayment.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          revenue: { $sum: '$amountPaid' },
         },
       },
     ]),
@@ -54,6 +64,7 @@ export const getRevenueTrend = asyncHandler(async (req: Request, res: Response) 
   ]);
 
   const revenueByDay = new Map(orders.map((row) => [row._id, row]));
+  const duesByDay = new Map(custPayments.map((row) => [row._id, row.revenue as number]));
   const expensesByDay = new Map(expenses.map((row) => [row._id, row.expenses as number]));
 
   // Days with no activity still need a point, or the chart draws gaps.
@@ -62,9 +73,12 @@ export const getRevenueTrend = asyncHandler(async (req: Request, res: Response) 
     date.setDate(startDate.getDate() + offset);
     const key = dayKey(date);
 
+    const orderRev = revenueByDay.get(key)?.revenue ?? 0;
+    const duesRev = duesByDay.get(key) ?? 0;
+
     return {
       date: key,
-      revenue: revenueByDay.get(key)?.revenue ?? 0,
+      revenue: Math.round((orderRev + duesRev) * 100) / 100,
       orders: revenueByDay.get(key)?.orders ?? 0,
       expenses: expensesByDay.get(key) ?? 0,
     };
@@ -130,9 +144,9 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
 
   const monthBucket = (field: string) => ({ year: { $year: field }, month: { $month: field } });
 
-  const [orderRows, expenseRows, lowStock] = await Promise.all([
+  const [orderRows, paymentRows, expenseRows, lowStock] = await Promise.all([
     Order.aggregate([
-      { $match: { ...completedOrders, createdAt: { $gte: startDate } } },
+      { $match: { ...completedOrders, paymentMethod: { $ne: 'credit' }, createdAt: { $gte: startDate } } },
       {
         $group: {
           _id: monthBucket('$createdAt'),
@@ -141,6 +155,10 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
           orders: { $sum: 1 },
         },
       },
+    ]),
+    CustomerPayment.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      { $group: { _id: monthBucket('$createdAt'), revenue: { $sum: '$amountPaid' } } },
     ]),
     Expense.aggregate([
       { $match: { date: { $gte: startDate } } },
@@ -163,6 +181,24 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
       expenses: 0,
       profit: row.revenue,
     });
+  }
+
+  for (const row of paymentRows) {
+    const key = bucketKey(row);
+    const existing = summary.get(key);
+    if (existing) {
+      existing.revenue += row.revenue;
+      existing.profit += row.revenue;
+    } else {
+      summary.set(key, {
+        month: `${MONTH_NAMES[row._id.month - 1]} ${row._id.year}`,
+        revenue: row.revenue,
+        vat: 0,
+        orders: 0,
+        expenses: 0,
+        profit: row.revenue,
+      });
+    }
   }
 
   for (const row of expenseRows) {
