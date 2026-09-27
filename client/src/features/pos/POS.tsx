@@ -4,6 +4,12 @@ import { IconTrash, IconBarcode, IconPlus, IconMinus, IconCash, IconGift, IconCa
 import { usePosStore } from '../../store/posStore';
 import api from '../../services/api';
 import { useReactToPrint } from 'react-to-print';
+import { useSettingsStore } from '../../store/settingsStore';
+import PrintableSaleDocument from '../printing/PrintableSaleDocument';
+import { printPageStyle } from '../printing/printPageStyle';
+import { printableSaleFromOrder } from '../printing/printableSaleFromOrder';
+import type { StoredOrder } from '../printing/printableSaleFromOrder';
+import { useShopDetails } from '../printing/useShopDetails';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { IconCheck, IconX, IconAlertCircle } from '@tabler/icons-react';
@@ -85,7 +91,14 @@ const POS = () => {
     api.get('/customers').then(res => setCustomers(res.data.data || [])).catch(() => {});
   }, []);
 
-  const handlePrint = useReactToPrint({ contentRef: componentRef });
+  // The sale as the server saved it, which is what gets printed.
+  const [lastOrder, setLastOrder] = useState<StoredOrder | null>(null);
+  const settings = useSettingsStore((state) => state.settings);
+  const receiptSize: 'Thermal' | 'A4' = settings?.receiptSize === 'A4' ? 'A4' : 'Thermal';
+  const shop = useShopDetails();
+
+  // Receipts carry inline styles only; skipping the app's stylesheets opens the print window faster.
+  const handlePrint = useReactToPrint({ contentRef: componentRef, pageStyle: printPageStyle(receiptSize), ignoreGlobalStyles: true });
 
   // Handler for PAY DUES button
   const handlePayDues = () => {
@@ -343,6 +356,7 @@ const POS = () => {
       });
 
       const order = data?.data;
+      setLastOrder(order ?? null);
       const transNo = order?.invoiceId || `REC-${Date.now().toString().slice(-7)}`;
       setLastTransaction({
         transNo,
@@ -553,81 +567,14 @@ const POS = () => {
         </Paper>
       )}
 
-      {/* Printable Receipt */}
+      {/* Printed as the shop's chosen paper: an A4 invoice or a till receipt. */}
       <div className="print-only" style={{ display: 'none' }}>
         <div ref={componentRef}>
-          <div id="printable-receipt" style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '56px', fontWeight: 900, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-            <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '1px solid #000', paddingBottom: '12px' }}>
-              <h1 style={{ margin: '0 0 4px', fontSize: '96px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
-              <p style={{ margin: '2px 0', fontSize: '56px', color: '#555' }}>Phone: +1 234 567 8900</p>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', fontSize: '10px', color: '#333' }}>
-              <div>
-                <p style={{ margin: '2px 0' }}><strong>CUSTOMER:</strong> Walk-in Customer</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: '2px 0' }}><strong>RECEIPT #:</strong> REC-{Date.now().toString().slice(-6)}</p>
-                <p style={{ margin: '2px 0' }}><strong>STATUS:</strong> PAID</p>
-              </div>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '18px', fontSize: '44px' }}>
-              <thead>
-                <tr style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', lineHeight: '2' }}>
-                  <th style={{ width: '50%', textAlign: 'left', padding: '4px 0', fontWeight: 'bold' }}>ITEM</th>
-                  <th style={{ width: '10%', textAlign: 'center', padding: '4px 0', fontWeight: 'bold' }}>QTY</th>
-                  <th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>PRICE</th>
-                  <th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.map((item) => (
-                  <tr key={`print-${item.product}`} style={{ borderBottom: '1px dashed #eee' }}>
-                    <td style={{ width: '50%', textAlign: 'left', padding: '6px 0', verticalAlign: 'top' }}>
-                      <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
-                      {item.discountAmt > 0 && (
-                        <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                          Discount: {item.discountPct > 0 ? `-${item.discountPct}% ` : ''}(-{formatMoney(item.discountAmt)})
-                        </div>
-                      )}
-                      {item.drs > 0 && (
-                        <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                          DRS Deposit: +{formatMoney(item.drs * item.quantity)}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.quantity}</td>
-                    <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{formatMoney(item.price)}</td>
-                    <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatMoney(item.finalPrice)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                <span>Subtotal:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(subtotal)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                <span>Tax:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(totalVAT)}</span>
-              </div>
-              {totalDiscount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
-                  <span>Discount:</span><span style={{ whiteSpace: 'nowrap' }}>- {formatMoney(totalDiscount)}</span>
-                </div>
-              )}
-              {totalDRS > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                  <span>Total DRS:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(totalDRS)}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '60px', color: '#000' }}>
-                <span>TOTAL:</span><span style={{ whiteSpace: 'nowrap' }}>{formatMoney(total)}</span>
-              </div>
-            </div>
-            <div style={{ marginTop: '24px', textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '10px' }}>
-              <p style={{ margin: '0', fontSize: '48px', fontWeight: 'bold' }}>THANK YOU FOR SHOPPING!</p>
-              <p style={{ margin: '3px 0 0', fontSize: '40px', color: '#555' }}>Please visit us again soon.</p>
-            </div>
-          </div>
+          <PrintableSaleDocument
+            sale={lastOrder ? printableSaleFromOrder(lastOrder) : null}
+            shop={shop}
+            size={receiptSize}
+          />
         </div>
       </div>
     </>

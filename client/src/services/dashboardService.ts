@@ -34,7 +34,11 @@ export interface KpiBreakdown {
     splitCash: number;
     splitCard: number;
     creditOrders?: number;
+    /** What went on customer accounts (credit sales, less any deposits). */
     creditOnly?: number;
+    /** Cash and card deposits taken on credit sales. */
+    creditDepositCash?: number;
+    creditDepositCard?: number;
     duesOrders?: number;
     duesCash?: number;
     duesCard?: number;

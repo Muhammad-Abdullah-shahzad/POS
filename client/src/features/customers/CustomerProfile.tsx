@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Grid, Paper, Text, Table, Modal, Group, Title, Badge, Stack, NumberInput, Tabs, TextInput, Box, Divider, Alert } from '@mantine/core';
+import { Button, Grid, Paper, Text, Table, Modal, Group, Title, Badge, Stack, NumberInput, Tabs, TextInput, Divider, Alert } from '@mantine/core';
 import { IconReceipt, IconCash, IconUser, IconPhone, IconMail, IconMapPin, IconCheck, IconInfoCircle } from '@tabler/icons-react';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';

@@ -12,22 +12,32 @@ import api from '../../services/api';
 import { fetchQuickProducts, loadQuickProducts, type QuickProductButton } from '../products/QuickProducts';
 import SyncButton from '../sync/SyncButton';
 import { currencySymbol, formatMoney } from '../../utils/money';
+import { CURRENCIES, useCurrencyStore } from '../../store/currencyStore';
+import type { CurrencyCode } from '../../store/currencyStore';
+import { useSettingsStore } from '../../store/settingsStore';
+import PrintableSaleDocument from '../printing/PrintableSaleDocument';
+import { printPageStyle } from '../printing/printPageStyle';
+import { printableSaleFromOrder } from '../printing/printableSaleFromOrder';
+import type { StoredOrder } from '../printing/printableSaleFromOrder';
+import { useShopDetails } from '../printing/useShopDetails';
+import RemarksPrompt from './RemarksPrompt';
+import { productImageUrl } from '../../utils/assetUrl';
+import type { PrintableSale } from '../printing/printableSale';
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
 
-const resolveProductImageUrl = (image?: string | null): string | null => {
-  if (!image) return null;
-  const driveId = image.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || image.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
-  if (image.startsWith('http')) return image;
-  if (image.startsWith('/')) return `${API_ORIGIN}${image}`;
-  return `${API_ORIGIN}/uploads/products/${image}`;
-};
+/** Keeps a money field to digits and one decimal point, ignoring anything else typed. */
+const amountInput = (next: string, previous: string): string => (/^\d*\.?\d*$/.test(next) ? next : previous);
+
+/** Row height in the CASH PAY totals box, so its rows always line up cleanly. */
+const PAYMENT_ROW_HEIGHT = 21;
+
 
 interface CartItem {
   id: string;
   product?: string;
   name: string;
+  /** Recorded when the line is added, so checkout never looks it up for loyalty points. */
+  category?: string;
   barcode: string;
   qty: number;
   price: number;
@@ -49,6 +59,11 @@ interface Transaction {
   discount?: number;
   totalDRS?: number;
 }
+
+/** A sale that passed its checks and is waiting for the cashier's remarks. */
+type PendingCheckout =
+  | { method: 'CASH' | 'CARD' | 'CREDIT' }
+  | { method: 'SPLIT'; cash: number; card: number };
 
 interface CustomerCart {
   id: string;
@@ -171,6 +186,12 @@ const Dashboard = () => {
   const [apiCategories, setApiCategories] = useState<{ name: string; vatRate: number; vatType: string; loyaltyPoints?: number }[]>([]);
   const [categoryModalOpened, setCategoryModalOpened] = useState(false);
   const [optionsModalOpened, setOptionsModalOpened] = useState(false);
+  const [deviceSettingsModalOpened, setDeviceSettingsModalOpened] = useState(false);
+  
+  const savedCurrency = useCurrencyStore((state) => state.code);
+  const setCurrency = useCurrencyStore((state) => state.setCurrency);
+  const { settings: storeSettings, fetchSettings } = useSettingsStore();
+
   const [voidModalOpened, setVoidModalOpened] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
@@ -250,32 +271,47 @@ const Dashboard = () => {
   const [employees, setEmployees] = useState<{ value: string; label: string }[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
 
+  const fetchDbData = async () => {
+    try {
+      const [custRes, orderRes, empRes, catRes] = await Promise.all([
+        api.get('/customers'),
+        api.get('/orders'),
+        api.get('/employees'),
+        api.get('/categories'),
+      ]);
+      await fetchSettings(); // Fetch system settings into global store
+      setDbCustomers(custRes.data.data || []);
+      setOrders(orderRes.data.data || []);
+      setApiCategories((catRes.data.data || []).map((c: any) => ({
+        name: c.name, vatRate: c.vatRate ?? 0, vatType: c.vatType ?? 'exclusive', loyaltyPoints: c.loyaltyPoints ?? 0,
+      })));
+      const empList = (empRes.data.data || []).map((e: any) => ({
+        value: e._id,
+        label: `${e.name}${e.role ? ` (${e.role})` : ''}`,
+      }));
+      setEmployees(empList);
+      if (empList.length > 0) setSelectedEmployee(prev => prev || empList[0].value);
+      return true;
+    } catch (err) {
+      console.error("Failed to fetch initial POS data", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
-    const fetchDbData = async () => {
-      try {
-        const [custRes, orderRes, empRes, catRes] = await Promise.all([
-          api.get('/customers'),
-          api.get('/orders'),
-          api.get('/employees'),
-          api.get('/categories'),
-        ]);
-        setDbCustomers(custRes.data.data || []);
-        setOrders(orderRes.data.data || []);
-        setApiCategories((catRes.data.data || []).map((c: any) => ({
-          name: c.name, vatRate: c.vatRate ?? 0, vatType: c.vatType ?? 'exclusive', loyaltyPoints: c.loyaltyPoints ?? 0,
-        })));
-        const empList = (empRes.data.data || []).map((e: any) => ({
-          value: e._id,
-          label: `${e.name}${e.role ? ` (${e.role})` : ''}`,
-        }));
-        setEmployees(empList);
-        if (empList.length > 0) setSelectedEmployee(empList[0].value);
-      } catch (err) {
-        console.error("Failed to fetch initial POS data", err);
-      }
-    };
     fetchDbData();
   }, []);
+
+  const handleSyncSettings = async () => {
+    setOptionsModalOpened(false);
+    notifications.show({ title: 'Syncing', message: 'Pulling latest settings and data from server...', color: 'blue' });
+    const success = await fetchDbData();
+    if (success) {
+      notifications.show({ title: 'Sync Complete', message: 'System settings and data have been updated.', color: 'teal' });
+    } else {
+      notifications.show({ title: 'Sync Failed', message: 'Could not reach server.', color: 'red' });
+    }
+  };
 
   useEffect(() => {
     fetchQuickProducts().then(setQuickProducts);
@@ -359,6 +395,7 @@ const Dashboard = () => {
           id: Date.now().toString(),
           product: product._id,
           name: product.name,
+          category: product.category || '',
           barcode: product.barcode,
           qty: 1,
           price: discountedPrice,
@@ -440,6 +477,7 @@ const Dashboard = () => {
       id: Date.now().toString(),
       product: product._id,
       name: product.name,
+      category: product.category || '',
       barcode: product.barcode,
       qty: 1,
       price: discountedPrice,
@@ -524,10 +562,32 @@ const Dashboard = () => {
   };
 
   const componentRef = useRef<HTMLDivElement>(null);
+  /** What the printer gets: built once at checkout, read by both paper sizes. */
+  const [lastPrintable, setLastPrintable] = useState<PrintableSale | null>(null);
+  const receiptSize: 'Thermal' | 'A4' = storeSettings?.receiptSize === 'A4' ? 'A4' : 'Thermal';
+  // Shops that never write remarks can switch the prompt off in Settings.
+  const askForRemarks = storeSettings?.showRemarksPrompt !== false;
+  const shop = useShopDetails();
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
+    pageStyle: printPageStyle(receiptSize),
+    // Receipts carry inline styles only, so skip copying the app's stylesheets
+    // into the print window; it opens noticeably faster without them.
+    ignoreGlobalStyles: true,
   });
+
+  // A print request is answered after React has rendered the receipt it is for.
+  // Guessing with a timer could print the previous sale on a slow till.
+  const [printRequest, setPrintRequest] = useState(0);
+  const answeredPrintRequest = useRef(0);
+  const requestPrint = () => setPrintRequest((count) => count + 1);
+
+  useEffect(() => {
+    if (printRequest === answeredPrintRequest.current) return;
+    answeredPrintRequest.current = printRequest;
+    handlePrint();
+  }, [printRequest, handlePrint]);
 
   // Barcode label printing (product name on top, barcode below)
   const barcodePrintRef = useRef<HTMLDivElement>(null);
@@ -632,13 +692,13 @@ const Dashboard = () => {
   const handleUpdateItem = () => {
     if (!stagingItem.id) return;
     updateCartItems(prev => prev.map(item =>
-      item.id === stagingItem.id ? { 
-        ...item, 
-        product: stagingItem.product, 
-        name: stagingItem.name, 
-        barcode: stagingItem.barcode, 
-        qty: Number(stagingItem.qty) || 1, 
-        price: Number(stagingItem.price) || 0, 
+      item.id === stagingItem.id ? {
+        ...item,
+        product: stagingItem.product,
+        name: stagingItem.name,
+        barcode: stagingItem.barcode,
+        qty: Number(stagingItem.qty) || 1,
+        price: Number(stagingItem.price) || 0,
         stock: stagingItem.stock,
         originalPrice: stagingItem.originalPrice !== undefined ? stagingItem.originalPrice : (Number(stagingItem.price) || 0),
         discountPct: stagingItem.discountPct || 0,
@@ -809,94 +869,163 @@ const Dashboard = () => {
     });
   };
 
-  const [depositInput, setDepositInput] = useState<string>('');
+  // Money handed over at the till. Cash gives change on a cash sale; on a
+  // credit sale both are deposits, and the rest goes on the customer account.
+  const [cashDepositInput, setCashDepositInput] = useState<string>('');
+  const [cardDepositInput, setCardDepositInput] = useState<string>('');
   const [flatDiscount, setFlatDiscount] = useState<string>('');
   const [returnPopupOpened, setReturnPopupOpened] = useState(false);
+  // A checked sale waiting for the cashier's remarks, and how to complete it once they press OK.
+  const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
   const [returnAmount, setReturnAmount] = useState(0);
 
   const subTotal = cartItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
   const flatDiscountVal = Math.min(Number(flatDiscount) || 0, subTotal);
-  const depositVal = Number(depositInput) || 0;
+  const cashDeposit = Number(cashDepositInput) || 0;
+  const cardDeposit = Number(cardDepositInput) || 0;
   const totalDRS = cartItems.reduce((acc, item) => acc + (item.qty * (item.drs || 0)), 0);
+  // Sub Total, Flat Discount, Cash Deposit, Card Deposit, TOTAL, plus DRS when there is one.
+  // The payment box's height is driven by this count, so a row added or removed here
+  // never has to be matched by hand against a fixed pixel height elsewhere.
+  const paymentRowCount = 5 + (totalDRS > 0 ? 1 : 0);
   const total = Math.max(0, subTotal - flatDiscountVal + totalDRS);
 
-  const handleCheckout = async (method: string = 'MIXED') => {
-    if (cartItems.length === 0) return;
+  /**
+   * Everything that follows a saved sale, whatever it was paid with: keep it
+   * for reprinting, move the receipt counter on, and print when printing is on.
+   */
+  const completeSale = (sale: PrintableSale | null, transaction: Transaction) => {
+    if (sale) setLastPrintable(sale);
+    setCashDepositInput('');
+    setCardDepositInput('');
+    setLastTransaction(transaction);
+    setTransactionNo(prev => prev + 1);
+    incrementDailyTxn();
+    if (enablePrinting && sale) requestPrint();
+  };
 
-    if (method === 'CREDIT') {
-      if (!activeCart.customerId) {
-        notifications.show({ title: 'Customer Required', message: 'You must select a customer for credit sales', color: 'red' });
-        return;
-      }
-      
-      const c = dbCustomers.find(c => c._id === activeCart.customerId);
-      if (c && c.creditLimit > 0 && ((c.outstandingBalance || 0) + total) > c.creditLimit) {
-        notifications.show({ title: 'Credit Limit Exceeded', message: `Customer credit limit is ${formatMoney(c.creditLimit)}`, color: 'red' });
-        return;
-      }
-    }
-
-    if (method === 'CASH') {
-      const retAmt = depositVal - total;
-      setReturnAmount(retAmt);
-      setReturnPopupOpened(true);
-    }
-    // Update customer visits & revenue in MongoDB if a customer is selected
-    let loyaltyPointsEarned = 0;
-    let loyaltyPointsTotal = 0;
-    let loyaltyRewardThreshold = 0;
-    let loyaltyRewardValue = 0;
-    if (activeCart.customerId) {
-      try {
-        const categoryEntries = apiCategories;
-
-        // Sum points per cart item based on its product's category
-        let categoryPoints = 0;
-        for (const item of cartItems) {
-          // Find the product to get its category
-          try {
-            const { data: pData } = await api.get(`/products?search=${encodeURIComponent(item.name)}`);
-            const prod = (pData.data || []).find((p: any) => p.name === item.name || p.barcode === item.barcode);
-            if (prod) {
-              const catEntry = categoryEntries.find(c =>
-                typeof c === 'string' ? c === prod.category : c.name === prod.category
-              );
-              const ptsPerItem = (catEntry as any)?.loyaltyPoints || 0;
-              categoryPoints += ptsPerItem * item.qty;
-            }
-          } catch { /* skip */ }
-        }
-
-        // Fallback to global setting if no category points defined
-        let pointsToAdd = categoryPoints;
-        if (pointsToAdd === 0) {
-          try {
-            const settingsRes = await api.get('/settings');
-            const ptsPerEuro = settingsRes.data?.data?.loyaltyPointsPerEuro ?? 1;
-            pointsToAdd = Math.floor(total * ptsPerEuro);
-          } catch { pointsToAdd = Math.floor(total); }
-        }
-
-        const txRes = await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total, pointsOverride: pointsToAdd });
-        const updatedCustomer = txRes.data?.data;
-        if (updatedCustomer) {
-          loyaltyPointsEarned = updatedCustomer.pointsEarned || 0;
-          loyaltyPointsTotal = updatedCustomer.loyaltyPoints || 0;
-        }
-        // Get loyalty settings for receipt display
+  /**
+   * Loyalty points a sale earns: each category's points per item, or the shop's
+   * rate per unit of currency when no category sets any. Cart lines carry their
+   * category, so this normally needs no network at all; lines that do not (added
+   * by hand, or before categories were recorded) are looked up in one parallel batch.
+   */
+  const loyaltyPointsForSale = async (items: CartItem[], saleTotal: number): Promise<number> => {
+    const unknown = items.filter(item => item.category === undefined);
+    const lookedUp = await Promise.all(
+      unknown.map(async (item): Promise<[string, string]> => {
         try {
-          const settingsRes = await api.get('/settings');
-          loyaltyRewardThreshold = settingsRes.data?.data?.loyaltyRewardThreshold || 0;
-          loyaltyRewardValue = settingsRes.data?.data?.loyaltyRewardValue || 0;
-        } catch { /* ignore */ }
+          const { data } = await api.get(`/products?search=${encodeURIComponent(item.name)}`);
+          const match = (data.data || []).find((p: { _id?: string; name?: string; barcode?: string }) =>
+            p._id === item.product || p.name === item.name || p.barcode === item.barcode
+          );
+          return [item.id, match?.category ?? ''];
+        } catch {
+          return [item.id, ''];
+        }
+      })
+    );
+    const categoryOf = new Map(lookedUp);
+    const pointsPerItem = (category: string) => apiCategories.find(c => c.name === category)?.loyaltyPoints ?? 0;
+
+    const categoryPoints = items.reduce(
+      (sum, item) => sum + pointsPerItem(item.category ?? categoryOf.get(item.id) ?? '') * item.qty,
+      0
+    );
+    return categoryPoints > 0 ? categoryPoints : saleTotal * (storeSettings?.loyaltyPointsPerEuro ?? 1);
+  };
+
+  /**
+   * Record the customer's visit and points, then refresh the customer list
+   * (balances change with credit sales). Runs after the receipt, so the till
+   * never waits for it.
+   */
+  const recordCustomerVisit = (customerId: string, amount: number, points: number) => {
+    void (async () => {
+      try {
+        await api.post(`/customers/${customerId}/transaction`, { amount, pointsOverride: points });
+      } catch (error) {
+        console.error('Failed to record the customer visit', error);
+        notifications.show({
+          title: 'Customer points not recorded',
+          message: "The sale is saved, but this visit and its points were not added to the customer.",
+          color: 'yellow',
+        });
+      }
+      try {
         const { data } = await api.get('/customers');
         setDbCustomers(data.data || []);
-      } catch (err) {
-        console.error("Failed to update customer stats in database", err);
+      } catch {
+        // The list refreshes on the next load; the sale itself is safe.
       }
+    })();
+  };
+
+  /** The part of a credit sale that goes on the customer's account. */
+  const creditPortion = Math.max(0, total - cashDeposit - cardDeposit);
+
+  /**
+   * A credit sale needs a customer, deposits that do not exceed the total,
+   * something left to put on account, and room under the credit limit.
+   */
+  const creditSaleIsValid = (): boolean => {
+    const refuse = (title: string, message: string) => {
+      notifications.show({ title, message, color: 'red' });
+      return false;
+    };
+
+    if (!activeCart.customerId) return refuse('Customer Required', 'Select a customer to put this sale on their account.');
+    if (cashDeposit < 0 || cardDeposit < 0) return refuse('Invalid Deposit', 'Deposits cannot be negative.');
+    if (cashDeposit + cardDeposit > total) {
+      return refuse('Deposit Too High', `The deposits add up to more than the total of ${formatMoney(total)}.`);
+    }
+    if (creditPortion <= 0) {
+      return refuse('Nothing on Account', 'The deposits cover the whole total. Use Cash, Card or Split Pay instead.');
     }
 
+    const customer = dbCustomers.find(c => c._id === activeCart.customerId);
+    const balance = Number(customer?.outstandingBalance) || 0;
+    if (customer && customer.creditLimit > 0 && balance + creditPortion > customer.creditLimit) {
+      return refuse('Credit Limit Exceeded', `Customer credit limit is ${formatMoney(customer.creditLimit)}.`);
+    }
+    return true;
+  };
+
+  /** Tells the cashier the sale went through: change for cash, a note otherwise. */
+  const confirmSale = (method: string, cashDifference: number) => {
+    if (method === 'CASH') {
+      setReturnAmount(cashDifference);
+      setReturnPopupOpened(true);
+      return;
+    }
+
+    const onAccount = method === 'CREDIT';
+    const deposits = [cashDeposit > 0 && `${formatMoney(cashDeposit)} cash`, cardDeposit > 0 && `${formatMoney(cardDeposit)} card`].filter(Boolean);
+    notifications.show({
+      title: onAccount ? 'Sale on account' : 'Card payment complete',
+      message: onAccount
+        ? `${formatMoney(creditPortion)} added to ${activeCart.name}'s balance${deposits.length ? ` (paid ${deposits.join(' + ')})` : ''}.`
+        : `${formatMoney(total)} taken by card.`,
+      color: 'teal',
+      icon: <IconCheck size={16} />,
+    });
+  };
+
+  const handleCheckout = async (method: string = 'MIXED', remarks = '') => {
+    if (cartItems.length === 0) return;
+
+    if (method === 'CREDIT' && !creditSaleIsValid()) return;
+
+    // Worked out before saving, so the receipt can show them without waiting.
+    const customerId = activeCart.customerId;
+    const loyaltyPointsEarned = customerId ? Math.floor(await loyaltyPointsForSale(cartItems, total)) : 0;
+    const loyaltyCustomer = customerId ? dbCustomers.find(c => c._id === customerId) : undefined;
+    const loyaltyPointsTotal = (Number(loyaltyCustomer?.loyaltyPoints) || 0) + loyaltyPointsEarned;
+    const loyaltyRewardThreshold = storeSettings?.loyaltyRewardThreshold || 0;
+    const loyaltyRewardValue = storeSettings?.loyaltyRewardValue || 0;
+
     // Save order to the database
+    let savedOrder: StoredOrder | null = null;
     try {
       const { data } = await api.post('/orders', {
         items: cartItems.map(item => ({
@@ -918,17 +1047,21 @@ const Dashboard = () => {
         totalDRS,
         total,
         paymentMethod: method.toLowerCase(),
+        ...(remarks && { remarks }),
+        // What was handed over now; the server puts the rest on the account.
+        ...(method === 'CREDIT' && { paidCash: cashDeposit, paidCard: cardDeposit }),
         ...(activeCart.customerId && {
           customerId: activeCart.customerId,
           customerName: activeCart.name
         }),
       });
+      savedOrder = data?.data ?? null;
       if (data?.data) setOrders(prev => [data.data, ...prev]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save order to database', err);
       notifications.show({
         title: 'Order Save Failed',
-        message: 'Could not save order to database. Please check your connection.',
+        message: err.response?.data?.message || err.message || 'Could not save order to database. Please check your connection.',
         color: 'red',
       });
       return;
@@ -938,7 +1071,7 @@ const Dashboard = () => {
       transactionNo,
       items: [...cartItems],
       subTotal,
-      deposit: depositVal,
+      deposit: cashDeposit,
       total,
       date: new Date().toLocaleString(),
       paymentMethod: method,
@@ -957,14 +1090,23 @@ const Dashboard = () => {
       (newTransaction as any).loyaltyRewardValue = loyaltyRewardValue;
     }
 
-    setLastTransaction(newTransaction);
-    setTransactionNo(prev => prev + 1);
-    incrementDailyTxn();
+    // Negative when less cash was handed over than the total; the popup shows it in red.
+    const cashDifference = method === 'CASH' ? cashDeposit - total : 0;
+    const change = Math.max(0, cashDifference);
+    completeSale(
+      savedOrder &&
+        printableSaleFromOrder(savedOrder, {
+          change,
+          loyalty:
+            activeCart.customerId && loyaltyPointsEarned > 0
+              ? { earned: loyaltyPointsEarned, total: loyaltyPointsTotal, rewardThreshold: loyaltyRewardThreshold, rewardValue: loyaltyRewardValue }
+              : undefined,
+        }),
+      newTransaction
+    );
+    confirmSale(method, cashDifference);
 
-    // Auto-print receipt if Enable Printing is checked and payment is CASH
-    if (enablePrinting && method === 'CASH') {
-      setTimeout(() => handlePrint(), 100);
-    }
+    if (customerId) recordCustomerVisit(customerId, total, loyaltyPointsEarned);
 
     updateCartItems([]);
     updateSelectedItemId('');
@@ -975,7 +1117,7 @@ const Dashboard = () => {
     setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, name: `CUSTOMER ${c.id.replace('customer', '')}`, customerId: undefined, customerPhone: undefined } : c));
   };
 
-  const handleSplitPayment = async () => {
+  const handleSplitPayment = () => {
     const cashAmt = Number(splitCashAmount) || 0;
     const cardAmt = Number(splitCardAmount) || 0;
     const splitTotal = cashAmt + cardAmt;
@@ -995,19 +1137,19 @@ const Dashboard = () => {
     }
 
     setSplitModalOpened(false);
+    proceedToCheckout({ method: 'SPLIT', cash: cashAmt, card: cardAmt });
+  };
 
-    // Update customer stats if linked
-    if (activeCart.customerId) {
-      try {
-        await api.post(`/customers/${activeCart.customerId}/transaction`, { amount: total });
-        const { data } = await api.get('/customers');
-        setDbCustomers(data.data || []);
-      } catch (err) {
-        console.error('Failed to update customer stats', err);
-      }
-    }
+  /** Completes a split payment once the cashier has added any remarks. */
+  const completeSplitPayment = async (cashAmt: number, cardAmt: number, remarks: string) => {
+    const splitTotal = cashAmt + cardAmt;
+
+    // Same points rule as every other payment; recorded after the receipt.
+    const customerId = activeCart.customerId;
+    const loyaltyPointsEarned = customerId ? Math.floor(await loyaltyPointsForSale(cartItems, total)) : 0;
 
     // Save order to DB with split payment info
+    let savedOrder: StoredOrder | null = null;
     try {
       const { data } = await api.post('/orders', {
         items: cartItems.map(item => ({
@@ -1031,15 +1173,17 @@ const Dashboard = () => {
         paymentMethod: 'split',
         splitCash: cashAmt,
         splitCard: cardAmt,
+        ...(remarks && { remarks }),
         ...(activeCart.customerId && {
           customerId: activeCart.customerId,
           customerName: activeCart.name
         }),
       });
+      savedOrder = data?.data ?? null;
       if (data?.data) setOrders(prev => [data.data, ...prev]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save split order', err);
-      notifications.show({ title: 'Order Save Failed', message: 'Could not save order to database.', color: 'red' });
+      notifications.show({ title: 'Order Save Failed', message: err.response?.data?.message || err.message || 'Could not save order to database.', color: 'red' });
       return;
     }
 
@@ -1061,13 +1205,8 @@ const Dashboard = () => {
     (newTransaction as any).splitCard = cardAmt;
     (newTransaction as any).change = change;
 
-    setLastTransaction(newTransaction);
-    setTransactionNo(prev => prev + 1);
-    incrementDailyTxn();
-
-    if (enablePrinting) {
-      setTimeout(() => handlePrint(), 100);
-    }
+    completeSale(savedOrder && printableSaleFromOrder(savedOrder, { change }), newTransaction);
+    if (customerId) recordCustomerVisit(customerId, total, loyaltyPointsEarned);
 
     // Show change if any
     if (change > 0) {
@@ -1114,8 +1253,8 @@ const Dashboard = () => {
       });
 
       // Update customer balance locally in dbCustomers
-      setDbCustomers(prev => prev.map(c => 
-        c._id === payDuesCustomerId 
+      setDbCustomers(prev => prev.map(c =>
+        c._id === payDuesCustomerId
           ? { ...c, outstandingBalance: Math.max(0, (c.outstandingBalance || 0) - amt) }
           : c
       ));
@@ -1135,10 +1274,40 @@ const Dashboard = () => {
     }
   };
 
-  const handleRePrint = () => {    if (lastTransaction) {
-      handlePrint();
+  /** Complete a sale that has already been checked. */
+  const completeCheckout = (checkout: PendingCheckout, remarks: string) => {
+    if (checkout.method === 'SPLIT') void completeSplitPayment(checkout.cash, checkout.card, remarks);
+    else void handleCheckout(checkout.method, remarks);
+  };
+
+  /** Ask for remarks if the shop wants them; otherwise complete the sale straight away. */
+  const proceedToCheckout = (checkout: PendingCheckout) => {
+    if (askForRemarks) setPendingCheckout(checkout);
+    else completeCheckout(checkout, '');
+  };
+
+  /**
+   * A payment button: check the sale first, so the cashier is never asked for
+   * remarks on a sale that cannot go through.
+   */
+  const startCheckout = (method: 'CASH' | 'CARD' | 'CREDIT') => {
+    if (cartItems.length === 0) return;
+    if (method === 'CREDIT' && !creditSaleIsValid()) return;
+    proceedToCheckout({ method });
+  };
+
+  /** OK in the remarks prompt: complete the sale that was waiting, with its remarks. */
+  const finishCheckout = (remarks: string) => {
+    const pending = pendingCheckout;
+    setPendingCheckout(null);
+    if (pending) completeCheckout(pending, remarks);
+  };
+
+  const handleRePrint = () => {
+    if (lastPrintable) {
+      requestPrint();
     } else {
-      alert("No previous transaction to reprint.");
+      notifications.show({ title: 'Nothing to reprint', message: 'No sale has been completed on this till yet.', color: 'yellow' });
     }
   };
 
@@ -1204,6 +1373,8 @@ const Dashboard = () => {
     { label: 'Download Invoice', action: () => handleOptionAction('Download Invoice', '/receipts') },
     { label: 'DELI REPORT', action: () => handleOptionAction('DELI REPORT', '/reports/category-sale') },
     { label: 'CASH LIFT', action: () => handleOptionAction('CASH LIFT', '/bank') },
+    { label: 'DEVICE SETTINGS', action: () => { setOptionsModalOpened(false); setDeviceSettingsModalOpened(true); }, isSpecial: true },
+    { label: 'SYNC DATA', action: handleSyncSettings, isSpecial: true },
     { label: 'BACK', action: () => setOptionsModalOpened(false) },
   ];
 
@@ -1231,11 +1402,11 @@ const Dashboard = () => {
         name: quickSaveName.trim(),
         contactNum1: quickSavePhone.trim(),
       });
-      
+
       const newCust = data.data;
       if (newCust && newCust._id) {
         setDbCustomers(prev => [...prev, newCust]);
-        
+
         setCarts(prev => prev.map(c => {
           if (c.id === activeCartId) {
             return {
@@ -1254,7 +1425,7 @@ const Dashboard = () => {
           color: 'green',
           icon: <IconCheck size={16} />,
         });
-        
+
         setQuickSaveModalOpened(false);
         setQuickSaveName('');
         setQuickSavePhone('');
@@ -1318,6 +1489,7 @@ const Dashboard = () => {
           id: Date.now().toString(),
           product: product._id,
           name: product.name,
+          category: product.category || '',
           barcode: product.barcode,
           qty: 1,
           price: discountedPrice,
@@ -1824,9 +1996,9 @@ const Dashboard = () => {
               <Flex gap={8} mt="xs">
                 <Box flex={1}>
                   <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
-                    <Flex h={totalDRS > 0 ? 105 : 85}>
+                    <Flex h={PAYMENT_ROW_HEIGHT * paymentRowCount}>
                       {/* CASH PAY BUTTON */}
-                      <Box w="14%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CASH')}>
+                      <Box w="14%" style={{ borderRight: `1px solid ${customColors.border}`, cursor: 'pointer', padding: '2px' }} onClick={() => startCheckout('CASH')}>
                         <Flex align="center" justify="center" h="100%">
                           <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white', lineHeight: 1.2, color: 'black' }}>CASH<br />PAY</Text>
                         </Flex>
@@ -1870,12 +2042,27 @@ const Dashboard = () => {
                         )}
                         <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
                           <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
-                            <Text size="13px" c="black">Deposit</Text>
+                            <Text size="13px" c="black" style={{ whiteSpace: 'nowrap' }}>Cash Deposit</Text>
                           </Flex>
                           <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
                             <TextInput
-                              value={depositInput}
-                              onChange={(e) => setDepositInput(e.target.value)}
+                              aria-label="Cash deposit"
+                              value={cashDepositInput}
+                              onChange={(e) => setCashDepositInput(amountInput(e.target.value, cashDepositInput))}
+                              placeholder="0.00"
+                              styles={{ input: { textAlign: 'right', border: 'none', background: 'transparent', height: 20, minHeight: 20, padding: 0, fontSize: '14px', color: 'black', fontWeight: 'bold' } }}
+                            />
+                          </Flex>
+                        </Flex>
+                        <Flex style={{ borderBottom: `1px solid ${customColors.border}`, flex: 1 }}>
+                          <Flex flex={5} align="center" style={{ borderRight: `1px solid ${customColors.border}`, padding: '0 6px' }}>
+                            <Text size="13px" c="black" style={{ whiteSpace: 'nowrap' }}>Card Deposit</Text>
+                          </Flex>
+                          <Flex flex={7} align="center" justify="flex-end" style={{ padding: '0 6px', backgroundColor: '#e2e2e2' }}>
+                            <TextInput
+                              aria-label="Card deposit"
+                              value={cardDepositInput}
+                              onChange={(e) => setCardDepositInput(amountInput(e.target.value, cardDepositInput))}
                               placeholder="0.00"
                               styles={{ input: { textAlign: 'right', border: 'none', background: 'transparent', height: 20, minHeight: 20, padding: 0, fontSize: '14px', color: 'black', fontWeight: 'bold' } }}
                             />
@@ -1914,15 +2101,15 @@ const Dashboard = () => {
                       </Box>
 
                       {/* CARD PAY BUTTON */}
-                      <Box w="14%" style={{ borderRight: `1px solid ${customColors.border}`, position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => handleCheckout('CARD')}>
+                      <Box w="14%" style={{ borderRight: `1px solid ${customColors.border}`, position: 'relative', cursor: 'pointer', padding: '2px' }} onClick={() => startCheckout('CARD')}>
                         <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: '2px', backgroundImage: 'url(https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.9 }} />
                         <Flex align="center" justify="center" h="100%" style={{ position: 'relative', zIndex: 1 }}>
                           <Text fw="bold" size="14px" ta="center" style={{ textShadow: '1px 1px 0px black, -1px -1px 0px black, 1px -1px 0px black, -1px 1px 0px black', lineHeight: 1.2, color: 'white' }}>CARD<br />PAY</Text>
                         </Flex>
                       </Box>
-                      
+
                       {/* CREDIT PAY BUTTON */}
-                      <Box w="14%" style={{ position: 'relative', cursor: 'pointer', padding: '2px', background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)' }} onClick={() => handleCheckout('CREDIT')}>
+                      <Box w="14%" style={{ position: 'relative', cursor: 'pointer', padding: '2px', background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)' }} onClick={() => startCheckout('CREDIT')}>
                         <Flex align="center" justify="center" h="100%" direction="column" gap={2}>
                           <Text fw="bold" size="14px" ta="center" style={{ lineHeight: 1.2, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>CREDIT<br />PAY</Text>
                         </Flex>
@@ -1944,7 +2131,7 @@ const Dashboard = () => {
                         key={btn.label}
                         flex={1}
                         style={{ backgroundColor: btn.bg, border: '2px solid white', borderRadius: '2px', padding: '0 2px', height: '45px' }}
-                        onClick={() => setDepositInput(prev => String((Number(prev) || 0) + Number(btn.label)))}
+                        onClick={() => setCashDepositInput(prev => String((Number(prev) || 0) + Number(btn.label)))}
                       >
                         <Text size="18px" fw="bold" c="black">{btn.label}</Text>
                       </Button>
@@ -1957,23 +2144,23 @@ const Dashboard = () => {
                         onClick={
                           opt === 'PAYBILL'
                             ? () => {
-                                if (cartItems.length === 0) {
-                                  notifications.show({ title: 'Empty Cart', message: 'Add items to cart before paying.', color: 'yellow' });
-                                  return;
-                                }
-                                setPayBillMethod('MIXED');
-                                setPayBillModalOpened(true);
+                              if (cartItems.length === 0) {
+                                notifications.show({ title: 'Empty Cart', message: 'Add items to cart before paying.', color: 'yellow' });
+                                return;
                               }
+                              setPayBillMethod('MIXED');
+                              setPayBillModalOpened(true);
+                            }
                             : opt === 'OPTIONS'
                               ? () => setOptionsModalOpened(true)
                               : opt === 'PAY DUES'
                                 ? () => {
-                                    setPayDuesCustomerId(activeCart.customerId || null);
-                                    setPayDuesAmount('');
-                                    setPayDuesNotes('');
-                                    setPayDuesMethod('cash');
-                                    setPayDuesModalOpened(true);
-                                  }
+                                  setPayDuesCustomerId(activeCart.customerId || null);
+                                  setPayDuesAmount('');
+                                  setPayDuesNotes('');
+                                  setPayDuesMethod('cash');
+                                  setPayDuesModalOpened(true);
+                                }
                                 : opt === 'SHOW ALL OFFERS'
                                   ? () => setShowOffersModalOpened(true)
                                   : opt === 'OPEN TILL'
@@ -2018,131 +2205,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Printable Receipt */}
+      {/* Printable receipt: an A4 invoice or an 80mm till receipt, as Settings asks. */}
       <div style={{ display: 'none' }}>
         <div ref={componentRef}>
-          {lastTransaction ? (
-            <div style={{ width: '300px', padding: '8px', boxSizing: 'border-box', margin: '0 auto', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', backgroundColor: '#fff', fontSize: '12px', fontWeight: 500, lineHeight: 1.4, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '1px solid #000', paddingBottom: '12px' }}>
-                <h1 style={{ margin: '0 0 4px', fontSize: '20px', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 'bold', letterSpacing: '0', textTransform: 'uppercase' }}>Castlebar Halal Foods</h1>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', fontSize: '10px', color: '#333' }}>
-                <div>
-                  <p style={{ margin: '2px 0' }}><strong>CUSTOMER:</strong> {(lastTransaction as any).customerName || 'Walk-in'}</p>
-                  {(lastTransaction as any).customerPhone && <p style={{ margin: '2px 0' }}><strong>PHONE:</strong> {(lastTransaction as any).customerPhone}</p>}
-                  <p style={{ margin: '2px 0' }}><strong>DATE:</strong> {lastTransaction.date}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ margin: '2px 0' }}><strong>RECEIPT #:</strong> {lastTransaction.transactionNo}</p>
-                  <p style={{ margin: '2px 0' }}><strong>STATUS:</strong> PAID</p>
-                </div>
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '18px', fontSize: '11px' }}>
-                <thead>
-                  <tr style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', lineHeight: '2' }}>
-                    <th style={{ width: '50%', textAlign: 'left', padding: '4px 0', fontWeight: 'bold' }}>ITEM</th>
-                    <th style={{ width: '10%', textAlign: 'center', padding: '4px 0', fontWeight: 'bold' }}>QTY</th>
-                    <th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>PRICE</th>
-                    <th style={{ width: '20%', textAlign: 'right', padding: '4px 0', fontWeight: 'bold' }}>TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lastTransaction.items.map((item) => {
-                    const originalPrice = item.originalPrice ?? item.price;
-                    const discountPct = item.discountPct ?? 0;
-                    const totalDiscountAmt = (item.discountAmt ?? 0) * item.qty;
-                    const totalDRSAmt = (item.drs ?? 0) * item.qty;
-                    const totalItemAmt = item.qty * item.price + totalDRSAmt;
-                    return (
-                      <tr key={item.id} style={{ borderBottom: '1px dashed #eee' }}>
-                        <td style={{ width: '50%', textAlign: 'left', padding: '6px 0', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 'bold', color: '#000' }}>{item.name}</div>
-                          {totalDiscountAmt > 0 && (
-                            <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                              Discount: {discountPct > 0 ? `-${discountPct}% ` : ''}(-{formatMoney(totalDiscountAmt)})
-                            </div>
-                          )}
-                          {totalDRSAmt > 0 && (
-                            <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>
-                              DRS Deposit: +{formatMoney(totalDRSAmt)}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ width: '10%', textAlign: 'center', padding: '6px 0', verticalAlign: 'top' }}>{item.qty}</td>
-                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{formatMoney(originalPrice)}</td>
-                        <td style={{ width: '20%', textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatMoney(totalItemAmt)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              <div style={{ width: '100%', fontSize: '11px', color: '#333' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                  <span>Subtotal:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(lastTransaction.subTotal)}</span>
-                </div>
-                {lastTransaction.discount && lastTransaction.discount > 0 ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#000' }}>
-                    <span>Flat Discount:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>-{formatMoney(lastTransaction.discount)}</span>
-                  </div>
-                ) : null}
-                {lastTransaction.totalDRS && lastTransaction.totalDRS > 0 ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                    <span>Total DRS:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(lastTransaction.totalDRS)}</span>
-                  </div>
-                ) : null}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px', color: '#000' }}>
-                  <span>TOTAL:</span>
-                  <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(lastTransaction.total)}</span>
-                </div>
-                {(lastTransaction as any).splitCash !== undefined && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px', borderTop: '1px dashed #ccc', marginTop: '4px', paddingTop: '4px' }}>
-                      <span>Cash Paid:</span>
-                      <span>{Number((lastTransaction as any).splitCash).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px' }}>
-                      <span>Card Paid:</span>
-                      <span>{Number((lastTransaction as any).splitCard).toFixed(2)}</span>
-                    </div>
-                    {Number((lastTransaction as any).change) > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px', fontWeight: 'bold' }}>
-                        <span>Change:</span>
-                        <span>{Number((lastTransaction as any).change).toFixed(2)}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '11px' }}>
-                  <span>Payment:</span>
-                  <span>{lastTransaction.paymentMethod}</span>
-                </div>
-                {(lastTransaction as any).loyaltyPointsEarned !== undefined && (
-                  <div style={{ marginTop: '12px', padding: '8px', border: '1px dashed #ccc', borderRadius: '4px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold' }}>⭐ LOYALTY POINTS</div>
-                    <div style={{ fontSize: '11px', marginTop: '4px' }}>
-                      Earned this visit: <strong>+{(lastTransaction as any).loyaltyPointsEarned} pts</strong>
-                    </div>
-                    <div style={{ fontSize: '11px' }}>
-                      Total points: <strong>{(lastTransaction as any).loyaltyPointsTotal} pts</strong>
-                    </div>
-                    {(lastTransaction as any).loyaltyRewardThreshold && (
-                      <div style={{ fontSize: '9px', marginTop: '4px', color: '#555' }}>
-                        Reward at {(lastTransaction as any).loyaltyRewardThreshold} pts = {formatMoney((lastTransaction as any).loyaltyRewardValue)} free shopping
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: '30px', fontFamily: 'Courier, monospace' }}>No transaction data</div>
-          )}
+          <PrintableSaleDocument sale={lastPrintable} shop={shop} size={receiptSize} />
         </div>
       </div>
 
@@ -2189,7 +2255,7 @@ const Dashboard = () => {
             return filtered.length > 0 ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px' }}>
                 {filtered.map((product: any) => {
-                  const imageUrl = resolveProductImageUrl(product.image);
+                  const imageUrl = productImageUrl(product.image);
                   return (
                     <Paper
                       key={product._id}
@@ -2250,7 +2316,9 @@ const Dashboard = () => {
         </Flex>
       </Modal>
 
-      <Modal opened={returnPopupOpened} onClose={() => { setReturnPopupOpened(false); setDepositInput(''); }} title={<Text size="xl" fw="bold" c="dark">Change / Return Amount</Text>} centered>
+      <RemarksPrompt opened={pendingCheckout !== null} onConfirm={finishCheckout} onCancel={() => setPendingCheckout(null)} />
+
+      <Modal opened={returnPopupOpened} onClose={() => { setReturnPopupOpened(false); setCashDepositInput(''); }} title={<Text size="xl" fw="bold" c="dark">Change / Return Amount</Text>} centered>
         <Flex direction="column" align="center" justify="center" p="xl">
           <Text size="md" c="dimmed" mb="sm">Amount to return to customer:</Text>
           <Text size="48px" fw={900} c={returnAmount >= 0 ? 'green.7' : 'red.7'}>
@@ -2260,7 +2328,7 @@ const Dashboard = () => {
             <Text size="11px" c="dimmed" fw={600} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Transactions</Text>
             <Text size="32px" fw={900} c="dark">{dailyTxnCount}</Text>
           </Box>
-          <Button mt="xl" size="lg" fullWidth color="blue" onClick={() => { setReturnPopupOpened(false); setDepositInput(''); }}>
+          <Button mt="xl" size="lg" fullWidth color="blue" onClick={() => { setReturnPopupOpened(false); setCashDepositInput(''); }}>
             OK (Next Customer)
           </Button>
         </Flex>
@@ -2324,11 +2392,24 @@ const Dashboard = () => {
         </SimpleGrid>
       </Modal>
 
+      {/* DEVICE SETTINGS MODAL */}
+      <Modal opened={deviceSettingsModalOpened} onClose={() => setDeviceSettingsModalOpened(false)} title="Local Device Settings">
+        <Select
+          label="Currency"
+          description="Used on this device only."
+          data={Object.values(CURRENCIES).map(({ code, label }) => ({ value: code, label: `${label} (${code})` }))}
+          value={savedCurrency}
+          onChange={(val) => { if (val) setCurrency(val as CurrencyCode); }}
+          allowDeselect={false}
+        />
+        <Button mt="xl" fullWidth onClick={() => setDeviceSettingsModalOpened(false)}>Close</Button>
+      </Modal>
+
       {/* VOID TRANS MODAL */}
       <Modal opened={voidModalOpened} onClose={() => setVoidModalOpened(false)} title="Void Transaction">
-        <Select 
-          label="Select Order" 
-          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - ${formatMoney(o.total)}` }))} 
+        <Select
+          label="Select Order"
+          data={orders.map(o => ({ value: o._id, label: `${o.invoiceId || 'Order #' + o._id.slice(-6)} - ${formatMoney(o.total)}` }))}
           value={selectedOrderId}
           onChange={(val) => setSelectedOrderId(val || '')}
         />
@@ -3006,10 +3087,10 @@ const Dashboard = () => {
                 />
 
                 <Flex gap="xs">
-                  <Button 
-                    size="xs" 
-                    variant="outline" 
-                    color="dark" 
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    color="dark"
                     onClick={() => setPayDuesAmount(balance)}
                     disabled={balance <= 0}
                   >
@@ -3037,18 +3118,18 @@ const Dashboard = () => {
 
                 <Text size="xs" fw={600} c="dimmed" mt={4}>PAYMENT METHOD</Text>
                 <Flex gap="xs">
-                  <Button 
-                    flex={1} 
-                    variant={payDuesMethod === 'cash' ? 'filled' : 'outline'} 
-                    color="dark" 
+                  <Button
+                    flex={1}
+                    variant={payDuesMethod === 'cash' ? 'filled' : 'outline'}
+                    color="dark"
                     onClick={() => setPayDuesMethod('cash')}
                   >
                     Cash
                   </Button>
-                  <Button 
-                    flex={1} 
-                    variant={payDuesMethod === 'card' ? 'filled' : 'outline'} 
-                    color="dark" 
+                  <Button
+                    flex={1}
+                    variant={payDuesMethod === 'card' ? 'filled' : 'outline'}
+                    color="dark"
                     onClick={() => setPayDuesMethod('card')}
                   >
                     Card

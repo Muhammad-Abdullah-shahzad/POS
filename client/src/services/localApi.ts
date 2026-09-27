@@ -153,6 +153,13 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
     if (method === 'post') return ok(await eAPI().suppliers.create(mergedBody));
   }
 
+  // ── COMPANY LOGO (read-only; set by the operator on the server) ───────────
+  if (resource === 'company-logo') {
+    if (method === 'get') return ok(await eAPI().companyLogo.get());
+    // Files cannot be uploaded to the local database; the logo lives on the server.
+    throw new Error('Change the logo from the web admin. This till picks it up at its next sync.');
+  }
+
   // ── WASTAGE ───────────────────────────────────────────────────────────────
   if (resource === 'wastage') {
     if (method === 'get' && !id)                return ok(await eAPI().wastage.getAll());

@@ -58,9 +58,9 @@ export default function DashboardKpiGrid({ kpis, onOpen }: DashboardKpiGridProps
               key={key}
               title={title}
               info={`${info} ${period}`}
-              value={formatHeadline(current[field])}
-              trend={{ percent: percentChange(current[field], previous[field]), goodWhenUp }}
-              series={daily.map((day) => ({ date: day.date, value: day[field] }))}
+              value={formatHeadline(current[field] ?? 0)}
+              trend={{ percent: percentChange(current[field] ?? 0, previous[field] ?? 0), goodWhenUp }}
+              series={daily.map((day) => ({ date: day.date, value: day[field] ?? 0 }))}
               formatPoint={formatPeak}
               formatExact={formatMoney}
               glass

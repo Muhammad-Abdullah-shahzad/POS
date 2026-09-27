@@ -9,7 +9,8 @@ import {
   stockAdjustmentSchema,
   updateProductSchema,
 } from '../validators/productValidators';
-import { productImageUpload } from '../services/productImageService';
+import { productImageUpload } from '../services/imageStorageService';
+import { keepingScope } from '../middleware/upload';
 import {
   createProduct,
   deleteProduct,
@@ -29,7 +30,7 @@ router
   .get(validate({ query: productSearchQuery }), getProducts)
   // The image must be parsed before validation, because multipart form fields
   // only exist on the request once multer has read the stream.
-  .post(staff, productImageUpload.single('image'), validate({ body: createProductSchema }), createProduct);
+  .post(staff, keepingScope(productImageUpload.single('image')), validate({ body: createProductSchema }), createProduct);
 
 router.get('/barcode/:barcode', validate({ params: barcodeParam }), getProductByBarcode);
 
@@ -39,7 +40,7 @@ router
   .route('/:id')
   .patch(
     staff,
-    productImageUpload.single('image'),
+    keepingScope(productImageUpload.single('image')),
     validate({ params: idParam, body: updateProductSchema }),
     updateProduct
   )

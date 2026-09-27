@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Title, Paper, TextInput, NumberInput, Switch, Button, Stack, Group, Grid, Tabs, Box, Text, Select } from '@mantine/core';
+import { Title, Paper, TextInput, NumberInput, Button, Stack, Group, Grid, Tabs, Text, Select, Switch } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { CURRENCIES, useCurrencyStore } from '../../store/currencyStore';
 import type { CurrencyCode } from '../../store/currencyStore';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconReceiptTax, IconStar, IconUsersGroup } from '@tabler/icons-react';
+import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconStar, IconUsersGroup } from '@tabler/icons-react';
 import { currencySymbol, formatMoney, formatMoneyAs } from '../../utils/money';
 import StaffLogins from './StaffLogins';
+import CompanyLogoSetting from './CompanyLogoSetting';
+import { useSettingsStore } from '../../store/settingsStore';
 
 const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const savedCurrency = useCurrencyStore((state) => state.code);
   const setCurrency = useCurrencyStore((state) => state.setCurrency);
+  const { setSettings, fetchSettings } = useSettingsStore();
 
   const form = useForm({
     initialValues: {
@@ -23,13 +26,12 @@ const SettingsPage = () => {
       shopEmail: '',
       shopWebsite: '',
       receiptFooter: '',
-      defaultVatRate: 20,
-      isVatInclusiveDefault: true,
+      receiptSize: 'Thermal',
+      showRemarksPrompt: true,
+      currency: savedCurrency as CurrencyCode,
       loyaltyPointsPerEuro: 1,
       loyaltyRewardThreshold: 100,
       loyaltyRewardValue: 5,
-      // Kept on this device rather than on the server; see handleSubmit.
-      currency: savedCurrency as CurrencyCode,
     },
     validate: {
       shopName: (value) => (value.length < 2 ? 'Shop name must be at least 2 characters' : null),
@@ -37,24 +39,28 @@ const SettingsPage = () => {
     },
   });
 
-  const fetchSettings = async () => {
+  const loadSettingsData = async () => {
     try {
       setFetching(true);
-      const { data } = await api.get('/settings');
-      if (data.success && data.data) {
-        form.setValues({
-          shopName: data.data.shopName || '',
-          shopAddress: data.data.shopAddress || '',
-          shopPhone: data.data.shopPhone || '',
-          shopEmail: data.data.shopEmail || '',
-          shopWebsite: data.data.shopWebsite || '',
-          receiptFooter: data.data.receiptFooter || '',
-          defaultVatRate: data.data.defaultVatRate ?? 20,
-          isVatInclusiveDefault: data.data.isVatInclusiveDefault ?? true,
-          loyaltyPointsPerEuro: data.data.loyaltyPointsPerEuro ?? 1,
-          loyaltyRewardThreshold: data.data.loyaltyRewardThreshold ?? 100,
-          loyaltyRewardValue: data.data.loyaltyRewardValue ?? 5,
-        });
+      const success = await fetchSettings();
+      if (success) {
+        const globalSettings = useSettingsStore.getState().settings;
+        if (globalSettings) {
+          form.setValues({
+            shopName: globalSettings.shopName || '',
+            shopAddress: globalSettings.shopAddress || '',
+            shopPhone: globalSettings.shopPhone || '',
+            shopEmail: globalSettings.shopEmail || '',
+            shopWebsite: globalSettings.shopWebsite || '',
+            receiptFooter: globalSettings.receiptFooter || '',
+            receiptSize: globalSettings.receiptSize || 'Thermal',
+            showRemarksPrompt: globalSettings.showRemarksPrompt ?? true,
+            currency: (globalSettings.currency as CurrencyCode) || savedCurrency,
+            loyaltyPointsPerEuro: globalSettings.loyaltyPointsPerEuro ?? 1,
+            loyaltyRewardThreshold: globalSettings.loyaltyRewardThreshold ?? 100,
+            loyaltyRewardValue: globalSettings.loyaltyRewardValue ?? 5,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -70,18 +76,16 @@ const SettingsPage = () => {
   };
 
   useEffect(() => {
-    fetchSettings();
+    loadSettingsData();
   }, []);
 
   const handleSubmit = async (values: typeof form.values) => {
-    // The currency is a device preference, so it never goes to the API.
-    const { currency, ...shopSettings } = values;
-
     try {
       setLoading(true);
-      const { data } = await api.put('/settings', shopSettings);
-      if (data.success) {
-        setCurrency(currency);
+      const { data } = await api.put('/settings', values);
+      if (data.success && data.data) {
+        setCurrency(values.currency);
+        setSettings(data.data); // Update global store immediately
         notifications.show({
           title: 'Settings Updated',
           message: 'System and shop parameters saved successfully',
@@ -122,102 +126,90 @@ const SettingsPage = () => {
           <Tabs.List>
             <Tabs.Tab value="shop" leftSection={<IconBuildingStore size={16} />}>Shop Details</Tabs.Tab>
             <Tabs.Tab value="receipt" leftSection={<IconReceipt size={16} />}>Receipt Options</Tabs.Tab>
-            <Tabs.Tab value="tax" leftSection={<IconReceiptTax size={16} />}>Tax & VAT</Tabs.Tab>
             <Tabs.Tab value="loyalty" leftSection={<IconStar size={16} />}>Loyalty Points</Tabs.Tab>
             <Tabs.Tab value="staff" leftSection={<IconUsersGroup size={16} />}>Staff Logins</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="shop" pt="md">
-            <Paper withBorder p="lg" radius="md">
-              <Grid>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <TextInput
-                    label="Shop / Business Name"
-                    placeholder="Enter business name"
-                    required
-                    {...form.getInputProps('shopName')}
-                  />
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <TextInput
-                    label="Contact Phone"
-                    placeholder="e.g. +1 (555) 019-2834"
-                    {...form.getInputProps('shopPhone')}
-                  />
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <TextInput
-                    label="Email Address"
-                    placeholder="info@business.com"
-                    {...form.getInputProps('shopEmail')}
-                  />
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <TextInput
-                    label="Website URL"
-                    placeholder="www.business.com"
-                    {...form.getInputProps('shopWebsite')}
-                  />
-                </Grid.Col>
-                <Grid.Col span={12}>
-                  <TextInput
-                    label="Address"
-                    placeholder="Full business address"
-                    required
-                    {...form.getInputProps('shopAddress')}
-                  />
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <Select
-                    label="Currency"
-                    description={`Used on every screen and receipt on this device. Receipts will show ${formatMoneyAs(form.values.currency, 1234.5)}`}
-                    data={Object.values(CURRENCIES).map(({ code, label }) => ({ value: code, label: `${label} (${code})` }))}
-                    allowDeselect={false}
-                    {...form.getInputProps('currency')}
-                  />
-                </Grid.Col>
-              </Grid>
-            </Paper>
+            <Stack gap="md">
+              <CompanyLogoSetting />
+              <Paper withBorder p="lg" radius="md">
+                <Grid>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <TextInput
+                      label="Shop / Business Name"
+                      placeholder="Enter business name"
+                      required
+                      {...form.getInputProps('shopName')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <TextInput
+                      label="Contact Phone"
+                      placeholder="e.g. +1 (555) 019-2834"
+                      {...form.getInputProps('shopPhone')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <TextInput
+                      label="Email Address"
+                      placeholder="info@business.com"
+                      {...form.getInputProps('shopEmail')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <TextInput
+                      label="Website URL"
+                      placeholder="www.business.com"
+                      {...form.getInputProps('shopWebsite')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={12}>
+                    <TextInput
+                      label="Address"
+                      placeholder="Full business address"
+                      required
+                      {...form.getInputProps('shopAddress')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Select
+                      label="Global Currency"
+                      description={`Sets the system-wide currency. Receipts and screens will show ${formatMoneyAs(form.values.currency, 1234.5)}`}
+                      data={Object.values(CURRENCIES).map(({ code, label }) => ({ value: code, label: `${label} (${code})` }))}
+                      allowDeselect={false}
+                      {...form.getInputProps('currency')}
+                    />
+                  </Grid.Col>
+                </Grid>
+              </Paper>
+            </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value="receipt" pt="md">
             <Paper withBorder p="lg" radius="md">
               <Stack gap="md">
+                <Select
+                  label="Receipt Size"
+                  description="Choose whether to print receipts on standard narrow thermal paper or full A4 paper."
+                  data={[
+                    { value: 'Thermal', label: 'Standard Thermal (80mm)' },
+                    { value: 'A4', label: 'A4 Document' }
+                  ]}
+                  allowDeselect={false}
+                  {...form.getInputProps('receiptSize')}
+                />
                 <TextInput
                   label="Receipt Footer Note"
                   placeholder="e.g. THANK YOU FOR SHOPPING! Visit us again soon."
                   description="This text will be printed at the bottom of customer receipts."
                   {...form.getInputProps('receiptFooter')}
                 />
-              </Stack>
-            </Paper>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="tax" pt="md">
-            <Paper withBorder p="lg" radius="md">
-              <Stack gap="md">
-                <Grid align="flex-end">
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <NumberInput
-                      label="Default VAT Rate (%)"
-                      placeholder="e.g. 20"
-                      min={0}
-                      max={100}
-                      required
-                      {...form.getInputProps('defaultVatRate')}
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Box pb={8}>
-                      <Switch
-                        label="VAT Inclusive by Default"
-                        description="If enabled, items will have tax inclusive pricing on search scan"
-                        checked={form.values.isVatInclusiveDefault}
-                        onChange={(event) => form.setFieldValue('isVatInclusiveDefault', event.currentTarget.checked)}
-                      />
-                    </Box>
-                  </Grid.Col>
-                </Grid>
+                <Switch
+                  label="Ask for remarks at checkout"
+                  description="When on, the till asks for optional remarks before completing each sale and prints them on the invoice. When off, sales complete straight away."
+                  {...form.getInputProps('showRemarksPrompt', { type: 'checkbox' })}
+                />
               </Stack>
             </Paper>
           </Tabs.Panel>

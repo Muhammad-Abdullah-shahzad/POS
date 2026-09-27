@@ -8,6 +8,7 @@
  */
 import httpClient from './httpClient';
 import { useAuthStore } from '../store/authStore';
+import { useBrandingStore } from '../store/brandingStore';
 import { useLicenseStore } from '../store/licenseStore';
 import { usePosStore } from '../store/posStore';
 
@@ -16,6 +17,7 @@ export async function signOutEverywhere(): Promise<void> {
 
   usePosStore.getState().clearCart();
   useLicenseStore.getState().reset();
+  useBrandingStore.getState().clear();
   useAuthStore.getState().signOut();
 
   try {

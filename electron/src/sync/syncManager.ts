@@ -287,6 +287,7 @@ const pullFunctions: Array<{
   { table: 'expense_categories',  fetchEndpoint: '/expense-categories' },
   { table: 'employee_damages',    fetchEndpoint: '/employee-damages' },
   { table: 'suppliers',           fetchEndpoint: '/suppliers' },
+  { table: 'company_logos',       fetchEndpoint: '/company-logo' },
   { table: 'wastage',             fetchEndpoint: '/wastage' },
   { table: 'supplier_invoices',   fetchEndpoint: '/supplier-invoices' },
   { table: 'bank_names',          fetchEndpoint: '/banks/names' },

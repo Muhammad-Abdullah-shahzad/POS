@@ -57,26 +57,34 @@ function kpiWindows(now: Date) {
   return { currentFrom, previousFrom, previousTo, seriesFrom };
 }
 
-function addSale(totals: KpiTotals, row: Record<string, unknown>): void {
+/**
+ * What a sale took at the till and put on account. Sales recorded since the
+ * till began saving this add up to their total; older ones read zeros there,
+ * so they are worked out from the payment method as before.
+ */
+function takenAtTill(row: Record<string, unknown>): { cash: number; card: number; credit: number } {
+  const recorded = {
+    cash: Number(row.paidCash) || 0,
+    card: Number(row.paidCard) || 0,
+    credit: Number(row.creditAmount) || 0,
+  };
+  if (recorded.cash + recorded.card + recorded.credit > 0) return recorded;
+
   const total = Number(row.total) || 0;
   const method = String(row.paymentMethod ?? '').toLowerCase();
+  if (method === 'card') return { cash: 0, card: total, credit: 0 };
+  if (method === 'credit') return { cash: 0, card: 0, credit: total };
+  if (method.startsWith('split')) return { cash: Number(row.splitCash) || 0, card: Number(row.splitCard) || 0, credit: 0 };
+  return { cash: total, card: 0, credit: 0 };
+}
 
+/** Realized sales: only money that reached the drawer or the bank. */
+function addSale(totals: KpiTotals, row: Record<string, unknown>): void {
+  const taken = takenAtTill(row);
   totals.orders += 1;
-  if (method === 'cash') {
-    totals.cash += total;
-    totals.sales += total;
-  } else if (method === 'card') {
-    totals.card += total;
-    totals.sales += total;
-  } else if (method.startsWith('split')) {
-    const cash = Number(row.splitCash) || 0;
-    const card = Number(row.splitCard) || 0;
-    totals.cash += cash;
-    totals.card += card;
-    totals.sales += (cash + card);
-  } else if (method === 'credit') {
-    // Credit sale: no money enters drawer yet, so realized sales = 0
-  }
+  totals.cash += taken.cash;
+  totals.card += taken.card;
+  totals.sales += taken.cash + taken.card;
 }
 
 function addCustomerPayment(totals: KpiTotals, row: Record<string, unknown>): void {
@@ -113,7 +121,7 @@ export function registerAnalyticsHandlers(): void {
     const since = earliest.toISOString();
 
     const orders = dbAll(
-      `SELECT items, total, paymentMethod, splitCash, splitCard, createdAt FROM orders
+      `SELECT items, total, paymentMethod, splitCash, splitCard, paidCash, paidCard, creditAmount, createdAt FROM orders
        WHERE status != 'voided' AND (deletedAt IS NULL OR deletedAt = '') AND createdAt >= $since`,
       { $since: since }
     );
@@ -164,6 +172,8 @@ export function registerAnalyticsHandlers(): void {
       splitCard: 0,
       creditOrders: 0,
       creditOnly: 0,
+      creditDepositCash: 0,
+      creditDepositCard: 0,
       duesOrders: 0,
       duesCash: 0,
       duesCard: 0,
@@ -186,8 +196,11 @@ export function registerAnalyticsHandlers(): void {
         payments.splitCash += Number(row.splitCash) || 0;
         payments.splitCard += Number(row.splitCard) || 0;
       } else if (method === 'credit') {
+        const taken = takenAtTill(row);
         payments.creditOrders += 1;
-        payments.creditOnly += total;
+        payments.creditOnly += taken.credit;
+        payments.creditDepositCash += taken.cash;
+        payments.creditDepositCard += taken.card;
       }
 
       let items: Array<Record<string, unknown>> = [];
@@ -239,6 +252,9 @@ export function registerAnalyticsHandlers(): void {
           cardOnly: round2(payments.cardOnly),
           splitCash: round2(payments.splitCash),
           splitCard: round2(payments.splitCard),
+          creditOnly: round2(payments.creditOnly),
+          creditDepositCash: round2(payments.creditDepositCash),
+          creditDepositCard: round2(payments.creditDepositCard),
         },
         expenseCategories: [...categories.entries()]
           .map(([category, entry]) => ({ category, total: round2(entry.total), count: entry.count }))

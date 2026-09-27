@@ -26,8 +26,13 @@ export const createOrderSchema = z.object({
   paymentMethod: z.string().trim().min(1, 'Payment method is required'),
   splitCash: z.coerce.number().nullish(),
   splitCard: z.coerce.number().nullish(),
+  /** On a credit sale: what was handed over now. The rest goes on the account. */
+  paidCash: z.coerce.number().min(0, 'Cash deposit cannot be negative').nullish(),
+  paidCard: z.coerce.number().min(0, 'Card deposit cannot be negative').nullish(),
   customerId: objectId.nullish(),
   customerName: z.string().trim().max(160).nullish(),
+  /** Printed on the invoice under the customer details. */
+  remarks: z.string().trim().max(500, 'Remarks must be 500 characters or fewer').nullish(),
 });
 
 export const voidOrderSchema = z.object({

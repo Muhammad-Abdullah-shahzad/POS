@@ -1,6 +1,16 @@
 import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, generateLocalId, now, v } from '../db/database';
 
+/** SQLite keeps JSON as text and booleans as 0/1; hand the UI real values. */
+function toSettings(row: any) {
+  if (!row) return null;
+  return {
+    ...row,
+    showRemarksPrompt: row.showRemarksPrompt !== 0,
+    quickProducts: JSON.parse(row.quickProducts || '[]'),
+  };
+}
+
 export function registerSettingsHandlers(): void {
 
   const ensureSettings = () => {
@@ -17,9 +27,7 @@ export function registerSettingsHandlers(): void {
 
   handleLicensed('settings:get', () => {
     ensureSettings();
-    const row = dbGet('SELECT * FROM settings LIMIT 1') as any;
-    if (!row) return null;
-    return { ...row, quickProducts: JSON.parse(row.quickProducts || '[]') };
+    return toSettings(dbGet('SELECT * FROM settings LIMIT 1'));
   });
 
   handleLicensed('settings:update', (_e, data: Record<string, unknown>) => {
@@ -28,7 +36,7 @@ export function registerSettingsHandlers(): void {
       `UPDATE settings SET
          shopName=$shopName, shopAddress=$shopAddress, shopPhone=$shopPhone,
          shopEmail=$shopEmail, shopWebsite=$shopWebsite, receiptFooter=$receiptFooter,
-         defaultVatRate=$defaultVatRate, isVatInclusiveDefault=$isVatInclusive,
+         showRemarksPrompt=$showRemarksPrompt,
          loyaltyPointsPerEuro=$loyaltyPPE, loyaltyRewardThreshold=$loyaltyRT,
          loyaltyRewardValue=$loyaltyRV, quickProducts=$quickProducts,
          updatedAt=$ts, isSync=0`,
@@ -39,8 +47,7 @@ export function registerSettingsHandlers(): void {
         $shopEmail: v(data.shopEmail, ''),
         $shopWebsite: v(data.shopWebsite, ''),
         $receiptFooter: v(data.receiptFooter, ''),
-        $defaultVatRate: v(data.defaultVatRate, 20),
-        $isVatInclusive: data.isVatInclusiveDefault ? 1 : 0,
+        $showRemarksPrompt: data.showRemarksPrompt === false ? 0 : 1,
         $loyaltyPPE: v(data.loyaltyPointsPerEuro, 1),
         $loyaltyRT: v(data.loyaltyRewardThreshold, 100),
         $loyaltyRV: v(data.loyaltyRewardValue, 5),
@@ -48,8 +55,7 @@ export function registerSettingsHandlers(): void {
         $ts: now(),
       }
     );
-    const row = dbGet('SELECT * FROM settings LIMIT 1') as any;
-    return { ...row, quickProducts: JSON.parse(row?.quickProducts || '[]') };
+    return toSettings(dbGet('SELECT * FROM settings LIMIT 1'));
   });
 
   handleLicensed('settings:getQuickProducts', () => {

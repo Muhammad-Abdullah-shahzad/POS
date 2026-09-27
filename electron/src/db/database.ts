@@ -106,6 +106,23 @@ function runMigrations(db: Database): void {
     addColumnIfMissing(db, table, 'deletedAt', 'TEXT');
   }
 
+  // Sales record how they were settled and the account standing at the time,
+  // so a reprinted invoice matches the one handed over at the till.
+  for (const [column, definition] of [
+    ['paidCash', 'REAL NOT NULL DEFAULT 0'],
+    ['paidCard', 'REAL NOT NULL DEFAULT 0'],
+    ['creditAmount', 'REAL NOT NULL DEFAULT 0'],
+    ['balanceBefore', 'REAL'],
+    ['balanceAfter', 'REAL'],
+    ['customerPhone', 'TEXT'],
+    ['customerAddress', 'TEXT'],
+    ['remarks', 'TEXT'],
+  ] as const) {
+    addColumnIfMissing(db, 'orders', column, definition);
+  }
+
+  addColumnIfMissing(db, 'settings', 'showRemarksPrompt', 'INTEGER NOT NULL DEFAULT 1');
+
   // The till belongs to one company; the column records which, so a database
   // copied between machines can be recognised rather than silently reused.
   addColumnIfMissing(db, 'users', 'tenantId', 'TEXT');

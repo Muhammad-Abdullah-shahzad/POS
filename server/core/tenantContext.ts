@@ -59,6 +59,13 @@ export const withTenantScope = <T>(
 ): T => storage.run({ ...context, tenantId, isSystem: false }, fn);
 
 /**
+ * Continue under a context captured earlier. Needed after stream-based
+ * middleware such as file uploads, whose callbacks run outside the request's
+ * scope; see `middleware/upload.ts`.
+ */
+export const resumeContext = <T>(context: RequestContext, fn: () => T): T => storage.run(context, fn);
+
+/**
  * Run `fn` with tenant scoping disabled. Reserved for trusted internal work:
  * tenant onboarding, data migrations and CLI scripts.
  *

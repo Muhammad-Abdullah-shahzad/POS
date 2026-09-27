@@ -256,7 +256,7 @@ export function registerAuthHandlers(): void {
     const tables = [
       'products', 'categories', 'orders', 'customers', 'employees',
       'expenses', 'expense_categories', 'employee_damages', 'suppliers',
-      'supplier_invoices', 'wastage',
+      'supplier_invoices', 'wastage', 'company_logos',
       'bank_names', 'bank_accounts', 'bank_cards', 'settings', 'users',
       'pending_deletes',
     ];

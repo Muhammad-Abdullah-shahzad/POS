@@ -100,6 +100,8 @@ describe('dashboard KPIs', () => {
       splitCard: 30,
       creditOrders: 0,
       creditOnly: 0,
+      creditDepositCash: 0,
+      creditDepositCard: 0,
       duesOrders: 0,
       duesCash: 0,
       duesCard: 0,

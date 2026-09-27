@@ -127,6 +127,9 @@ interface ElectronAPI {
     getAll: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;
   };
+  companyLogo: {
+    get: () => Promise<{ _id: string; slug: string; url: string; updatedAt?: string } | null>;
+  };
   wastage: {
     getAll: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;

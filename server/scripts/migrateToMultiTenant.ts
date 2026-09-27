@@ -239,8 +239,6 @@ async function collapseSettings(tenantId: mongoose.Types.ObjectId): Promise<void
       tenantId,
       shopName: 'My Retail Store',
       shopAddress: '123 Retail Lane, Shop City',
-      defaultVatRate: 20,
-      isVatInclusiveDefault: true,
       expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
       quickProducts: [],
       createdAt: new Date(),

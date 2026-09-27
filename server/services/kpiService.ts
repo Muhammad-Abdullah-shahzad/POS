@@ -58,7 +58,11 @@ export interface KpiBreakdown {
     splitCash: number;
     splitCard: number;
     creditOrders: number;
+    /** What went on customer accounts (credit sales, less any deposits). */
     creditOnly: number;
+    /** Cash and card deposits taken on credit sales. */
+    creditDepositCash: number;
+    creditDepositCard: number;
     duesOrders: number;
     duesCash: number;
     duesCard: number;
@@ -134,54 +138,42 @@ const isSplit = { $regexMatch: { input: '$method', regex: '^split' } };
 const isCredit = { $eq: ['$method', 'credit'] };
 
 /**
- * Realized sales from orders:
- * Cash, Card, and Split add to sales & cash/card drawers.
- * Credit sales add 0 to realized sales (money has not entered drawer yet).
+ * Orders saved since the till began recording how each sale was settled carry
+ * paidCash, paidCard and creditAmount, which add up to the total. Older orders
+ * have none of them, or zeros where a till added the columns later, and are
+ * read from their payment method as before.
+ */
+const recordedSettlement = {
+  $add: [{ $ifNull: ['$paidCash', 0] }, { $ifNull: ['$paidCard', 0] }, { $ifNull: ['$creditAmount', 0] }],
+};
+const isSettled = { $gt: [recordedSettlement, 0] };
+
+const legacyCash = { $cond: [{ $eq: ['$method', 'cash'] }, '$total', { $cond: [isSplit, { $ifNull: ['$splitCash', 0] }, 0] }] };
+const legacyCard = { $cond: [{ $eq: ['$method', 'card'] }, '$total', { $cond: [isSplit, { $ifNull: ['$splitCard', 0] }, 0] }] };
+/** Older orders: credit sales took nothing; unknown methods counted in full. */
+const legacySales = {
+  $cond: [
+    isCredit,
+    0,
+    { $cond: [isSplit, { $add: [{ $ifNull: ['$splitCash', 0] }, { $ifNull: ['$splitCard', 0] }] }, '$total'] },
+  ],
+};
+
+/** Money taken at the till, and what went on customer accounts. */
+const cashTaken = { $cond: [isSettled, { $ifNull: ['$paidCash', 0] }, legacyCash] };
+const cardTaken = { $cond: [isSettled, { $ifNull: ['$paidCard', 0] }, legacyCard] };
+const creditGiven = { $cond: [isSettled, { $ifNull: ['$creditAmount', 0] }, { $cond: [isCredit, '$total', 0] }] };
+
+/**
+ * Realized sales: only money that reached the drawer or the bank. A credit
+ * sale counts for whatever deposit was paid, and the rest as credit.
  */
 const salesAccumulators = {
-  sales: {
-    $sum: {
-      $cond: [
-        isCredit,
-        0,
-        {
-          $cond: [
-            { $eq: ['$method', 'cash'] },
-            '$total',
-            {
-              $cond: [
-                { $eq: ['$method', 'card'] },
-                '$total',
-                {
-                  $cond: [
-                    isSplit,
-                    { $add: [{ $ifNull: ['$splitCash', 0] }, { $ifNull: ['$splitCard', 0] }] },
-                    '$total',
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  },
+  sales: { $sum: { $cond: [isSettled, { $add: [{ $ifNull: ['$paidCash', 0] }, { $ifNull: ['$paidCard', 0] }] }, legacySales] } },
   orders: { $sum: 1 },
-  cash: {
-    $sum: {
-      $cond: [{ $eq: ['$method', 'cash'] }, '$total', { $cond: [isSplit, { $ifNull: ['$splitCash', 0] }, 0] }],
-    },
-  },
-  card: {
-    $sum: {
-      $cond: [{ $eq: ['$method', 'card'] }, '$total', { $cond: [isSplit, { $ifNull: ['$splitCard', 0] }, 0] }],
-    },
-  },
-  creditSales: {
-    $sum: {
-      $cond: [isCredit, '$total', 0],
-    },
-  },
+  cash: { $sum: cashTaken },
+  card: { $sum: cardTaken },
+  creditSales: { $sum: creditGiven },
 };
 
 interface SalesRow {
@@ -245,6 +237,11 @@ interface PaymentRow {
   total: number;
   splitCash: number;
   splitCard: number;
+  /** Cash and card deposits taken on credit sales. */
+  depositCash: number;
+  depositCard: number;
+  /** What went on customer accounts. */
+  onAccount: number;
 }
 
 function paymentPipeline(range: Range): PipelineStage[] {
@@ -268,6 +265,9 @@ function paymentPipeline(range: Range): PipelineStage[] {
         total: { $sum: '$total' },
         splitCash: { $sum: { $ifNull: ['$splitCash', 0] } },
         splitCard: { $sum: { $ifNull: ['$splitCard', 0] } },
+        depositCash: { $sum: { $cond: [isCredit, cashTaken, 0] } },
+        depositCard: { $sum: { $cond: [isCredit, cardTaken, 0] } },
+        onAccount: { $sum: creditGiven },
       },
     },
   ];
@@ -434,7 +434,9 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
         splitCash: round2(byKind.get('split')?.splitCash ?? 0),
         splitCard: round2(byKind.get('split')?.splitCard ?? 0),
         creditOrders: byKind.get('credit')?.orders ?? 0,
-        creditOnly: round2(byKind.get('credit')?.total ?? 0),
+        creditOnly: round2(byKind.get('credit')?.onAccount ?? 0),
+        creditDepositCash: round2(byKind.get('credit')?.depositCash ?? 0),
+        creditDepositCard: round2(byKind.get('credit')?.depositCard ?? 0),
         duesOrders: currentCustPayments?.count ?? 0,
         duesCash: round2(currentCustPayments?.cash ?? 0),
         duesCard: round2(currentCustPayments?.card ?? 0),

@@ -11,6 +11,8 @@
  */
 import { Model, Types } from 'mongoose';
 import { logger } from '../core/logger';
+import { getTenantId } from '../core/tenantContext';
+import { isDataUrlImage, storeDataUrlImage } from './imageStorageService';
 import Product from '../models/Product';
 import Category from '../models/Category';
 import Order from '../models/Order';
@@ -26,9 +28,35 @@ import WastageEntry from '../models/WastageEntry';
 import Settings from '../models/Settings';
 import { BankAccount, BankCard, BankName } from '../models/Bank';
 
+type SyncRecord = Record<string, unknown>;
+
+interface SyncCollectionConfig {
+  model: Model<any>;
+  label: string;
+  /** Adjusts a record pushed by a till before it is saved. */
+  prepare?: (record: SyncRecord) => Promise<SyncRecord>;
+}
+
+/**
+ * Desktop tills keep new product photos inline as base64 until they sync.
+ * They belong on Google Drive, with only the link in the database. If Drive
+ * is unavailable the photo is kept as it is rather than lost.
+ */
+async function moveInlineImageToDrive(record: SyncRecord): Promise<SyncRecord> {
+  const tenantId = getTenantId();
+  if (!tenantId || !isDataUrlImage(record.image)) return record;
+
+  try {
+    return { ...record, image: await storeDataUrlImage('products', tenantId, record.image) };
+  } catch (error) {
+    logger.warn({ err: error, productId: record._id }, 'Kept an inline product photo; moving it to Drive failed');
+    return record;
+  }
+}
+
 /** Every collection the desktop app may sync, keyed by its API path segment. */
 export const SYNC_COLLECTIONS = {
-  products: { model: Product as Model<any>, label: 'products' },
+  products: { model: Product as Model<any>, label: 'products', prepare: moveInlineImageToDrive },
   categories: { model: Category as Model<any>, label: 'categories' },
   orders: { model: Order as Model<any>, label: 'orders' },
   customers: { model: Customer as Model<any>, label: 'customers' },
@@ -44,7 +72,7 @@ export const SYNC_COLLECTIONS = {
   'banks/accounts': { model: BankAccount as Model<any>, label: 'bank accounts' },
   'banks/cards': { model: BankCard as Model<any>, label: 'bank cards' },
   settings: { model: Settings as Model<any>, label: 'settings' },
-} as const;
+} satisfies Record<string, SyncCollectionConfig>;
 
 export type SyncCollection = keyof typeof SYNC_COLLECTIONS;
 
@@ -96,7 +124,7 @@ export async function upsertRecords(
   collection: SyncCollection,
   records: Record<string, unknown>[]
 ): Promise<SyncOutcome> {
-  const { model } = SYNC_COLLECTIONS[collection];
+  const { model, prepare } = SYNC_COLLECTIONS[collection] as SyncCollectionConfig;
   const outcome: SyncOutcome = { upserted: 0, skipped: 0, errors: [] };
 
   // Settings is a single document per company; only the first record counts.
@@ -109,9 +137,10 @@ export async function upsertRecords(
     }
 
     try {
+      const prepared = prepare ? await prepare(record) : record;
       await model.updateOne(
         { _id: asId(record._id) },
-        { $set: toUpdateDocument(record) },
+        { $set: toUpdateDocument(prepared) },
         { upsert: true, runValidators: false }
       );
       outcome.upserted += 1;

@@ -30,6 +30,15 @@ export interface IOrder extends Document<Types.ObjectId> {
   paymentMethod: string;
   splitCash?: number | null;
   splitCard?: number | null;
+  /** Taken in cash at the till. */
+  paidCash: number;
+  /** Taken by card at the till. */
+  paidCard: number;
+  /** Put on the customer's account. */
+  creditAmount: number;
+  /** The customer's account before and after this sale; null for walk-ins. */
+  balanceBefore?: number | null;
+  balanceAfter?: number | null;
   status: OrderStatus;
   voidReason?: string | null;
   voidedAt?: Date | null;
@@ -38,6 +47,11 @@ export interface IOrder extends Document<Types.ObjectId> {
   voidedByEmployeeName?: string | null;
   customerId?: Types.ObjectId | null;
   customerName?: string | null;
+  /** Copied at the time of sale, so a reprint matches the original invoice. */
+  customerPhone?: string | null;
+  customerAddress?: string | null;
+  /** Typed by the cashier at checkout and printed on the invoice. */
+  remarks?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +85,11 @@ const OrderSchema = new Schema<IOrder>(
     paymentMethod: { type: String, required: true },
     splitCash: { type: Number, default: null },
     splitCard: { type: Number, default: null },
+    paidCash: { type: Number, default: 0, min: 0 },
+    paidCard: { type: Number, default: 0, min: 0 },
+    creditAmount: { type: Number, default: 0, min: 0 },
+    balanceBefore: { type: Number, default: null },
+    balanceAfter: { type: Number, default: null },
     status: { type: String, enum: ORDER_STATUSES, default: 'completed' },
     voidReason: { type: String, default: null },
     voidedAt: { type: Date, default: null },
@@ -79,6 +98,9 @@ const OrderSchema = new Schema<IOrder>(
     voidedByEmployeeName: { type: String, default: null },
     customerId: { type: Schema.Types.ObjectId, ref: 'Customer', default: null },
     customerName: { type: String, default: null },
+    customerPhone: { type: String, default: null },
+    customerAddress: { type: String, default: null },
+    remarks: { type: String, default: null, trim: true, maxlength: 500 },
   },
   { timestamps: true }
 );

@@ -32,8 +32,9 @@ const dateOnly = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'sh
 const formatWhen = (iso?: string): string => (iso ? dateTime.format(new Date(iso)) : '—');
 const formatDate = (iso?: string): string => (iso ? dateOnly.format(new Date(iso)) : '—');
 
-const change = (field: keyof KpiTotals, kpis: DashboardKpis) => percentChange(kpis.current[field], kpis.previous[field]);
-const dailySeries = (kpis: DashboardKpis, field: keyof KpiTotals) => kpis.daily.map((day) => ({ date: day.date, value: day[field] }));
+// Dues and credit figures are optional on older responses, so they read as zero.
+const change = (field: keyof KpiTotals, kpis: DashboardKpis) => percentChange(kpis.current[field] ?? 0, kpis.previous[field] ?? 0);
+const dailySeries = (kpis: DashboardKpis, field: keyof KpiTotals) => kpis.daily.map((day) => ({ date: day.date, value: day[field] ?? 0 }));
 
 const isSplitPayment = (order: DashboardOrder): boolean => paymentMethodKey(order.paymentMethod) === 'split';
 
@@ -236,6 +237,9 @@ export function CashView({ kpis }: DetailContext) {
       <StatGrid>
         <StatTile label="Cash sales" value={formatMoney(payments.cashOnly)} hint={plural(payments.cashOrders, 'sale', 'sales')} />
         <StatTile label="Cash part of split" value={formatMoney(payments.splitCash)} hint={plural(payments.splitOrders, 'split sale', 'split sales')} />
+        {(payments.creditDepositCash ?? 0) > 0 && (
+          <StatTile label="Deposits on credit sales" value={formatMoney(payments.creditDepositCash)} hint="Paid now; the rest on account" />
+        )}
         {payments.duesCash !== undefined && payments.duesCash > 0 && (
           <StatTile label="Customer dues (cash)" value={formatMoney(payments.duesCash)} hint="Debt repayments" />
         )}
@@ -260,6 +264,9 @@ export function CardView({ kpis, orders }: DetailContext) {
       <StatGrid>
         <StatTile label="Card sales" value={formatMoney(payments.cardOnly)} hint={plural(payments.cardOrders, 'sale', 'sales')} />
         <StatTile label="Card part of split" value={formatMoney(payments.splitCard)} hint={plural(payments.splitOrders, 'split sale', 'split sales')} />
+        {(payments.creditDepositCard ?? 0) > 0 && (
+          <StatTile label="Deposits on credit sales" value={formatMoney(payments.creditDepositCard)} hint="Paid now; the rest on account" />
+        )}
         {payments.duesCard !== undefined && payments.duesCard > 0 && (
           <StatTile label="Customer dues (card)" value={formatMoney(payments.duesCard)} hint="Debt repayments" />
         )}

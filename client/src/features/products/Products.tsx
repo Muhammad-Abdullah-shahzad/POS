@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { productImageUrl } from '../../utils/assetUrl';
 import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Paper, Stack, Text, Image, FileButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
@@ -307,14 +308,7 @@ const Products = () => {
     setEditingProduct(product);
     setImageFile(null);
     // Show existing image as preview
-    const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-    setImagePreview(
-      product.image
-        ? product.image.startsWith('http')
-          ? product.image
-          : `${apiBase}${product.image}`
-        : null
-    );
+    setImagePreview(productImageUrl(product.image));
     form.setValues({
       name: product.name,
       sku: product.sku || '',
@@ -372,7 +366,7 @@ const Products = () => {
                 <Table.Td>
                   {p.image ? (
                     <Image
-                      src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${p.image}`}
+                      src={productImageUrl(p.image) ?? undefined}
                       h={40} w={40} radius="sm" fit="cover"
                       fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23eee'/%3E%3C/svg%3E"
                     />

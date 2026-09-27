@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { productImageUrl } from '../../utils/assetUrl';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Paper, Title, Text, Button, Group, Stack, TextInput, NumberInput,
@@ -31,19 +32,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   'BAKERY AND DAIRY': 'yellow',
 };
 
-const SERVER_URL = 'http://localhost:5001';
 const MAX_IMAGE_SIZE_MB = 15;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 // Helper: resolve image URL - supports both Google Drive URLs and legacy local paths
-const resolveImageUrl = (image: string | undefined): string | null => {
-  if (!image) return null;
-  const driveId = image.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || image.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
-  if (image.startsWith('http')) return image; // Drive URL or any absolute URL
-  return `${SERVER_URL}${image}`; // legacy local path
-};
 
 interface Product {
   _id: string;
@@ -133,7 +126,7 @@ export const GeneralProducts = () => {
       drs: p.drs || 0,
     });
     setImageFile(null);
-    setImagePreview(p.image ? resolveImageUrl(p.image) : null);
+    setImagePreview(p.image ? productImageUrl(p.image) : null);
     setModalOpen(true);
   };
 
@@ -361,7 +354,7 @@ export const GeneralProducts = () => {
                   <Table.Td>
                     {p.image ? (
                       <Image
-                        src={resolveImageUrl(p.image) || ''}
+                        src={productImageUrl(p.image) || ''}
                         w={40} h={40} radius="sm" fit="cover"
                         fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23e9ecef'/%3E%3C/svg%3E"
                       />

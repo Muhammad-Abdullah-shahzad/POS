@@ -99,6 +99,11 @@ const api = {
     create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('suppliers:create', data),
   },
 
+  // ── COMPANY LOGO ──────────────────────────────────────────────────────────
+  companyLogo: {
+    get:     ()                                               => ipcRenderer.invoke('companyLogo:get'),
+  },
+
   // ── WASTAGE ───────────────────────────────────────────────────────────────
   wastage: {
     getAll:  ()                                               => ipcRenderer.invoke('wastage:getAll'),

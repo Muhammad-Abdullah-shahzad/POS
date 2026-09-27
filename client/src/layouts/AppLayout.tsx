@@ -8,12 +8,15 @@
 import { AppShell, Anchor, Burger, Button, Center, Group, Menu, NavLink, ScrollArea, Text, Title, Tooltip } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { IconLogout } from '@tabler/icons-react';
+import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import CartMark from '../components/CartMark';
 import LicenseBadge from '../features/license/LicenseBadge';
 import SyncButton from '../features/sync/SyncButton';
 import { signOutEverywhere } from '../services/sessionService';
 import { useAuthStore } from '../store/authStore';
+import { useBrandingStore } from '../store/brandingStore';
+import { useSettingsStore } from '../store/settingsStore';
 import classes from './AppLayout.module.css';
 import type { NavItem } from './navigation';
 
@@ -110,6 +113,13 @@ export default function AppLayout({ navItems }: AppLayoutProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const user = useAuthStore((state) => state.user);
+  const { settings, fetchSettings } = useSettingsStore();
+  const fetchLogo = useBrandingStore((state) => state.fetchLogo);
+
+  useEffect(() => {
+    fetchSettings();
+    fetchLogo();
+  }, [fetchSettings, fetchLogo]);
 
   if (!user) return null;
 
@@ -160,7 +170,7 @@ export default function AppLayout({ navItems }: AppLayoutProps) {
           <Group gap="md" wrap="nowrap">
             {!isMobile && (
               <div className={classes.identity}>
-                <Title order={6}>{user.tenantName}</Title>
+                <Title order={6}>{settings?.shopName || user.tenantName}</Title>
                 <Text size="xs" c="dimmed">
                   {user.name}
                 </Text>

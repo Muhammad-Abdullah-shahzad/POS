@@ -10,12 +10,18 @@ import { asyncHandler } from '../core/asyncHandler';
 import { BadRequestError, NotFoundError } from '../core/errors';
 import Product from '../models/Product';
 import { searchFilter } from '../utils/query';
-import {
-  discardUpload,
-  mirrorToDrive,
-  publicImageUrl,
-  removeStoredImage,
-} from '../services/productImageService';
+import { isDataUrlImage, removeStoredImage, storeDataUrlImage, storeUploadedImage } from '../services/imageStorageService';
+
+/**
+ * A new product photo, stored on Drive: uploaded as a file, or sent inline as
+ * base64. Returns its link, or null when the request has no new photo.
+ */
+async function storeIncomingImage(req: Request): Promise<string | null> {
+  const tenantId = req.user!.tenantId;
+  if (req.file) return storeUploadedImage('products', tenantId, req.file);
+  if (isDataUrlImage(req.body?.image)) return storeDataUrlImage('products', tenantId, req.body.image);
+  return null;
+}
 
 const generateSku = (): string => `SKU-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
@@ -44,44 +50,37 @@ export const getProductByBarcode = asyncHandler(async (req: Request, res: Respon
 });
 
 export const createProduct = asyncHandler(async (req: Request, res: Response) => {
+  // The image goes to Drive first; only its link is stored with the product.
+  const image = await storeIncomingImage(req);
+
   try {
-    const product = await Product.create({
-      ...req.body,
-      sku: req.body.sku || generateSku(),
-      image: req.file ? publicImageUrl(req.user!.tenantId, req.file) : null,
-    });
-
-    if (req.file) mirrorToDrive(product.id, req.file);
-
+    const product = await Product.create({ ...req.body, sku: req.body.sku || generateSku(), image });
     res.status(201).json(successResponse(product, 'Product created'));
   } catch (error) {
-    // The image is only useful if the product row was written.
-    await discardUpload(req.file);
+    // The image is only useful if the product was saved.
+    await removeStoredImage(image);
     throw error;
   }
 });
 
 export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
   const existing = await Product.findById(req.params.id);
-  if (!existing) {
-    await discardUpload(req.file);
-    throw new NotFoundError('Product');
-  }
+  if (!existing) throw new NotFoundError('Product');
 
-  const previousImage = existing.image ?? null;
+  const image = await storeIncomingImage(req);
 
   try {
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $set: { ...req.body, ...(req.file && { image: publicImageUrl(req.user!.tenantId, req.file) }) } },
+      { $set: { ...req.body, ...(image && { image }) } },
       { returnDocument: 'after', runValidators: true }
     );
 
-    if (req.file) mirrorToDrive(product!.id, req.file, previousImage);
-
+    // A replaced image is removed only once the new one is saved.
+    if (image && existing.image && existing.image !== image) await removeStoredImage(existing.image);
     res.json(successResponse(product, 'Product updated'));
   } catch (error) {
-    await discardUpload(req.file);
+    await removeStoredImage(image);
     throw error;
   }
 });

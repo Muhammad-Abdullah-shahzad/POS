@@ -1,6 +1,6 @@
 /**
- * Settings — one document per tenant holding shop details, VAT defaults,
- * loyalty rules and the POS quick buttons.
+ * Settings — one document per tenant holding shop details, loyalty rules and
+ * the POS quick buttons.
  */
 import mongoose, { Document, Schema, Types } from 'mongoose';
 import { tenantScopePlugin } from './plugins/tenantScope';
@@ -20,8 +20,10 @@ export interface ISettings extends Document<Types.ObjectId> {
   shopEmail: string;
   shopWebsite: string;
   receiptFooter: string;
-  defaultVatRate: number;
-  isVatInclusiveDefault: boolean;
+  receiptSize: string;
+  /** Ask the cashier for invoice remarks before each sale is completed. */
+  showRemarksPrompt: boolean;
+  currency: string;
   loyaltyPointsPerEuro: number;
   loyaltyRewardThreshold: number;
   loyaltyRewardValue: number;
@@ -67,8 +69,9 @@ const SettingsSchema = new Schema<ISettings>(
     shopEmail: { type: String, default: '' },
     shopWebsite: { type: String, default: '' },
     receiptFooter: { type: String, default: 'THANK YOU FOR SHOPPING! Please visit us again soon.' },
-    defaultVatRate: { type: Number, required: true, default: 20, min: 0 },
-    isVatInclusiveDefault: { type: Boolean, required: true, default: true },
+    receiptSize: { type: String, enum: ['Thermal', 'A4'], default: 'Thermal' },
+    showRemarksPrompt: { type: Boolean, default: true },
+    currency: { type: String, default: 'EUR' },
     loyaltyPointsPerEuro: { type: Number, default: 1, min: 0 },
     loyaltyRewardThreshold: { type: Number, default: 100, min: 0 },
     loyaltyRewardValue: { type: Number, default: 5, min: 0 },

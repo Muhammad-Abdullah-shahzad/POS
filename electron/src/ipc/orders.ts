@@ -2,6 +2,44 @@ import { IpcMainInvokeEvent } from 'electron';
 import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, dbTransaction, generateLocalId, now, v, BindMap } from '../db/database';
 
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+/**
+ * How a sale was settled, worked out here rather than taken from the screen,
+ * matching the server. Whatever is not handed over goes on the customer account.
+ *
+ *   cash, card   the whole total, one way
+ *   split        the cash and card parts; any shortfall goes on account
+ *   credit       optional cash and card deposits; the rest goes on account
+ */
+function settlement(data: Record<string, unknown>): { paidCash: number; paidCard: number; creditAmount: number } {
+  const total = Number(data.total ?? 0);
+  const method = String(data.paymentMethod ?? '').toLowerCase();
+
+  if (method === 'cash' || method === 'card') {
+    return { paidCash: method === 'cash' ? total : 0, paidCard: method === 'card' ? total : 0, creditAmount: 0 };
+  }
+
+  const partPayment =
+    method === 'credit'
+      ? { cash: Number(data.paidCash ?? 0), card: Number(data.paidCard ?? 0) }
+      : method.startsWith('split')
+        ? { cash: Number(data.splitCash ?? 0), card: Number(data.splitCard ?? 0) }
+        : null;
+
+  // Anything else is treated as cash, as the till always has.
+  if (!partPayment) return { paidCash: total, paidCard: 0, creditAmount: 0 };
+
+  if (partPayment.cash < 0 || partPayment.card < 0) throw new Error('Deposits cannot be negative');
+  if (round2(partPayment.cash + partPayment.card) > round2(total)) {
+    throw new Error('The cash and card deposits add up to more than the total');
+  }
+
+  const paidCash = round2(partPayment.cash);
+  const paidCard = round2(partPayment.card);
+  return { paidCash, paidCard, creditAmount: round2(total - paidCash - paidCard) };
+}
+
 export function registerOrderHandlers(): void {
 
   handleLicensed('orders:getAll', (_e: IpcMainInvokeEvent, month?: number, year?: number) => {
@@ -28,6 +66,11 @@ export function registerOrderHandlers(): void {
 
   handleLicensed('orders:create', (_e: IpcMainInvokeEvent, data: Record<string, unknown>) => {
     const _id = generateLocalId();
+    // Checked before any stock moves, so a rejected sale leaves nothing behind.
+    const settled = settlement(data);
+    if (settled.creditAmount > 0 && !data.customerId) {
+      throw new Error('Choose a customer to put part of this sale on their account');
+    }
     const ts = now();
     const invoiceId = `REC-${Date.now()}`;
     const itemsArr = (data.items as any[]) ?? [];
@@ -58,14 +101,32 @@ export function registerOrderHandlers(): void {
         }
       }
 
+      // The account standing is read before the credit is added below.
+      const account = data.customerId
+        ? (dbGet('SELECT outstandingBalance, contactNum1, address FROM customers WHERE _id = $cid', {
+          $cid: String(data.customerId),
+        } as BindMap) as Record<string, unknown> | null)
+        : null;
+      const balanceBefore = account ? round2(Number(account.outstandingBalance ?? 0)) : null;
+
       d.run(
         `INSERT INTO orders
-           (_id, invoiceId, customerId, customerName, items, subtotal, totalVAT, discount, totalDRS, total,
-            paymentMethod, splitCash, splitCard, status, createdAt, updatedAt, isSync)
+           (_id, invoiceId, customerId, customerName, customerPhone, customerAddress, items, subtotal, totalVAT,
+            discount, totalDRS, total, paymentMethod, splitCash, splitCard, paidCash, paidCard, creditAmount,
+            balanceBefore, balanceAfter, remarks, status, createdAt, updatedAt, isSync)
          VALUES
-           ($id, $invoiceId, $customerId, $customerName, $items, $subtotal, $totalVAT, $discount, $totalDRS, $total,
-            $paymentMethod, $splitCash, $splitCard, 'completed', $createdAt, $updatedAt, 0)`,
+           ($id, $invoiceId, $customerId, $customerName, $customerPhone, $customerAddress, $items, $subtotal, $totalVAT,
+            $discount, $totalDRS, $total, $paymentMethod, $splitCash, $splitCard, $paidCash, $paidCard, $creditAmount,
+            $balanceBefore, $balanceAfter, $remarks, 'completed', $createdAt, $updatedAt, 0)`,
         {
+          $remarks: String(data.remarks ?? '').trim().slice(0, 500) || null,
+          $customerPhone: account?.contactNum1 != null ? String(account.contactNum1) : null,
+          $customerAddress: account?.address != null ? String(account.address) : null,
+          $paidCash: settled.paidCash,
+          $paidCard: settled.paidCard,
+          $creditAmount: settled.creditAmount,
+          $balanceBefore: balanceBefore,
+          $balanceAfter: balanceBefore === null ? null : round2(balanceBefore + settled.creditAmount),
           $id: _id,
           $invoiceId: invoiceId,
           $customerId: data.customerId ? String(data.customerId) : null,
@@ -84,11 +145,11 @@ export function registerOrderHandlers(): void {
         } as BindMap
       );
 
-      // If credit sale, update customer balance
-      if (String(data.paymentMethod) === 'credit' && data.customerId) {
+      // Whatever went on credit is added to the customer's account.
+      if (settled.creditAmount > 0 && data.customerId) {
         d.run(
-          `UPDATE customers SET outstandingBalance = outstandingBalance + $total, updatedAt=$ts, isSync=0 WHERE _id=$cid`,
-          { $total: Number(data.total ?? 0), $ts: ts, $cid: String(data.customerId) } as BindMap
+          `UPDATE customers SET outstandingBalance = outstandingBalance + $credit, updatedAt=$ts, isSync=0 WHERE _id=$cid`,
+          { $credit: settled.creditAmount, $ts: ts, $cid: String(data.customerId) } as BindMap
         );
       }
     });
