@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { z } from 'zod';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../utils/pagination';
 
 export const objectId = z
   .string()
@@ -22,10 +23,11 @@ export const password = z
 export const positiveNumber = (field: string) =>
   z.coerce.number({ message: `${field} must be a number` }).min(0, `${field} cannot be negative`);
 
-export const paginationQuery = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
-  search: z.string().trim().max(120).optional(),
-});
-
-export type PaginationQuery = z.infer<typeof paginationQuery>;
+/**
+ * Query fields for a paged list, spread into a list's query schema:
+ * `?page=2&pageSize=25`. Without `page` a list keeps its original response.
+ */
+export const pageQuery = {
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+};

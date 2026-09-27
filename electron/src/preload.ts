@@ -28,6 +28,7 @@ const api = {
   // ── PRODUCTS ──────────────────────────────────────────────────────────────
   products: {
     getAll:      (search?: string)                          => ipcRenderer.invoke('products:getAll', search),
+    getPage:     (query: { page?: number; pageSize?: number; search?: string }) => ipcRenderer.invoke('products:getPage', query),
     getByBarcode:(barcode: string)                          => ipcRenderer.invoke('products:getByBarcode', barcode),
     create:      (data: Record<string, unknown>)            => ipcRenderer.invoke('products:create', data),
     update:      (_id: string, data: Record<string, unknown>) => ipcRenderer.invoke('products:update', _id, data),

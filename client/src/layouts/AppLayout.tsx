@@ -151,7 +151,7 @@ export default function AppLayout({ navItems }: AppLayoutProps) {
         header: { backgroundColor: '#ffffff', borderBottom: `1px solid ${HEADER_BORDER}` },
         // The component library's own navbar styles load after ours, so the
         // background is applied here, from the palette tokens on .navbar.
-        navbar: { backgroundColor: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' },
+        navbar: { backgroundColor: 'var(--pos-sidebar-bg)', borderRight: '1px solid var(--pos-sidebar-border)' },
       }}
     >
       <AppShell.Header className="no-print">
@@ -189,7 +189,7 @@ export default function AppLayout({ navItems }: AppLayoutProps) {
         <AppShell.Section className={classes.brand} data-collapsed={!showLabels || undefined}>
           <CartMark size={showLabels ? 40 : 34} strokeWidth={4} />
           {/* On phones the sidebar covers the header's menu button, so it carries its own. */}
-          <Burger opened onClick={closeMobile} hiddenFrom="sm" size="sm" color="var(--sidebar-text-strong)" aria-label="Close navigation" />
+          <Burger opened onClick={closeMobile} hiddenFrom="sm" size="sm" color="var(--pos-sidebar-text-strong)" aria-label="Close navigation" />
         </AppShell.Section>
 
         <AppShell.Section grow component={ScrollArea} className={classes.menu} px={showLabels ? 'sm' : 6} pb="md" scrollbarSize={6} type="hover">

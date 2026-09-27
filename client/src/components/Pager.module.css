@@ -1,0 +1,82 @@
+/* Page controls under a table: a record count on the left, page links on the right. */
+
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pos-divider);
+}
+
+.summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pos-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link,
+.gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pos-body);
+  text-decoration: none;
+  user-select: none;
+}
+
+.link {
+  border: 1px solid var(--pos-border);
+  border-radius: 6px;
+  background: var(--pos-surface);
+  cursor: pointer;
+}
+
+/* Hover and the current page use the sidebar's colours, so they match its links. */
+.link:hover {
+  border-color: var(--pos-sidebar-border);
+  background: var(--pos-sidebar-hover-bg);
+  color: var(--pos-sidebar-text-strong);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--pos-brand);
+  outline-offset: 1px;
+}
+
+.current,
+.current:hover {
+  border-color: var(--pos-sidebar-active-bg);
+  background: var(--pos-sidebar-active-bg);
+  color: var(--pos-sidebar-text-strong);
+  font-weight: 600;
+  cursor: default;
+}
+
+.disabled,
+.disabled:hover {
+  border-color: var(--pos-border);
+  background: var(--pos-surface);
+  color: var(--pos-subtle);
+  cursor: not-allowed;
+}
+
+.gap {
+  color: var(--pos-subtle);
+}

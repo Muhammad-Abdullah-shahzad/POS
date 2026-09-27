@@ -38,4 +38,14 @@
   --pos-bad: #dc2626;
   --pos-warn: #f79009;
   --pos-violet: #7a5af8;
+
+  /* Sidebar palette. Other controls that show "you are here" (the current
+     page in a pager, say) use the active colours too, so they match it. */
+  --pos-sidebar-bg: #f0efff;
+  --pos-sidebar-border: #e2e0f7;
+  --pos-sidebar-text: #3d3a6b; /* 9:1 on the background */
+  --pos-sidebar-text-strong: #1e1b4b; /* 14:1, for hover and active */
+  --pos-sidebar-brand: #2350c9;
+  --pos-sidebar-hover-bg: #e6e3ff;
+  --pos-sidebar-active-bg: #dcd8ff;
 }

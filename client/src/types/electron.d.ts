@@ -3,6 +3,8 @@
  * Matches the API exposed in electron/src/preload.ts.
  */
 
+import type { Page } from './pagination';
+
 interface SyncResult {
   collection: string;
   synced: number;
@@ -74,6 +76,7 @@ interface ElectronAPI {
   };
   products: {
     getAll: (search?: string) => Promise<any[]>;
+    getPage: (query: { page?: number; pageSize?: number; search?: string }) => Promise<Page<any>>;
     getByBarcode: (barcode: string) => Promise<any | null>;
     create: (data: Record<string, unknown>) => Promise<any>;
     update: (_id: string, data: Record<string, unknown>) => Promise<any>;

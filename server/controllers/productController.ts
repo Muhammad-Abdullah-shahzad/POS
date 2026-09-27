@@ -5,11 +5,14 @@
  * shops can stock the same barcode without ever seeing each other's stock.
  */
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
 import { BadRequestError, NotFoundError } from '../core/errors';
 import Product from '../models/Product';
 import { searchFilter } from '../utils/query';
+import { pageOf, pageWindow } from '../utils/pagination';
+import { productSearchQuery } from '../validators/productValidators';
 import { isDataUrlImage, removeStoredImage, storeDataUrlImage, storeUploadedImage } from '../services/imageStorageService';
 
 /**
@@ -25,21 +28,32 @@ async function storeIncomingImage(req: Request): Promise<string | null> {
 
 const generateSku = (): string => `SKU-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
+/**
+ * GET /products
+ *
+ * With `page`, one page of the catalogue plus the total, for the products
+ * screen: `?page=2&pageSize=25&search=pipe`. Without it, a plain list capped
+ * at `limit`, as the till's product search uses.
+ */
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
-  const { search, category, limit } = (req.validatedQuery ?? {}) as {
-    search?: string;
-    category?: string;
-    limit?: number;
-  };
-
-  const products = await Product.find({
+  const { search, category, limit, page, pageSize } = req.validatedQuery as z.infer<typeof productSearchQuery>;
+  const filter = {
     ...searchFilter(search, ['name', 'barcode', 'sku']),
     ...(category && { category }),
-  })
-    .sort({ name: 1 })
-    .limit(limit ?? 200);
+  };
 
-  res.json(successResponse(products));
+  if (page === undefined) {
+    res.json(successResponse(await Product.find(filter).sort({ name: 1 }).limit(limit)));
+    return;
+  }
+
+  // _id breaks ties between equal names, so no product repeats or goes missing between pages.
+  const { skip, limit: take } = pageWindow(page, pageSize);
+  const [items, total] = await Promise.all([
+    Product.find(filter).sort({ name: 1, _id: 1 }).skip(skip).limit(take),
+    Product.countDocuments(filter),
+  ]);
+  res.json(successResponse(pageOf(items, total, page, pageSize)));
 });
 
 export const getProductByBarcode = asyncHandler(async (req: Request, res: Response) => {

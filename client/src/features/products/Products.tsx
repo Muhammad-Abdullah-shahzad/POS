@@ -1,14 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { productImageUrl } from '../../utils/assetUrl';
 import { Table, Button, Group, Title, Modal, TextInput, NumberInput, Select, Paper, Stack, Text, Image, FileButton } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto, IconEdit, IconPrinter } from '@tabler/icons-react';
+import { IconCheck, IconX, IconPlus, IconBarcode, IconTrash, IconPhoto, IconEdit, IconPrinter, IconSearch } from '@tabler/icons-react';
 import JsBarcode from 'jsbarcode';
 import { formatMoney } from '../../utils/money';
+import { usePagedList } from '../../hooks/usePagedList';
+import Pager from '../../components/Pager';
 
 interface Product {
   _id: string;
@@ -25,8 +27,23 @@ interface Product {
   image?: string;
 }
 
+/** Waits this long after the last keystroke before searching, so typing a name sends one request. */
+const SEARCH_DELAY_MS = 300;
+
 const Products = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  // The catalogue can run to thousands of products, so it is loaded a page at a time.
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
+  const {
+    items: products,
+    total,
+    page,
+    pageCount,
+    pageSize,
+    setPage,
+    reload: fetchProducts,
+    loading: productsLoading,
+  } = usePagedList<Product>('/products', { search: debouncedSearch });
   const [opened, { open, close }] = useDisclosure(false);
   const [stockModalOpened, setStockModalOpened] = useState(false);
   const [searchStockOpened, setSearchStockOpened] = useState(false);
@@ -54,17 +71,7 @@ const Products = () => {
     }
   };
 
-  const fetchProducts = async () => {
-    try {
-      const { data } = await api.get('/products');
-      setProducts(data.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   useEffect(() => {
-    fetchProducts();
     fetchCategories();
   }, []);
 
@@ -345,7 +352,16 @@ const Products = () => {
         </Group>
       </Group>
 
-      <Table.ScrollContainer minWidth={800}>
+      <TextInput
+        placeholder="Search by name, barcode or SKU"
+        leftSection={<IconSearch size={16} />}
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+        maw={360}
+        mb="md"
+      />
+
+      <Table.ScrollContainer minWidth={800} style={{ opacity: productsLoading ? 0.6 : 1, transition: 'opacity 120ms' }}>
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
@@ -361,6 +377,15 @@ const Products = () => {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
+            {!productsLoading && products.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={9}>
+                  <Text size="sm" c="dimmed" ta="center" py="lg">
+                    {debouncedSearch ? `No products match "${debouncedSearch}".` : 'No products yet.'}
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
             {products.map((p) => (
               <Table.Tr key={p._id}>
                 <Table.Td>
@@ -428,6 +453,8 @@ const Products = () => {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+
+      <Pager page={page} pageCount={pageCount} pageSize={pageSize} total={total} onChange={setPage} noun="products" />
 
       <Modal opened={opened} onClose={() => { close(); setImageFile(null); setImagePreview(null); setEditingProduct(null); resetImageRef.current?.(); form.reset(); }} title={editingProduct ? `Edit: ${editingProduct.name}` : 'Add New Product'} size="lg">
         <form onSubmit={form.onSubmit(handleSubmit)}>

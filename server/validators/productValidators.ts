@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { nonEmptyString, positiveNumber } from './common';
+import { nonEmptyString, pageQuery, positiveNumber } from './common';
 
 /**
  * Products are submitted as multipart form data when an image is attached, so
@@ -40,7 +40,9 @@ export const stockAdjustmentSchema = z.object({
 export const productSearchQuery = z.object({
   search: z.string().trim().max(120).optional(),
   category: z.string().trim().max(80).optional(),
+  // Used by the till's search; ignored when a page is asked for.
   limit: z.coerce.number().int().min(1).max(500).default(200),
+  ...pageQuery,
 });
 
 export const barcodeParam = z.object({

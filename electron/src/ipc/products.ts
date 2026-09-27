@@ -1,5 +1,17 @@
 import { handleLicensed } from '../license/licenseGuard';
-import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
+import { BindMap, dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
+
+/** Largest page the products screen may ask for, matching the server. */
+const MAX_PAGE_SIZE = 100;
+
+export interface ProductPageQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}
+
+/** Escape LIKE wildcards so a search for "50%" matches that text literally. */
+const likeContains = (term: string) => `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 export function registerProductHandlers(): void {
 
@@ -11,6 +23,27 @@ export function registerProductHandlers(): void {
       );
     }
     return dbAll('SELECT * FROM products WHERE deletedAt IS NULL ORDER BY name ASC');
+  });
+
+  // One page of the catalogue, in the same shape the server returns.
+  handleLicensed('products:getPage', (_e, query: ProductPageQuery = {}) => {
+    const page = Math.max(1, Math.floor(Number(query.page) || 1));
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(query.pageSize) || 25)));
+    const search = query.search?.trim();
+
+    const where = search
+      ? `deletedAt IS NULL AND (name LIKE $s ESCAPE '\\' OR barcode LIKE $s ESCAPE '\\' OR sku LIKE $s ESCAPE '\\')`
+      : 'deletedAt IS NULL';
+    const params: BindMap = search ? { $s: likeContains(search) } : {};
+
+    const { total } = dbGet(`SELECT COUNT(*) AS total FROM products WHERE ${where}`, params) as { total: number };
+    const items = dbAll(`SELECT * FROM products WHERE ${where} ORDER BY name ASC, _id ASC LIMIT $limit OFFSET $offset`, {
+      ...params,
+      $limit: pageSize,
+      $offset: (page - 1) * pageSize,
+    });
+
+    return { items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
   });
 
   handleLicensed('products:getByBarcode', (_e, barcode: string) => {

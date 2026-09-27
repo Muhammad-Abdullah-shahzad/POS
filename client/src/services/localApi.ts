@@ -43,6 +43,13 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
 
   // ── PRODUCTS ──────────────────────────────────────────────────────────────
   if (resource === 'products') {
+    // With a page number: one page of the catalogue, as the server returns it.
+    if (method === 'get' && !id && mergedBody?.page)
+      return ok(await eAPI().products.getPage({
+        page: Number(mergedBody.page),
+        pageSize: Number(mergedBody.pageSize) || undefined,
+        search: mergedBody.search,
+      }));
     if (method === 'get' && !id)
       return ok(await eAPI().products.getAll(mergedBody?.search));
 

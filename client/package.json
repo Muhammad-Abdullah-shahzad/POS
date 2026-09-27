@@ -24,6 +24,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.75.0",
+    "react-paginate": "^8.3.0",
     "react-router-dom": "^7.15.0",
     "react-to-print": "^3.3.0",
     "recharts": "^3.8.1",
