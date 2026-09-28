@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS customer_payments (
   notes         TEXT,
   createdAt     TEXT,
   updatedAt     TEXT,
+  deletedAt     TEXT,
   isSync        INTEGER NOT NULL DEFAULT 0
 );
 

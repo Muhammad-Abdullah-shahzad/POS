@@ -25,6 +25,11 @@ declare const api: {
     };
     products: {
         getAll: (search?: string) => Promise<any>;
+        getPage: (query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+        }) => Promise<any>;
         getByBarcode: (barcode: string) => Promise<any>;
         create: (data: Record<string, unknown>) => Promise<any>;
         update: (_id: string, data: Record<string, unknown>) => Promise<any>;
@@ -77,6 +82,9 @@ declare const api: {
     suppliers: {
         getAll: () => Promise<any>;
         create: (data: Record<string, unknown>) => Promise<any>;
+    };
+    companyLogo: {
+        get: () => Promise<any>;
     };
     wastage: {
         getAll: () => Promise<any>;

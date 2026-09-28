@@ -72,9 +72,11 @@ function registerCustomerHandlers() {
     (0, licenseGuard_1.handleLicensed)('customers:getLedger', (_e, _id) => {
         const orders = (0, database_1.dbAll)(`SELECT * FROM orders WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
         const payments = (0, database_1.dbAll)(`SELECT * FROM customer_payments WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+        const customer = (0, database_1.dbGet)(`SELECT * FROM customers WHERE _id = $id`, { $id: _id });
         return {
             orders: orders.map((r) => ({ ...r, items: JSON.parse(r.items || '[]') })),
-            payments
+            payments,
+            customer
         };
     });
     (0, licenseGuard_1.handleLicensed)('customers:addPayment', (_e, data) => {
@@ -94,7 +96,9 @@ function registerCustomerHandlers() {
         });
         // Deduct from outstanding balance
         (0, database_1.dbRun)(`UPDATE customers SET outstandingBalance = outstandingBalance - $amount, updatedAt=$ts, isSync=0 WHERE _id=$cid`, { $amount: Number(data.amountPaid ?? 0), $ts: ts, $cid: (0, database_1.v)(data.customerId) });
-        return (0, database_1.dbGet)('SELECT * FROM customer_payments WHERE _id = $id', { $id: _id });
+        const payment = (0, database_1.dbGet)('SELECT * FROM customer_payments WHERE _id = $id', { $id: _id });
+        const customer = (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: (0, database_1.v)(data.customerId) });
+        return { payment, customer };
     });
 }
 //# sourceMappingURL=customers.js.map

@@ -3,6 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerSettingsHandlers = registerSettingsHandlers;
 const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
+/** SQLite keeps JSON as text and booleans as 0/1; hand the UI real values. */
+function toSettings(row) {
+    if (!row)
+        return null;
+    return {
+        ...row,
+        showRemarksPrompt: row.showRemarksPrompt !== 0,
+        quickProducts: JSON.parse(row.quickProducts || '[]'),
+    };
+}
 function registerSettingsHandlers() {
     const ensureSettings = () => {
         const existing = (0, database_1.dbGet)('SELECT _id FROM settings LIMIT 1');
@@ -14,17 +24,14 @@ function registerSettingsHandlers() {
     };
     (0, licenseGuard_1.handleLicensed)('settings:get', () => {
         ensureSettings();
-        const row = (0, database_1.dbGet)('SELECT * FROM settings LIMIT 1');
-        if (!row)
-            return null;
-        return { ...row, quickProducts: JSON.parse(row.quickProducts || '[]') };
+        return toSettings((0, database_1.dbGet)('SELECT * FROM settings LIMIT 1'));
     });
     (0, licenseGuard_1.handleLicensed)('settings:update', (_e, data) => {
         ensureSettings();
         (0, database_1.dbRun)(`UPDATE settings SET
          shopName=$shopName, shopAddress=$shopAddress, shopPhone=$shopPhone,
          shopEmail=$shopEmail, shopWebsite=$shopWebsite, receiptFooter=$receiptFooter,
-         defaultVatRate=$defaultVatRate, isVatInclusiveDefault=$isVatInclusive,
+         showRemarksPrompt=$showRemarksPrompt,
          loyaltyPointsPerEuro=$loyaltyPPE, loyaltyRewardThreshold=$loyaltyRT,
          loyaltyRewardValue=$loyaltyRV, quickProducts=$quickProducts,
          updatedAt=$ts, isSync=0`, {
@@ -34,16 +41,14 @@ function registerSettingsHandlers() {
             $shopEmail: (0, database_1.v)(data.shopEmail, ''),
             $shopWebsite: (0, database_1.v)(data.shopWebsite, ''),
             $receiptFooter: (0, database_1.v)(data.receiptFooter, ''),
-            $defaultVatRate: (0, database_1.v)(data.defaultVatRate, 20),
-            $isVatInclusive: data.isVatInclusiveDefault ? 1 : 0,
+            $showRemarksPrompt: data.showRemarksPrompt === false ? 0 : 1,
             $loyaltyPPE: (0, database_1.v)(data.loyaltyPointsPerEuro, 1),
             $loyaltyRT: (0, database_1.v)(data.loyaltyRewardThreshold, 100),
             $loyaltyRV: (0, database_1.v)(data.loyaltyRewardValue, 5),
             $quickProducts: JSON.stringify(data.quickProducts ?? []),
             $ts: (0, database_1.now)(),
         });
-        const row = (0, database_1.dbGet)('SELECT * FROM settings LIMIT 1');
-        return { ...row, quickProducts: JSON.parse(row?.quickProducts || '[]') };
+        return toSettings((0, database_1.dbGet)('SELECT * FROM settings LIMIT 1'));
     });
     (0, licenseGuard_1.handleLicensed)('settings:getQuickProducts', () => {
         ensureSettings();

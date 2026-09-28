@@ -129,6 +129,21 @@ export function verifyLicenseKey(rawKey: string, publicKeyBase64: string): Licen
 }
 
 /** Generate a signing key pair. Used once, by `npm run license:keys`. */
+/**
+ * True when the private key is the signing half of the public key, so that
+ * every key it signs will verify. A mismatched pair signs keys that no till
+ * (and not even the server) will accept, so the server refuses to start with one.
+ */
+export function isMatchingKeyPair(privateKeyBase64: string, publicKeyBase64: string): boolean {
+  try {
+    const privateKey = crypto.createPrivateKey({ key: Buffer.from(privateKeyBase64, 'base64'), format: 'der', type: 'pkcs8' });
+    const derived = crypto.createPublicKey(privateKey).export({ format: 'der', type: 'spki' }).toString('base64');
+    return derived === publicKeyBase64;
+  } catch {
+    return false;
+  }
+}
+
 export function generateLicenseKeyPair(): { privateKey: string; publicKey: string } {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
 

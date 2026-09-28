@@ -254,7 +254,7 @@ export function registerAuthHandlers(): void {
    */
   ipcMain.handle('auth:resetDevice', () => {
     const tables = [
-      'products', 'categories', 'orders', 'customers', 'employees',
+      'products', 'categories', 'orders', 'customers', 'customer_payments', 'employees',
       'expenses', 'expense_categories', 'employee_damages', 'suppliers',
       'supplier_invoices', 'wastage', 'company_logos',
       'bank_names', 'bank_accounts', 'bank_cards', 'settings', 'users',

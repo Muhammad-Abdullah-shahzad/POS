@@ -96,7 +96,7 @@ function addColumnIfMissing(db: Database, table: string, column: string, definit
 
 function runMigrations(db: Database): void {
   const tables = [
-    'products', 'categories', 'orders', 'customers', 'employees',
+    'products', 'categories', 'orders', 'customers', 'customer_payments', 'employees',
     'expenses', 'expense_categories', 'employee_damages', 'suppliers',
     'supplier_invoices', 'wastage',
     'bank_names', 'bank_accounts', 'bank_cards', 'settings', 'users',

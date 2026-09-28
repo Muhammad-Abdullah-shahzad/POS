@@ -3,12 +3,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerProductHandlers = registerProductHandlers;
 const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
+/** Largest page the products screen may ask for, matching the server. */
+const MAX_PAGE_SIZE = 100;
+/** Escape LIKE wildcards so a search for "50%" matches that text literally. */
+const likeContains = (term) => `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 function registerProductHandlers() {
     (0, licenseGuard_1.handleLicensed)('products:getAll', (_e, search) => {
         if (search) {
             return (0, database_1.dbAll)(`SELECT * FROM products WHERE (name LIKE $s OR barcode LIKE $s) AND (deletedAt IS NULL) ORDER BY name ASC LIMIT 200`, { $s: `%${search}%` });
         }
         return (0, database_1.dbAll)('SELECT * FROM products WHERE deletedAt IS NULL ORDER BY name ASC');
+    });
+    // One page of the catalogue, in the same shape the server returns.
+    (0, licenseGuard_1.handleLicensed)('products:getPage', (_e, query = {}) => {
+        const page = Math.max(1, Math.floor(Number(query.page) || 1));
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(query.pageSize) || 25)));
+        const search = query.search?.trim();
+        const where = search
+            ? `deletedAt IS NULL AND (name LIKE $s ESCAPE '\\' OR barcode LIKE $s ESCAPE '\\' OR sku LIKE $s ESCAPE '\\')`
+            : 'deletedAt IS NULL';
+        const params = search ? { $s: likeContains(search) } : {};
+        const { total } = (0, database_1.dbGet)(`SELECT COUNT(*) AS total FROM products WHERE ${where}`, params);
+        const items = (0, database_1.dbAll)(`SELECT * FROM products WHERE ${where} ORDER BY name ASC, _id ASC LIMIT $limit OFFSET $offset`, {
+            ...params,
+            $limit: pageSize,
+            $offset: (page - 1) * pageSize,
+        });
+        return { items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
     });
     (0, licenseGuard_1.handleLicensed)('products:getByBarcode', (_e, barcode) => {
         return (0, database_1.dbGet)('SELECT * FROM products WHERE barcode = $barcode AND deletedAt IS NULL', { $barcode: barcode });

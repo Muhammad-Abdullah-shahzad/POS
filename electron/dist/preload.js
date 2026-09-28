@@ -26,6 +26,7 @@ const api = {
     // ── PRODUCTS ──────────────────────────────────────────────────────────────
     products: {
         getAll: (search) => electron_1.ipcRenderer.invoke('products:getAll', search),
+        getPage: (query) => electron_1.ipcRenderer.invoke('products:getPage', query),
         getByBarcode: (barcode) => electron_1.ipcRenderer.invoke('products:getByBarcode', barcode),
         create: (data) => electron_1.ipcRenderer.invoke('products:create', data),
         update: (_id, data) => electron_1.ipcRenderer.invoke('products:update', _id, data),
@@ -86,6 +87,10 @@ const api = {
     suppliers: {
         getAll: () => electron_1.ipcRenderer.invoke('suppliers:getAll'),
         create: (data) => electron_1.ipcRenderer.invoke('suppliers:create', data),
+    },
+    // ── COMPANY LOGO ──────────────────────────────────────────────────────────
+    companyLogo: {
+        get: () => electron_1.ipcRenderer.invoke('companyLogo:get'),
     },
     // ── WASTAGE ───────────────────────────────────────────────────────────────
     wastage: {

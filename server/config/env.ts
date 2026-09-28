@@ -8,6 +8,7 @@
 import path from 'path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { isMatchingKeyPair } from '../core/license';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
@@ -35,8 +36,8 @@ const envSchema = z.object({
    * Ed25519 key pair that signs and verifies licence keys. Generate once with
    * `npm run license:keys`. The public half also ships inside the desktop app.
    */
-  LICENSE_SIGNING_KEY: z.string().min(1, 'LICENSE_SIGNING_KEY is required (generate with: npm run license:keys)'),
-  LICENSE_PUBLIC_KEY: z.string().min(1, 'LICENSE_PUBLIC_KEY is required (generate with: npm run license:keys)'),
+  LICENSE_SIGNING_KEY: z.string().trim().min(1, 'LICENSE_SIGNING_KEY is required (generate with: npm run license:keys)'),
+  LICENSE_PUBLIC_KEY: z.string().trim().min(1, 'LICENSE_PUBLIC_KEY is required (generate with: npm run license:keys)'),
   /** Days of free use a self-registered company gets. 0 means "locked until a key is issued". */
   LICENSE_TRIAL_DAYS: z.coerce.number().int().min(0).max(365).default(14),
   /** Set to false to turn off the public sign up form and onboard customers by hand only. */
@@ -53,6 +54,16 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REFRESH_TOKEN: z.string().optional(),
+}).superRefine((value, ctx) => {
+  // Keys signed with a private key that does not match the public key are
+  // rejected by every till, so the server must not start with such a pair.
+  if (value.LICENSE_SIGNING_KEY && value.LICENSE_PUBLIC_KEY && !isMatchingKeyPair(value.LICENSE_SIGNING_KEY, value.LICENSE_PUBLIC_KEY)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['LICENSE_SIGNING_KEY'],
+      message: 'does not belong to LICENSE_PUBLIC_KEY. Put both halves of one pair from `npm run license:keys` in .env',
+    });
+  }
 });
 
 const parsed = envSchema.safeParse({

@@ -67,6 +67,14 @@ CREATE TABLE IF NOT EXISTS orders (
   paymentMethod        TEXT    NOT NULL,
   splitCash            REAL,
   splitCard            REAL,
+  paidCash             REAL    NOT NULL DEFAULT 0,
+  paidCard             REAL    NOT NULL DEFAULT 0,
+  creditAmount         REAL    NOT NULL DEFAULT 0,
+  balanceBefore        REAL,
+  balanceAfter         REAL,
+  customerPhone        TEXT,
+  customerAddress      TEXT,
+  remarks              TEXT,
   status               TEXT    NOT NULL DEFAULT 'completed',
   voidReason           TEXT,
   voidedAt             TEXT,
@@ -120,6 +128,7 @@ CREATE TABLE IF NOT EXISTS customer_payments (
   notes         TEXT,
   createdAt     TEXT,
   updatedAt     TEXT,
+  deletedAt     TEXT,
   isSync        INTEGER NOT NULL DEFAULT 0
 );
 
@@ -205,6 +214,19 @@ CREATE TABLE IF NOT EXISTS suppliers (
 );
 
 -- ─────────────────────────────────────────────
+-- COMPANY LOGOS (slug, url), read-only copy of the server's; set by the operator
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS company_logos (
+  localId   INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id       TEXT    UNIQUE,
+  slug      TEXT    NOT NULL UNIQUE,
+  url       TEXT    NOT NULL,
+  createdAt TEXT,
+  updatedAt TEXT,
+  isSync    INTEGER NOT NULL DEFAULT 1
+);
+
+-- ─────────────────────────────────────────────
 -- BANK NAMES
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bank_names (
@@ -261,8 +283,7 @@ CREATE TABLE IF NOT EXISTS settings (
   shopEmail              TEXT             DEFAULT '',
   shopWebsite            TEXT             DEFAULT '',
   receiptFooter          TEXT             DEFAULT '',
-  defaultVatRate         REAL    NOT NULL DEFAULT 20,
-  isVatInclusiveDefault  INTEGER NOT NULL DEFAULT 1,
+  showRemarksPrompt      INTEGER NOT NULL DEFAULT 1,
   loyaltyPointsPerEuro   REAL             DEFAULT 1,
   loyaltyRewardThreshold REAL             DEFAULT 100,
   loyaltyRewardValue     REAL             DEFAULT 5,

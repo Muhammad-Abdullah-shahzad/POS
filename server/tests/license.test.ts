@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../app';
 import { env } from '../config/env';
-import { addMonths, signLicenseKey, verifyLicenseKey } from '../core/license';
+import { addMonths, generateLicenseKeyPair, isMatchingKeyPair, signLicenseKey, verifyLicenseKey } from '../core/license';
 import { withSystemScope } from '../core/tenantContext';
 import { invalidateTenantCache } from '../core/tenantStatusCache';
 import Tenant from '../models/Tenant';
@@ -260,5 +260,26 @@ describe('licensing', () => {
       expect(locked.status).toBe(402);
       expect(locked.body.code).toBe('LICENSE_MISSING');
     });
+  });
+});
+
+describe('licence key pair check', () => {
+  it('accepts the two halves of one pair', () => {
+    const pair = generateLicenseKeyPair();
+    expect(isMatchingKeyPair(pair.privateKey, pair.publicKey)).toBe(true);
+  });
+
+  it('rejects halves from different pairs, which would sign keys no till accepts', () => {
+    const first = generateLicenseKeyPair();
+    const second = generateLicenseKeyPair();
+    expect(isMatchingKeyPair(first.privateKey, second.publicKey)).toBe(false);
+  });
+
+  it('rejects anything that is not a key', () => {
+    expect(isMatchingKeyPair('not a key', 'not a key either')).toBe(false);
+  });
+
+  it('is what this server is running with', () => {
+    expect(isMatchingKeyPair(env.license.signingKey, env.license.publicKey)).toBe(true);
   });
 });

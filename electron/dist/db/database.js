@@ -93,7 +93,7 @@ function addColumnIfMissing(db, table, column, definition) {
 }
 function runMigrations(db) {
     const tables = [
-        'products', 'categories', 'orders', 'customers', 'employees',
+        'products', 'categories', 'orders', 'customers', 'customer_payments', 'employees',
         'expenses', 'expense_categories', 'employee_damages', 'suppliers',
         'supplier_invoices', 'wastage',
         'bank_names', 'bank_accounts', 'bank_cards', 'settings', 'users',
@@ -101,6 +101,21 @@ function runMigrations(db) {
     for (const table of tables) {
         addColumnIfMissing(db, table, 'deletedAt', 'TEXT');
     }
+    // Sales record how they were settled and the account standing at the time,
+    // so a reprinted invoice matches the one handed over at the till.
+    for (const [column, definition] of [
+        ['paidCash', 'REAL NOT NULL DEFAULT 0'],
+        ['paidCard', 'REAL NOT NULL DEFAULT 0'],
+        ['creditAmount', 'REAL NOT NULL DEFAULT 0'],
+        ['balanceBefore', 'REAL'],
+        ['balanceAfter', 'REAL'],
+        ['customerPhone', 'TEXT'],
+        ['customerAddress', 'TEXT'],
+        ['remarks', 'TEXT'],
+    ]) {
+        addColumnIfMissing(db, 'orders', column, definition);
+    }
+    addColumnIfMissing(db, 'settings', 'showRemarksPrompt', 'INTEGER NOT NULL DEFAULT 1');
     // The till belongs to one company; the column records which, so a database
     // copied between machines can be recognised rather than silently reused.
     addColumnIfMissing(db, 'users', 'tenantId', 'TEXT');
