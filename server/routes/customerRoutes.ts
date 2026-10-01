@@ -1,9 +1,14 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, authorize } from '../middleware/authenticate';
 import { validate } from '../middleware/validate';
 import { idParam } from '../validators/common';
 import {
   createCustomerSchema,
+  customerEntryParams,
+  customerPaymentSchema,
+  openingBalanceSchema,
+  updateCustomerPaymentSchema,
+  updateCustomerSaleSchema,
   customerTransactionSchema,
   searchQuery,
   updateCustomerSchema,
@@ -11,12 +16,16 @@ import {
 import {
   addPayment,
   createCustomer,
+  deleteCustomerPayment,
   deleteCustomer,
   getCustomers,
   getLedger,
   recordCustomerTransaction,
   resetLoyaltyPoints,
   updateCustomer,
+  updateCustomerPayment,
+  updateCustomerSale,
+  updateOpeningBalance,
 } from '../controllers/customerController';
 
 const router = Router();
@@ -42,7 +51,14 @@ router.post('/:id/reset-points', validate({ params: idParam }), resetLoyaltyPoin
 
 // Credit ledger & manual payments
 router.get('/:id/ledger', validate({ params: idParam }), getLedger);
-router.post('/:id/payments', validate({ params: idParam }), addPayment);
+router.post('/:id/payments', validate({ params: idParam, body: customerPaymentSchema }), addPayment);
+
+// Corrections from the account statement change money already recorded, so only managers make them.
+const managers = authorize('admin', 'manager');
+router.delete('/:id/payments/:entryId', managers, validate({ params: customerEntryParams }), deleteCustomerPayment);
+router.patch('/:id/payments/:entryId', managers, validate({ params: customerEntryParams, body: updateCustomerPaymentSchema }), updateCustomerPayment);
+router.patch('/:id/sales/:entryId', managers, validate({ params: customerEntryParams, body: updateCustomerSaleSchema }), updateCustomerSale);
+router.patch('/:id/opening-balance', managers, validate({ params: idParam, body: openingBalanceSchema }), updateOpeningBalance);
 
 export default router;
 

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "client-offline",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd client && VITE_API_URL=http://localhost:1/api npx vite --port 5188 --strictPort"],
+      "port": 5188
+    }
+  ]
+}

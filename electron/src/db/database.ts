@@ -123,6 +123,13 @@ function runMigrations(db: Database): void {
 
   addColumnIfMissing(db, 'settings', 'showRemarksPrompt', 'INTEGER NOT NULL DEFAULT 1');
 
+  // Supplier invoices keep each payment, so the supplier ledger can list them.
+  addColumnIfMissing(db, 'supplier_invoices', 'remarks', "TEXT DEFAULT ''");
+  addColumnIfMissing(db, 'supplier_invoices', 'payments', "TEXT DEFAULT '[]'");
+  // No default: an unset size stays NULL, which a push skips, so upgrading a
+  // till cannot overwrite the size already chosen on the web.
+  addColumnIfMissing(db, 'settings', 'receiptSize', 'TEXT');
+
   // The till belongs to one company; the column records which, so a database
   // copied between machines can be recognised rather than silently reused.
   addColumnIfMissing(db, 'users', 'tenantId', 'TEXT');
@@ -222,6 +229,20 @@ export function now(): string {
  *  1. Sets deletedAt on the row (keeps it in the table, hidden from normal queries)
  *  2. Inserts into pending_deletes so the sync manager can push the delete to MongoDB
  */
+/**
+ * Throw when another live row of the table already has this name (ignoring
+ * case and surrounding spaces). Supplier and customer names are unique.
+ */
+export function assertNameFree(table: 'suppliers' | 'customers', label: string, name: unknown, exceptId = ''): void {
+  if (typeof name !== 'string' || !name.trim()) return;
+  const taken = dbGet(
+    `SELECT name FROM ${table}
+     WHERE lower(trim(name)) = lower(trim($name)) AND deletedAt IS NULL AND _id != $except`,
+    { $name: name, $except: exceptId }
+  ) as { name: string } | undefined;
+  if (taken) throw new Error(`A ${label} named "${taken.name}" already exists`);
+}
+
 export function softDelete(table: string, _id: string): void {
   const ts = now();
   dbTransaction((d) => {

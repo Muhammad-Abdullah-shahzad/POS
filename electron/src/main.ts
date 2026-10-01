@@ -5,6 +5,7 @@ import { registerProductHandlers } from './ipc/products';
 import { registerCategoryHandlers } from './ipc/categories';
 import { registerOrderHandlers } from './ipc/orders';
 import { registerCustomerHandlers } from './ipc/customers';
+import { registerCustomerLedgerHandlers } from './ipc/customerLedger';
 import { registerEmployeeHandlers } from './ipc/employees';
 import { registerExpenseHandlers } from './ipc/expenses';
 import { registerEmployeeDamageHandlers } from './ipc/employeeDamages';
@@ -12,6 +13,8 @@ import { registerSupplierHandlers } from './ipc/suppliers';
 import { registerWastageHandlers } from './ipc/wastage';
 import { registerCompanyLogoHandlers } from './ipc/companyLogo';
 import { registerSupplierInvoiceHandlers } from './ipc/supplierInvoices';
+import { registerSupplierLedgerHandlers } from './ipc/supplierLedger';
+import { registerReturnHandlers } from './ipc/returns';
 import { registerBankHandlers } from './ipc/banks';
 import { registerSettingsHandlers } from './ipc/settings';
 import { registerSyncHandlers } from './sync/syncManager';
@@ -21,12 +24,31 @@ import { registerLicenseHandlers, startLicenseRefreshLoop } from './ipc/license'
 
 let mainWindow: BrowserWindow | null = null;
 
+/** Window height at which the counter fits at full size. */
+const FULL_SIZE_HEIGHT = 800;
+/** Zooming out further than this leaves text too small to read at the till. */
+const MIN_ZOOM = 0.8;
+
+/**
+ * Zoom out on short screens (a 1366×768 laptop, or 125% Windows scaling) so
+ * more of the counter fits. Steps of 0.05 keep the text crisp.
+ */
+function fitZoomToWindow(win: BrowserWindow): void {
+  const [, height] = win.getContentSize();
+  const fit = Math.floor((height / FULL_SIZE_HEIGHT) * 20) / 20;
+  win.webContents.setZoomFactor(Math.min(1, Math.max(MIN_ZOOM, fit)));
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 1024,
-    minHeight: 700,
+    // Small enough for a laptop screen: a minimum taller than the screen
+    // pushes the bottom of the window behind the taskbar.
+    minWidth: 800,
+    minHeight: 500,
+    // The File/Edit menu costs a row of the counter; Alt still shows it.
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -34,6 +56,11 @@ function createWindow(): void {
     },
     title: 'POS Desktop',
   });
+  mainWindow.maximize();
+
+  const win = mainWindow;
+  win.webContents.on('did-finish-load', () => fitZoomToWindow(win));
+  win.on('resize', () => fitZoomToWindow(win));
 
   const isDev = !app.isPackaged;
 
@@ -60,6 +87,7 @@ app.whenReady().then(async () => {
   registerCategoryHandlers();
   registerOrderHandlers();
   registerCustomerHandlers();
+  registerCustomerLedgerHandlers();
   registerEmployeeHandlers();
   registerExpenseHandlers();
   registerEmployeeDamageHandlers();
@@ -67,6 +95,8 @@ app.whenReady().then(async () => {
   registerWastageHandlers();
   registerCompanyLogoHandlers();
   registerSupplierInvoiceHandlers();
+  registerSupplierLedgerHandlers();
+  registerReturnHandlers();
   registerBankHandlers();
   registerSettingsHandlers();
   registerSyncHandlers();

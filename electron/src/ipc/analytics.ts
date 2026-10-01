@@ -30,17 +30,41 @@ interface KpiTotals {
   expenses: number;
   profit: number;
   newCustomers: number;
+  /** Dues collected from customers. */
+  duesCollected: number;
+  /** Credit given on sales, less what returns took off customer accounts. */
+  creditSales: number;
+  /** Refunded on returns, however it was paid out. */
+  refunds: number;
+  returns: number;
 }
 
-const emptyTotals = (): KpiTotals => ({ sales: 0, orders: 0, cash: 0, card: 0, expenses: 0, profit: 0, newCustomers: 0 });
+const emptyTotals = (): KpiTotals => ({
+  sales: 0, orders: 0, cash: 0, card: 0, expenses: 0, profit: 0, newCustomers: 0,
+  duesCollected: 0, creditSales: 0, refunds: 0, returns: 0,
+});
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 const localDayKey = (date: Date): string =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-/** This month so far, the same days of last month, and the sparkline span. */
-function kpiWindows(now: Date) {
+type KpiPeriod = 'day' | 'month';
+
+/**
+ * The span the dashboard covers, what it is compared with, and the sparkline
+ * span: today so far against yesterday up to the same time, or this month so
+ * far against the same days of last month.
+ */
+function kpiWindows(now: Date, period: KpiPeriod = 'month') {
+  if (period === 'day') {
+    const currentFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const previousFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const previousTo = new Date(previousFrom.getFullYear(), previousFrom.getMonth(), previousFrom.getDate(), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    const seriesFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (SERIES_DAYS - 1));
+    return { currentFrom, previousFrom, previousTo, seriesFrom };
+  }
+
   const currentFrom = new Date(now.getFullYear(), now.getMonth(), 1);
   const previousFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const daysInPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
@@ -85,6 +109,23 @@ function addSale(totals: KpiTotals, row: Record<string, unknown>): void {
   totals.cash += taken.cash;
   totals.card += taken.card;
   totals.sales += taken.cash + taken.card;
+  totals.creditSales += taken.credit;
+}
+
+/**
+ * A return is money leaving the business on the day it is taken: refunds paid
+ * in cash or by card come off cash, card and sales; a refund taken off a
+ * customer's account lowers the credit given instead.
+ */
+function addReturn(totals: KpiTotals, row: Record<string, unknown>): void {
+  const cash = Number(row.refundCash) || 0;
+  const card = Number(row.refundCard) || 0;
+  totals.returns += 1;
+  totals.refunds += Number(row.total) || 0;
+  totals.cash -= cash;
+  totals.card -= card;
+  totals.sales -= cash + card;
+  totals.creditSales -= Number(row.refundToAccount) || 0;
 }
 
 function addCustomerPayment(totals: KpiTotals, row: Record<string, unknown>): void {
@@ -92,6 +133,7 @@ function addCustomerPayment(totals: KpiTotals, row: Record<string, unknown>): vo
   const method = String(row.paymentMethod ?? '').toLowerCase();
 
   totals.sales += amount; // Realized money in drawer/bank
+  totals.duesCollected += amount;
   if (method === 'card') {
     totals.card += amount;
   } else {
@@ -108,15 +150,45 @@ function finish(totals: KpiTotals): KpiTotals {
     expenses: round2(totals.expenses),
     profit: round2(totals.sales - totals.expenses),
     newCustomers: totals.newCustomers,
+    duesCollected: round2(totals.duesCollected),
+    creditSales: round2(totals.creditSales),
+    refunds: round2(totals.refunds),
+    returns: totals.returns,
   };
 }
+
+/** What came back per product, keyed like the sales: by product id, or by name for loose items. */
+function returnedByProduct(rows: Record<string, unknown>[]): Map<string, { quantity: number; refunded: number }> {
+  const back = new Map<string, { quantity: number; refunded: number }>();
+  for (const row of rows) {
+    let items: Array<Record<string, unknown>> = [];
+    try { items = JSON.parse(String(row.items || '[]')); } catch { items = []; }
+    for (const item of items) {
+      const key = String(item.product || item.name || '');
+      if (!key) continue;
+      const entry = back.get(key) ?? { quantity: 0, refunded: 0 };
+      entry.quantity += Number(item.quantity) || 0;
+      entry.refunded += Number(item.total) || 0;
+      back.set(key, entry);
+    }
+  }
+  return back;
+}
+
+const liveReturnsSince = (since: string) =>
+  dbAll(
+    `SELECT items, total, refundCash, refundCard, refundToAccount, createdAt FROM product_returns
+     WHERE (deletedAt IS NULL OR deletedAt = '') AND createdAt >= $since`,
+    { $since: since }
+  );
 
 export function registerAnalyticsHandlers(): void {
 
   // ── kpis ──────────────────────────────────────────────────────────────────
-  handleLicensed('analytics:kpis', () => {
+  handleLicensed('analytics:kpis', (_e, requested?: string) => {
+    const period: KpiPeriod = requested === 'day' ? 'day' : 'month';
     const now = new Date();
-    const windows = kpiWindows(now);
+    const windows = kpiWindows(now, period);
     const earliest = new Date(Math.min(windows.previousFrom.getTime(), windows.seriesFrom.getTime()));
     const since = earliest.toISOString();
 
@@ -160,6 +232,10 @@ export function registerAnalyticsHandlers(): void {
     for (const row of custPayments) place(new Date(String(row.createdAt)), (totals) => addCustomerPayment(totals, row));
     for (const row of expenses) place(new Date(String(row.date)), (totals) => { totals.expenses += Number(row.amount) || 0; });
     for (const row of newCustomers) place(new Date(String(row.createdAt)), (totals) => { totals.newCustomers += 1; });
+    const returns = liveReturnsSince(since);
+    for (const row of returns) place(new Date(String(row.createdAt)), (totals) => addReturn(totals, row));
+    const returnsThisMonth = returns.filter((row) => new Date(String(row.createdAt)) >= windows.currentFrom);
+    const returnedThisMonth = returnedByProduct(returnsThisMonth);
 
     // Detail behind this month's totals, for the dashboard's drill-down views.
     const payments = {
@@ -260,10 +336,22 @@ export function registerAnalyticsHandlers(): void {
           .map(([category, entry]) => ({ category, total: round2(entry.total), count: entry.count }))
           .sort((a, b) => b.total - a.total),
         expenseCount: [...categories.values()].reduce((sum, entry) => sum + entry.count, 0),
-        topProducts: [...products.values()]
+        // Best sellers net of what came back.
+        topProducts: [...products.entries()]
+          .map(([key, entry]) => {
+            const came = returnedThisMonth.get(key);
+            return { name: entry.name, quantity: round2(entry.quantity - (came?.quantity ?? 0)), revenue: round2(entry.revenue - (came?.refunded ?? 0)) };
+          })
+          .filter((entry) => entry.quantity > 0 || entry.revenue > 0)
           .sort((a, b) => b.revenue - a.revenue)
-          .slice(0, TOP_PRODUCTS)
-          .map((entry) => ({ ...entry, revenue: round2(entry.revenue) })),
+          .slice(0, TOP_PRODUCTS),
+        returns: {
+          count: returnsThisMonth.length,
+          total: round2(returnsThisMonth.reduce((sum, row) => sum + (Number(row.total) || 0), 0)),
+          cash: round2(returnsThisMonth.reduce((sum, row) => sum + (Number(row.refundCash) || 0), 0)),
+          card: round2(returnsThisMonth.reduce((sum, row) => sum + (Number(row.refundCard) || 0), 0)),
+          toAccount: round2(returnsThisMonth.reduce((sum, row) => sum + (Number(row.refundToAccount) || 0), 0)),
+        },
         lowStockItems: dbAll(
           `SELECT name, category, stock, price ${liveProducts} AND stock <= ${LOW_STOCK_THRESHOLD}
            ORDER BY stock ASC, name ASC LIMIT ${LOW_STOCK_LIST}`
@@ -282,6 +370,7 @@ export function registerAnalyticsHandlers(): void {
         customers: count(`SELECT COUNT(*) AS count FROM customers WHERE (deletedAt IS NULL OR deletedAt = '')`),
       },
       periods: {
+        period,
         currentFrom: windows.currentFrom.toISOString(),
         previousFrom: windows.previousFrom.toISOString(),
         previousTo: windows.previousTo.toISOString(),
@@ -297,12 +386,20 @@ export function registerAnalyticsHandlers(): void {
     cutoff.setHours(0, 0, 0, 0);
     const cutoffStr = cutoff.toISOString();
 
+    // As on the server: money received. Credit sales count when the customer pays,
+    // and refunds paid out in cash or by card come off the month they were taken.
     const orders = dbAll(
       `SELECT total, totalVAT, createdAt FROM orders
        WHERE status != 'voided' AND (deletedAt IS NULL OR deletedAt = '')
-         AND createdAt >= $cutoff`,
+         AND paymentMethod != 'credit' AND createdAt >= $cutoff`,
       { $cutoff: cutoffStr }
     );
+    const dues = dbAll(
+      `SELECT amountPaid, createdAt FROM customer_payments
+       WHERE (deletedAt IS NULL OR deletedAt = '') AND createdAt >= $cutoff`,
+      { $cutoff: cutoffStr }
+    );
+    const returns = liveReturnsSince(cutoffStr);
 
     const expenses = dbAll(
       `SELECT amount, date FROM expenses
@@ -310,21 +407,38 @@ export function registerAnalyticsHandlers(): void {
       { $cutoff: cutoffStr }
     );
 
-    const merged: Record<string, { month: string; revenue: number; expenses: number; orders: number; profit: number }> = {};
+    type Month = { month: string; revenue: number; vat: number; expenses: number; orders: number; profit: number; refunds: number; returns: number };
+    const merged: Record<string, Month> = {};
+    const bucket = (key: string): Month =>
+      (merged[key] ??= { month: monthLabel(key), revenue: 0, vat: 0, expenses: 0, orders: 0, profit: 0, refunds: 0, returns: 0 });
 
     for (const o of orders) {
       const key = monthKey(o.createdAt as string);
       if (!key) continue;
-      if (!merged[key]) merged[key] = { month: monthLabel(key), revenue: 0, expenses: 0, orders: 0, profit: 0 };
-      merged[key].revenue += ((o.total as number) - (o.totalVAT as number));
-      merged[key].orders  += 1;
+      const month = bucket(key);
+      month.revenue += (Number(o.total) || 0) - (Number(o.totalVAT) || 0);
+      month.vat += Number(o.totalVAT) || 0;
+      month.orders += 1;
+    }
+
+    for (const d of dues) {
+      const key = monthKey(d.createdAt as string);
+      if (key) bucket(key).revenue += Number(d.amountPaid) || 0;
+    }
+
+    for (const r of returns) {
+      const key = monthKey(r.createdAt as string);
+      if (!key) continue;
+      const month = bucket(key);
+      const paidOut = (Number(r.refundCash) || 0) + (Number(r.refundCard) || 0);
+      month.revenue -= paidOut;
+      month.refunds += paidOut;
+      month.returns += 1;
     }
 
     for (const e of expenses) {
       const key = monthKey(e.date as string);
-      if (!key) continue;
-      if (!merged[key]) merged[key] = { month: monthLabel(key), revenue: 0, expenses: 0, orders: 0, profit: 0 };
-      merged[key].expenses += (e.amount as number);
+      if (key) bucket(key).expenses += Number(e.amount) || 0;
     }
 
     for (const key of Object.keys(merged)) {
@@ -349,7 +463,7 @@ export function registerAnalyticsHandlers(): void {
        WHERE status != 'voided' AND (deletedAt IS NULL OR deletedAt = '')`
     );
 
-    const map: Record<string, { name: string; totalQty: number; totalRevenue: number }> = {};
+    const map: Record<string, { productId: string; name: string; totalQty: number; totalRevenue: number }> = {};
 
     for (const o of orders) {
       let items: any[] = [];
@@ -357,15 +471,37 @@ export function registerAnalyticsHandlers(): void {
       for (const item of items) {
         const key = item.product || item.name;
         if (!key) continue;
-        if (!map[key]) map[key] = { name: item.name || key, totalQty: 0, totalRevenue: 0 };
+        if (!map[key]) map[key] = { productId: item.product, name: item.name || key, totalQty: 0, totalRevenue: 0 };
         map[key].totalQty     += item.quantity  || 0;
         map[key].totalRevenue += item.totalPrice || 0;
       }
     }
 
-    return Object.values(map)
+    // Net of what came back.
+    const back = returnedByProduct(liveReturnsSince(''));
+    const topItems = Object.entries(map)
+      .map(([key, item]) => {
+        const came = back.get(String(key));
+        return { ...item, totalQty: item.totalQty - (came?.quantity ?? 0), totalRevenue: round2(item.totalRevenue - (came?.refunded ?? 0)) };
+      })
+      .filter((item) => item.totalQty > 0 || item.totalRevenue > 0)
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
       .slice(0, limit);
+
+    // Look up full product info for each top item, matching the server's output
+    return topItems.map(item => {
+      let productInfo = null;
+      if (item.productId) {
+        const productRows = dbAll(`SELECT * FROM products WHERE _id = $id`, { $id: item.productId });
+        if (productRows.length > 0) {
+          productInfo = productRows[0];
+        }
+      }
+      return {
+        ...item,
+        product: productInfo,
+      };
+    });
   });
 
   // ── payment-methods ────────────────────────────────────────────────────────

@@ -1,16 +1,24 @@
 /**
- * Month-to-date KPIs for the admin dashboard.
+ * KPIs for the admin dashboard, for today or for this month.
  *
- * Every figure covers this month so far and is compared with the same stretch
- * of last month (the 1st up to today's date and time). Comparing the 5th of
- * this month with the whole of last month would show a fall every month, so
- * the comparison is like for like. A 30 day daily series feeds the sparklines.
+ *   month  this month so far, compared with the same stretch of last month
+ *          (the 1st up to today's date and time). Comparing the 5th of this
+ *          month with the whole of last month would show a fall every month,
+ *          so the comparison is like for like.
+ *   day    today so far, compared with yesterday up to the same time.
+ *
+ * A 30 day daily series feeds the sparklines either way.
  *
  * Realized Revenue & Cash Drawer Reconciliation:
  * - Realized revenue equals physical money received into the business (Cash + Card).
  * - Credit sales (uncollected debt) do NOT increase revenue until paid.
  * - Customer debt repayments (CustomerPayment) DO increase cash/card and revenue
  *   when received, matching real money in the till/bank.
+ *
+ * Returns count on the day they are taken, as money leaving the business:
+ * a refund paid in cash or by card comes off cash, card, sales and profit;
+ * a refund taken off a customer's account lowers the credit given instead
+ * (no money left the till). Top products are net of what came back.
  *
  * Every pipeline runs through the tenant plugin, so all figures belong to the
  * caller's company only.
@@ -21,6 +29,7 @@ import CustomerPayment from '../models/CustomerPayment';
 import Expense from '../models/Expense';
 import Order from '../models/Order';
 import Product from '../models/Product';
+import ProductReturn from '../models/ProductReturn';
 
 export interface KpiTotals {
   /** Realized sales/revenue (money received in drawer & bank). */
@@ -36,8 +45,12 @@ export interface KpiTotals {
   newCustomers: number;
   /** Dues collected from customers this period. */
   duesCollected?: number;
-  /** Credit sales issued (uncollected). */
+  /** Credit sales issued (uncollected), less what returns took off customer accounts. */
   creditSales?: number;
+  /** Refunded on returns this period, however it was paid out. */
+  refunds?: number;
+  /** Returns taken this period. */
+  returns?: number;
 }
 
 export interface KpiDay extends KpiTotals {
@@ -74,6 +87,8 @@ export interface KpiBreakdown {
   topProducts: { name: string; quantity: number; revenue: number }[];
   /** Products at or under the low stock threshold, emptiest first. */
   lowStockItems: { name: string; category: string; stock: number; price: number }[];
+  /** Returns this period and how their refunds were paid out. */
+  returns: { count: number; total: number; cash: number; card: number; toAccount: number };
 }
 
 export interface DashboardKpis {
@@ -84,8 +99,11 @@ export interface DashboardKpis {
   breakdown: KpiBreakdown;
   /** Snapshot counts that have no month-on-month comparison. */
   catalogue: { products: number; lowStock: number; outOfStock: number; categories: number; customers: number };
-  periods: { currentFrom: string; previousFrom: string; previousTo: string; generatedAt: string };
+  periods: { period: KpiPeriod; currentFrom: string; previousFrom: string; previousTo: string; generatedAt: string };
 }
+
+/** What the dashboard's figures cover: today so far, or this month so far. */
+export type KpiPeriod = 'day' | 'month';
 
 export const SERIES_DAYS = 30;
 export const LOW_STOCK_THRESHOLD = 10;
@@ -102,7 +120,17 @@ export interface KpiWindows {
   seriesFrom: Date;
 }
 
-export function kpiWindows(now = new Date()): KpiWindows {
+export function kpiWindows(now = new Date(), period: KpiPeriod = 'month'): KpiWindows {
+  const seriesFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (SERIES_DAYS - 1));
+
+  if (period === 'day') {
+    // Today so far, against yesterday up to the same time.
+    const currentFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const previousFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const previousTo = new Date(previousFrom.getFullYear(), previousFrom.getMonth(), previousFrom.getDate(), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    return { currentFrom, previousFrom, previousTo, seriesFrom };
+  }
+
   const currentFrom = new Date(now.getFullYear(), now.getMonth(), 1);
   const previousFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   // The 31st has no match in a 30 day month, so the day is clamped.
@@ -116,7 +144,6 @@ export function kpiWindows(now = new Date()): KpiWindows {
     now.getSeconds(),
     now.getMilliseconds()
   );
-  const seriesFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (SERIES_DAYS - 1));
 
   return { currentFrom, previousFrom, previousTo, seriesFrom };
 }
@@ -285,9 +312,70 @@ function topProductsPipeline(range: Range): PipelineStage[] {
         revenue: { $sum: '$items.totalPrice' },
       },
     },
-    { $sort: { revenue: -1 } },
-    { $limit: TOP_PRODUCTS },
   ];
+}
+
+// ── Returns ──────────────────────────────────────────────────────────────────
+
+interface ReturnRow {
+  _id: string | null;
+  refunds: number;
+  cash: number;
+  card: number;
+  toAccount: number;
+  count: number;
+}
+
+function returnsPipeline(range: Range, byDay: boolean): PipelineStage[] {
+  return [
+    { $match: { createdAt: range } },
+    {
+      $group: {
+        _id: byDay ? { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TIME_ZONE } } : null,
+        refunds: { $sum: '$total' },
+        cash: { $sum: { $ifNull: ['$refundCash', 0] } },
+        card: { $sum: { $ifNull: ['$refundCard', 0] } },
+        toAccount: { $sum: { $ifNull: ['$refundToAccount', 0] } },
+        count: { $sum: 1 },
+      },
+    },
+  ];
+}
+
+/** What came back per product, to take off the best sellers. */
+function returnedProductsPipeline(range: Range): PipelineStage[] {
+  return [
+    { $match: { createdAt: range } },
+    { $unwind: '$items' },
+    {
+      $group: {
+        _id: { $toString: { $ifNull: ['$items.product', '$items.name'] } },
+        quantity: { $sum: '$items.quantity' },
+        refunded: { $sum: '$items.total' },
+      },
+    },
+  ];
+}
+
+/** Best sellers net of returns: what was sold less what came back, highest revenue first. */
+export function netTopProducts(
+  sold: { _id: unknown; name: string; quantity: number; revenue: number }[],
+  returned: { _id: string; quantity: number; refunded: number }[],
+  limit = TOP_PRODUCTS
+): { name: string; quantity: number; revenue: number }[] {
+  const back = new Map(returned.map((row) => [String(row._id), row]));
+  return sold
+    .map((row) => {
+      const came = back.get(String(row._id));
+      return {
+        name: row.name,
+        quantity: round2(row.quantity - (came?.quantity ?? 0)),
+        revenue: round2(row.revenue - (came?.refunded ?? 0)),
+      };
+    })
+    .filter((row) => row.quantity > 0 || row.revenue > 0)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, limit);
 }
 
 // ── Expenses and customers ───────────────────────────────────────────────────
@@ -328,11 +416,15 @@ function toTotals(
   sales: Partial<SalesRow> | undefined,
   custPayments: Partial<CustomerPaymentRow> | undefined,
   expenses: number,
-  newCustomers: number
+  newCustomers: number,
+  returns?: Partial<ReturnRow>
 ): KpiTotals {
-  const realizedSales = (sales?.sales ?? 0) + (custPayments?.sales ?? 0);
-  const realizedCash = (sales?.cash ?? 0) + (custPayments?.cash ?? 0);
-  const realizedCard = (sales?.card ?? 0) + (custPayments?.card ?? 0);
+  // Refunds paid out in cash or by card are money leaving the business.
+  const refundCash = returns?.cash ?? 0;
+  const refundCard = returns?.card ?? 0;
+  const realizedSales = (sales?.sales ?? 0) + (custPayments?.sales ?? 0) - refundCash - refundCard;
+  const realizedCash = (sales?.cash ?? 0) + (custPayments?.cash ?? 0) - refundCash;
+  const realizedCard = (sales?.card ?? 0) + (custPayments?.card ?? 0) - refundCard;
 
   return {
     sales: round2(realizedSales),
@@ -343,12 +435,15 @@ function toTotals(
     profit: round2(realizedSales - expenses),
     newCustomers,
     duesCollected: round2(custPayments?.sales ?? 0),
-    creditSales: round2(sales?.creditSales ?? 0),
+    // A refund taken off a customer's account cancels credit that was given.
+    creditSales: round2((sales?.creditSales ?? 0) - (returns?.toAccount ?? 0)),
+    refunds: round2(returns?.refunds ?? 0),
+    returns: returns?.count ?? 0,
   };
 }
 
-export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
-  const windows = kpiWindows(now);
+export async function computeKpis(now = new Date(), period: KpiPeriod = 'month'): Promise<DashboardKpis> {
+  const windows = kpiWindows(now, period);
   const current: Range = { $gte: windows.currentFrom };
   const previous: Range = { $gte: windows.previousFrom, $lt: windows.previousTo };
   const series: Range = { $gte: windows.seriesFrom };
@@ -375,6 +470,10 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
     expenseCategories,
     topProducts,
     lowStockItems,
+    [currentReturns],
+    [previousReturns],
+    dailyReturns,
+    returnedProducts,
   ] = await Promise.all([
     Order.aggregate<SalesRow>(salesPipeline(current, false)),
     Order.aggregate<SalesRow>(salesPipeline(previous, false)),
@@ -395,12 +494,16 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
     Customer.countDocuments(),
     Order.aggregate<PaymentRow>(paymentPipeline(current)),
     Expense.aggregate<{ _id: string; total: number; count: number }>(expenseCategoryPipeline(current)),
-    Order.aggregate<{ name: string; quantity: number; revenue: number }>(topProductsPipeline(current)),
+    Order.aggregate<{ _id: unknown; name: string; quantity: number; revenue: number }>(topProductsPipeline(current)),
     Product.find({ stock: { $lte: LOW_STOCK_THRESHOLD } })
       .select('name category stock price')
       .sort({ stock: 1, name: 1 })
       .limit(LOW_STOCK_LIST)
       .lean(),
+    ProductReturn.aggregate<ReturnRow>(returnsPipeline(current, false)),
+    ProductReturn.aggregate<ReturnRow>(returnsPipeline(previous, false)),
+    ProductReturn.aggregate<ReturnRow>(returnsPipeline(series, true)),
+    ProductReturn.aggregate<{ _id: string; quantity: number; refunded: number }>(returnedProductsPipeline(current)),
   ]);
 
   const byKind = new Map(payments.map((row) => [row._id, row]));
@@ -409,6 +512,7 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
   const custPaymentsByDay = new Map(dailyCustPayments.map((row) => [row._id as string, row]));
   const expensesByDay = new Map(dailyExpenses.map((row) => [row._id, row.total]));
   const customersByDay = new Map(dailyCustomers.map((row) => [row._id, row.count]));
+  const returnsByDay = new Map(dailyReturns.map((row) => [row._id as string, row]));
 
   // Days without activity still need a point, or the sparkline would skip them.
   const daily: KpiDay[] = Array.from({ length: SERIES_DAYS }, (_, offset) => {
@@ -416,13 +520,13 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
     const key = localDayKey(day);
     return {
       date: key,
-      ...toTotals(salesByDay.get(key), custPaymentsByDay.get(key), expensesByDay.get(key) ?? 0, customersByDay.get(key) ?? 0),
+      ...toTotals(salesByDay.get(key), custPaymentsByDay.get(key), expensesByDay.get(key) ?? 0, customersByDay.get(key) ?? 0, returnsByDay.get(key)),
     };
   });
 
   return {
-    current: toTotals(currentSales, currentCustPayments, currentExpenses?.total ?? 0, currentCustomers),
-    previous: toTotals(previousSales, previousCustPayments, previousExpenses?.total ?? 0, previousCustomers),
+    current: toTotals(currentSales, currentCustPayments, currentExpenses?.total ?? 0, currentCustomers, currentReturns),
+    previous: toTotals(previousSales, previousCustPayments, previousExpenses?.total ?? 0, previousCustomers, previousReturns),
     daily,
     breakdown: {
       payments: {
@@ -444,11 +548,19 @@ export async function computeKpis(now = new Date()): Promise<DashboardKpis> {
       },
       expenseCategories: expenseCategories.map((row) => ({ category: row._id, total: round2(row.total), count: row.count })),
       expenseCount: expenseCategories.reduce((sum, row) => sum + row.count, 0),
-      topProducts: topProducts.map(({ name, quantity, revenue }) => ({ name, quantity, revenue: round2(revenue) })),
+      topProducts: netTopProducts(topProducts as any, returnedProducts),
       lowStockItems: lowStockItems.map(({ name, category, stock, price }) => ({ name, category, stock, price })),
+      returns: {
+        count: currentReturns?.count ?? 0,
+        total: round2(currentReturns?.refunds ?? 0),
+        cash: round2(currentReturns?.cash ?? 0),
+        card: round2(currentReturns?.card ?? 0),
+        toAccount: round2(currentReturns?.toAccount ?? 0),
+      },
     },
     catalogue: { products, lowStock, outOfStock, categories: categories.filter(Boolean).length, customers },
     periods: {
+      period,
       currentFrom: windows.currentFrom.toISOString(),
       previousFrom: windows.previousFrom.toISOString(),
       previousTo: windows.previousTo.toISOString(),

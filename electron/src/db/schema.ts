@@ -281,6 +281,7 @@ CREATE TABLE IF NOT EXISTS settings (
   shopEmail              TEXT             DEFAULT '',
   shopWebsite            TEXT             DEFAULT '',
   receiptFooter          TEXT             DEFAULT '',
+  receiptSize            TEXT,                          -- 'Thermal' | 'A4'; NULL until chosen or pulled
   showRemarksPrompt      INTEGER NOT NULL DEFAULT 1,
   loyaltyPointsPerEuro   REAL             DEFAULT 1,
   loyaltyRewardThreshold REAL             DEFAULT 100,
@@ -289,6 +290,31 @@ CREATE TABLE IF NOT EXISTS settings (
   createdAt              TEXT,
   updatedAt              TEXT,
   isSync                 INTEGER NOT NULL DEFAULT 0
+);
+
+-- ─────────────────────────────────────────────
+-- PRODUCT RETURNS  (against a sale, or open)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS product_returns (
+  localId          INTEGER PRIMARY KEY AUTOINCREMENT,
+  _id              TEXT    UNIQUE,
+  returnNo         TEXT    NOT NULL,
+  type             TEXT    NOT NULL,                -- 'invoice' | 'open'
+  orderId          TEXT,
+  invoiceId        TEXT,
+  customerId       TEXT,
+  customerName     TEXT,
+  items            TEXT    NOT NULL DEFAULT '[]',   -- JSON array of returned lines
+  total            REAL    NOT NULL DEFAULT 0,
+  refundMethod     TEXT    NOT NULL,                -- 'cash' | 'card' | 'account'
+  refundToAccount  REAL    NOT NULL DEFAULT 0,
+  refundCash       REAL    NOT NULL DEFAULT 0,
+  refundCard       REAL    NOT NULL DEFAULT 0,
+  reason           TEXT             DEFAULT '',
+  createdAt        TEXT,
+  updatedAt        TEXT,
+  deletedAt        TEXT,
+  isSync           INTEGER NOT NULL DEFAULT 0
 );
 
 -- ─────────────────────────────────────────────
@@ -322,6 +348,8 @@ CREATE TABLE IF NOT EXISTS supplier_invoices (
   amount        REAL    NOT NULL DEFAULT 0,
   paid          REAL    NOT NULL DEFAULT 0,
   date          TEXT    NOT NULL,
+  remarks       TEXT             DEFAULT '',
+  payments      TEXT             DEFAULT '[]',  -- JSON array of { amount, remarks, paidAt }
   lastPaymentAt TEXT,
   createdAt     TEXT,
   updatedAt     TEXT,

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/authenticate';
+import { authenticate } from '../middleware/authenticate';
 import { validate } from '../middleware/validate';
 import { idParam } from '../validators/common';
 import { createCategorySchema, updateCategorySchema } from '../validators/catalogValidators';
@@ -19,6 +19,7 @@ router.route('/').get(getCategories).post(validate({ body: createCategorySchema 
 router
   .route('/:id')
   .put(validate({ params: idParam, body: updateCategorySchema }), updateCategory)
-  .delete(authorize('admin', 'manager'), validate({ params: idParam }), deleteCategory);
+  // Cashiers manage categories too, so deleting is open to every signed in role.
+  .delete(validate({ params: idParam }), deleteCategory);
 
 export default router;

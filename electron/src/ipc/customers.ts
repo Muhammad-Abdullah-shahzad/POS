@@ -1,5 +1,6 @@
 import { handleLicensed } from '../license/licenseGuard';
-import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
+import { assertNameFree, dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
+import { setOpeningBalance } from './customerLedger';
 
 export function registerCustomerHandlers(): void {
 
@@ -8,6 +9,7 @@ export function registerCustomerHandlers(): void {
   });
 
   handleLicensed('customers:create', (_e, data: Record<string, unknown>) => {
+    assertNameFree('customers', 'customer', data.name);
     const _id = generateLocalId();
     const ts = now();
     dbRun(
@@ -39,6 +41,9 @@ export function registerCustomerHandlers(): void {
   });
 
   handleLicensed('customers:update', (_e, _id: string, data: Record<string, unknown>) => {
+    assertNameFree('customers', 'customer', data.name, _id);
+    // A new opening balance moves what the customer owes by the same amount.
+    if (data.openingBalance !== undefined && data.openingBalance !== null) setOpeningBalance(_id, data.openingBalance);
     dbRun(
       `UPDATE customers SET
          name=$name, contactNum1=$c1, contactNum2=$c2, email=$email,
@@ -87,17 +92,39 @@ export function registerCustomerHandlers(): void {
   });
 
   handleLicensed('customers:getLedger', (_e, _id: string) => {
-    const orders = dbAll(`SELECT * FROM orders WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
-    const payments = dbAll(`SELECT * FROM customer_payments WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+    // Same as the server: voided sales and deleted payments are not part of the account.
+    const orders = dbAll(
+      `SELECT * FROM orders WHERE customerId = $id AND status != 'voided' ORDER BY createdAt DESC`,
+      { $id: _id }
+    );
+    const payments = dbAll(
+      `SELECT * FROM customer_payments WHERE customerId = $id AND (deletedAt IS NULL OR deletedAt = '') ORDER BY createdAt DESC`,
+      { $id: _id }
+    );
+    const returns = dbAll(
+      `SELECT * FROM product_returns WHERE customerId = $id AND (deletedAt IS NULL OR deletedAt = '') ORDER BY createdAt DESC`,
+      { $id: _id }
+    );
     const customer = dbGet(`SELECT * FROM customers WHERE _id = $id`, { $id: _id });
     return {
       orders: orders.map((r: any) => ({ ...r, items: JSON.parse((r.items as string) || '[]') })),
       payments,
+      returns: returns.map((r: any) => ({ ...r, items: JSON.parse((r.items as string) || '[]') })),
       customer
     };
   });
 
   handleLicensed('customers:addPayment', (_e, data: Record<string, unknown>) => {
+    const amount = Number(data.amountPaid ?? 0);
+    if (!(amount > 0)) throw new Error('Amount must be more than zero');
+
+    const owing = dbGet('SELECT name, outstandingBalance FROM customers WHERE _id = $id', { $id: v(data.customerId) }) as any;
+    if (!owing) throw new Error('Customer not found');
+    const owed = Number(owing.outstandingBalance) || 0;
+    if (amount > owed + 0.005) {
+      throw new Error(`${owing.name} owes ${owed.toFixed(2)}; a payment cannot be more than that`);
+    }
+
     const _id = generateLocalId();
     const ts = now();
     

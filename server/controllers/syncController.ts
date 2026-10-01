@@ -9,7 +9,7 @@ import { Request, Response } from 'express';
 import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
 import { BadRequestError } from '../core/errors';
-import { SYNC_COLLECTIONS, SyncCollection, deleteRecords, upsertRecords } from '../services/syncService';
+import { SYNC_COLLECTIONS, SyncCollection, deleteRecords, listAllRecords, upsertRecords } from '../services/syncService';
 
 export const syncCollection = (collection: SyncCollection) =>
   asyncHandler(async (req: Request, res: Response) => {
@@ -17,6 +17,11 @@ export const syncCollection = (collection: SyncCollection) =>
 
     const outcome = await upsertRecords(collection, req.body);
     res.json(successResponse(outcome, `Synced ${outcome.upserted} ${SYNC_COLLECTIONS[collection].label}`));
+  });
+
+export const pullCollection = (collection: SyncCollection) =>
+  asyncHandler(async (_req: Request, res: Response) => {
+    res.json(successResponse(await listAllRecords(collection)));
   });
 
 export const syncDeletes = (collection: SyncCollection) =>

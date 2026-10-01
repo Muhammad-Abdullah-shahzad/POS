@@ -13,13 +13,16 @@ import {
 
 const router = Router();
 
-router.use(authenticate, authorize('admin', 'manager'), validate({ query: analyticsQuery }));
+const restricted = authorize('admin', 'manager');
+const allStaff = authorize('admin', 'manager', 'cashier');
 
-router.get('/revenue-trend', getRevenueTrend);
-router.get('/top-products', getTopProducts);
-router.get('/payment-methods', getPaymentMethodBreakdown);
-router.get('/expense-categories', getExpenseCategoryBreakdown);
-router.get('/monthly-summary', getMonthlySummary);
-router.get('/kpis', getKpis);
+router.use(authenticate, validate({ query: analyticsQuery }));
+
+router.get('/revenue-trend', restricted, getRevenueTrend);
+router.get('/top-products', allStaff, getTopProducts);
+router.get('/payment-methods', restricted, getPaymentMethodBreakdown);
+router.get('/expense-categories', restricted, getExpenseCategoryBreakdown);
+router.get('/monthly-summary', restricted, getMonthlySummary);
+router.get('/kpis', restricted, getKpis);
 
 export default router;

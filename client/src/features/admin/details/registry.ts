@@ -15,6 +15,7 @@ import {
   LowStockView,
   ProductsView,
   ProfitView,
+  RefundsView,
   RevenueView,
 } from './views';
 
@@ -33,6 +34,7 @@ export const DETAIL_VIEWS: Record<KpiKey, DetailView> = {
   expenses: { title: 'Expenses', subtitle: thisMonth, Content: ExpensesView },
   cash: { title: 'Cash Sales', subtitle: thisMonth, Content: CashView },
   card: { title: 'Card Sales', subtitle: thisMonth, Content: CardView },
+  refunds: { title: 'Refunds on Returns', subtitle: thisMonth, Content: RefundsView },
   customers: { title: 'Customers', subtitle: () => 'Everyone registered with your shop', Content: CustomersView },
   products: { title: 'Products', subtitle: () => 'Your catalogue today', Content: ProductsView },
   'low-stock': { title: 'Low Stock', subtitle: () => 'Products with 10 units or fewer', Content: LowStockView },

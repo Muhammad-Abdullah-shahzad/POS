@@ -37,6 +37,8 @@ export const ReportsSubFeatures = () => {
 
   // Database Data States
   const [orders, setOrders] = useState<any[]>([]);
+  /** Product returns: every sales figure below is net of them. */
+  const [returns, setReturns] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -100,17 +102,19 @@ export const ReportsSubFeatures = () => {
     const fetchAllData = async () => {
       try {
         setDbLoading(true);
-        const [ordersRes, expensesRes, productsRes, customersRes] = await Promise.all([
+        const [ordersRes, expensesRes, productsRes, customersRes, returnsRes] = await Promise.all([
           api.get('/orders').catch(() => ({ data: { data: [] } })),
           api.get('/expenses').catch(() => ({ data: { data: [] } })),
           api.get('/products').catch(() => ({ data: { data: [] } })),
-          api.get('/customers').catch(() => ({ data: { data: [] } }))
+          api.get('/customers').catch(() => ({ data: { data: [] } })),
+          api.get('/returns').catch(() => ({ data: { data: [] } })),
         ]);
 
         setOrders(ordersRes.data?.data || []);
         setExpenses(expensesRes.data?.data || []);
         setProducts(productsRes.data?.data || []);
         setCustomers(customersRes.data?.data || []);
+        setReturns(returnsRes.data?.data || []);
       } catch (err) {
         console.error("Failed to fetch reports data", err);
       } finally {
@@ -143,6 +147,18 @@ export const ReportsSubFeatures = () => {
       return productMap[productId]?.category || 'General';
     };
 
+    // ── Returns: subtracted from every sales figure ──────────────────────────
+    const returnedItems = returns.flatMap((ret: any) => (ret.items || []).map((item: any) => ({ ...item, at: ret.createdAt })));
+    const totalRefunds = sum(returns, 'total');
+    const refundsCash = sum(returns, 'refundCash');
+    const refundsCard = sum(returns, 'refundCard');
+    /** Cost of goods that came back, as the sales side counts it. */
+    const returnedCost = (item: any) => {
+      const prod = productMap[item.product] || {};
+      const cost = Number(prod.costPrice) || (Number(item.unitPrice) * 0.8);
+      return (Number(item.quantity) || 0) * cost;
+    };
+
     // Category Sales calculation
     const categorySalesMap: Record<string, { qty: number; gross: number; tax: number; revenue: number }> = {};
     orders.forEach(order => {
@@ -161,6 +177,14 @@ export const ReportsSubFeatures = () => {
         categorySalesMap[cat].tax += vatAmt;
         categorySalesMap[cat].revenue += totPrice;
       });
+    });
+
+    returnedItems.forEach((item: any) => {
+      const cat = getProductCategory(item.product);
+      if (!categorySalesMap[cat]) categorySalesMap[cat] = { qty: 0, gross: 0, tax: 0, revenue: 0 };
+      categorySalesMap[cat].qty -= Number(item.quantity) || 0;
+      categorySalesMap[cat].gross -= Number(item.total) || 0;
+      categorySalesMap[cat].revenue -= Number(item.total) || 0;
     });
 
     const categorySaleData = Object.entries(categorySalesMap).map(([category, d]) => ({
@@ -206,20 +230,38 @@ export const ReportsSubFeatures = () => {
       });
     });
 
+    returnedItems.forEach((item: any) => {
+      const prodId = item.product;
+      if (!productSalesMap[prodId]) {
+        productSalesMap[prodId] = { product: item.name || 'Unknown Product', sku: productMap[prodId]?.sku || 'N/A', qty: 0, revenue: 0, profit: 0 };
+      }
+      const refunded = Number(item.total) || 0;
+      productSalesMap[prodId].qty -= Number(item.quantity) || 0;
+      productSalesMap[prodId].revenue -= refunded;
+      productSalesMap[prodId].profit -= refunded - returnedCost(item);
+    });
+
     const productSalesData = Object.values(productSalesMap);
     const topSaleProductsData = [...productSalesData].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
     // Daily Sales Summary
-    const dailySalesMap: Record<string, { date: string; orders: number; gross: number; discounts: number; netRevenue: number; avg: number }> = {};
+    const dailySalesMap: Record<string, { date: string; orders: number; gross: number; discounts: number; refunds: number; netRevenue: number; avg: number }> = {};
     orders.forEach(order => {
       const date = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
       if (!dailySalesMap[date]) {
-        dailySalesMap[date] = { date, orders: 0, gross: 0, discounts: 0, netRevenue: 0, avg: 0 };
+        dailySalesMap[date] = { date, orders: 0, gross: 0, discounts: 0, refunds: 0, netRevenue: 0, avg: 0 };
       }
       dailySalesMap[date].orders += 1;
       dailySalesMap[date].gross += Number(order.subtotal) || 0;
       dailySalesMap[date].discounts += Number(order.discount) || 0;
       dailySalesMap[date].netRevenue += Number(order.total) || 0;
+    });
+
+    returns.forEach((ret: any) => {
+      const date = ret.createdAt ? new Date(ret.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+      if (!dailySalesMap[date]) dailySalesMap[date] = { date, orders: 0, gross: 0, discounts: 0, refunds: 0, netRevenue: 0, avg: 0 };
+      dailySalesMap[date].refunds += Number(ret.total) || 0;
+      dailySalesMap[date].netRevenue -= Number(ret.total) || 0;
     });
 
     const salesSummaryData = Object.values(dailySalesMap).map(d => ({
@@ -250,12 +292,13 @@ export const ReportsSubFeatures = () => {
         description: 'Daily sales revenue, orders count, gross discounts, and net performance.',
         hasChart: salesSummaryData.length > 0 ? 'area' : 'none',
         chartDataKey: 'netRevenue',
-        headers: ['Date', 'Orders Count', 'Gross Revenue', 'Discounts', 'Net Revenue', 'Avg Ticket Size'],
+        headers: ['Date', 'Orders Count', 'Gross Revenue', 'Discounts', 'Refunds', 'Net Revenue', 'Avg Ticket Size'],
         mockData: salesSummaryData,
         summaryCards: [
-          { label: 'Total Net Sales', value: formatMoney(sum(orders, 'total')), isPositive: true },
+          { label: 'Total Net Sales (after refunds)', value: formatMoney(sum(orders, 'total') - totalRefunds), isPositive: true },
           { label: 'Total Invoices', value: `${orders.length} Bills`, isPositive: true },
           { label: 'Total Discounts Given', value: formatMoney(sum(orders, 'discount')), isNegative: true },
+          { label: 'Refunds on Returns', value: `${formatMoney(totalRefunds)} (${returns.length})`, isNegative: true },
         ]
       },
       'transaction-sales': {
@@ -278,19 +321,28 @@ export const ReportsSubFeatures = () => {
             cashAmt:    isSplit ? (o.splitCash ?? 0) : isCash ? o.total : 0,
             cardAmt:    isSplit ? (o.splitCard ?? 0) : isCard ? o.total : 0,
           };
-        }),
+        }).concat(returns.map((ret: any) => ({
+          invoice:    `${ret.returnNo}${ret.invoiceId ? ` (for ${ret.invoiceId})` : ''}`,
+          date:       ret.createdAt ? new Date(ret.createdAt).toLocaleDateString() : 'N/A',
+          time:       ret.createdAt ? new Date(ret.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+          items:      -sum(ret.items || [], 'quantity'),
+          total:      -(Number(ret.total) || 0),
+          method:     'REFUND',
+          cashAmt:    -(Number(ret.refundCash) || 0),
+          cardAmt:    -(Number(ret.refundCard) || 0),
+        }))),
         summaryCards: [
           {
-            label: 'Cash Sales',
+            label: 'Cash Sales (after refunds)',
             value: formatMoney(sum(orders.filter(o => (o.paymentMethod || 'cash').toLowerCase() === 'cash'), 'total') +
               orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split')
-                    .reduce((acc: number, o: any) => acc + (Number(o.splitCash) || 0), 0))
+                    .reduce((acc: number, o: any) => acc + (Number(o.splitCash) || 0), 0) - refundsCash)
           },
           {
-            label: 'Card Sales',
+            label: 'Card Sales (after refunds)',
             value: formatMoney(sum(orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'card'), 'total') +
               orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'split')
-                    .reduce((acc: number, o: any) => acc + (Number(o.splitCard) || 0), 0))
+                    .reduce((acc: number, o: any) => acc + (Number(o.splitCard) || 0), 0) - refundsCard)
           },
           {
             label: 'Split Transactions',
@@ -384,6 +436,10 @@ export const ReportsSubFeatures = () => {
               }
             });
           });
+          // Goods that came back were never really sold: their cost comes off COGS too.
+          returnedItems.forEach((item: any) => {
+            if (getProductCategory(item.product) === cat) cogs -= returnedCost(item);
+          });
           const profit = d.revenue - cogs;
           const margin = d.revenue > 0 ? parseFloat(((profit / d.revenue) * 100).toFixed(1)) : 0;
           return {
@@ -402,7 +458,7 @@ export const ReportsSubFeatures = () => {
               return sumC + ((Number(item.quantity) || 0) * cost);
             }, 0);
             return acc + (order.total - orderCogs);
-          }, 0)) },
+          }, 0) - returnedItems.reduce((acc: number, item: any) => acc + (Number(item.total) || 0) - returnedCost(item), 0)) },
           { label: 'Top Profit Category', value: topCategory },
           { label: 'Gross Margin', value: orders.length > 0 ? '18.4%' : '0%' },
         ]
@@ -504,10 +560,25 @@ export const ReportsSubFeatures = () => {
               rowKey: o._id || o.invoiceId
             });
           });
+          returns.forEach((ret: any) => {
+            const names = (ret.items || []).map((i: any) => i.name).join(', ') || 'No Items';
+            rows.push({
+              transactionId: `${ret.returnNo}${ret.invoiceId ? ` (for ${ret.invoiceId})` : ''}`,
+              date: ret.createdAt ? new Date(ret.createdAt).toLocaleString() : 'N/A',
+              product: `RETURN: ${names.length > 22 ? names.substring(0, 19) + '...' : names}`,
+              totalPrice: `−${formatMoney(Number(ret.total) || 0)}`,
+              vat: formatMoney(0),
+              discount: formatMoney(0),
+              flatDiscount: formatMoney(0),
+              drs: formatMoney(0),
+              customerName: ret.customerName || 'Walk-in',
+              rowKey: ret._id || ret.returnNo
+            });
+          });
           return rows;
         })(),
         summaryCards: [
-          { label: 'Daily Net Receipts', value: formatMoney(sum(orders, 'total')) },
+          { label: 'Daily Net Receipts (after refunds)', value: formatMoney(sum(orders, 'total') - totalRefunds) },
           { label: 'Total VAT Collected', value: formatMoney(sum(orders, 'totalVAT')) },
           { label: 'Total Flat Discounts', value: formatMoney(sum(orders, 'discount')), isNegative: true },
         ]
@@ -541,11 +612,21 @@ export const ReportsSubFeatures = () => {
             hourlyMap[key].qty += sum(o.items || [], 'quantity');
             hourlyMap[key].sales += o.total;
           });
+          returns.forEach((ret: any) => {
+            const hour = ret.createdAt ? new Date(ret.createdAt).getHours() : 9;
+            let key = '09:00 - 11:00 AM';
+            if (hour >= 11 && hour < 13) key = '11:00 - 01:00 PM';
+            else if (hour >= 13 && hour < 15) key = '01:00 - 03:00 PM';
+            else if (hour >= 15 && hour < 17) key = '03:00 - 05:00 PM';
+            else if (hour >= 17 && hour < 19) key = '05:00 - 07:00 PM';
+            else if (hour >= 19) key = '07:00 - 09:00 PM';
+            hourlyMap[key].sales -= Number(ret.total) || 0;
+          });
           return Object.values(hourlyMap);
         })(),
         summaryCards: [
           { label: 'Total Invoiced Hours', value: `${orders.length} Txns` },
-          { label: 'Total Period Sales', value: formatMoney(sum(orders, 'total')) },
+          { label: 'Total Period Sales (after refunds)', value: formatMoney(sum(orders, 'total') - totalRefunds) },
           { label: 'Peak Sales Rate', value: orders.length > 0 ? '100%' : '0%' },
         ]
       },
@@ -583,6 +664,16 @@ export const ReportsSubFeatures = () => {
             monthMap[key].expenses += Number(e.amount) || 0;
           });
 
+          returns.forEach((ret: any) => {
+            const date = ret.createdAt ? new Date(ret.createdAt) : new Date();
+            const key = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+            if (!monthMap[key]) {
+              monthMap[key] = { month: key, sales: 0, cogs: 0, expenses: 0, netProfit: 0, margin: 0 };
+            }
+            monthMap[key].sales -= Number(ret.total) || 0;
+            monthMap[key].cogs -= (ret.items || []).reduce((acc: number, item: any) => acc + returnedCost(item), 0);
+          });
+
           return Object.values(monthMap).map(m => {
             const netProfit = m.sales - m.cogs - m.expenses;
             const margin = m.sales > 0 ? parseFloat(((netProfit / m.sales) * 100).toFixed(1)) : 0;
@@ -594,9 +685,9 @@ export const ReportsSubFeatures = () => {
           });
         })(),
         summaryCards: [
-          { label: 'Total Revenue', value: formatMoney(sum(orders, 'total')), isPositive: true },
+          { label: 'Total Revenue (after refunds)', value: formatMoney(sum(orders, 'total') - totalRefunds), isPositive: true },
           { label: 'Total Expenditures', value: formatMoney(sum(expenses, 'amount')), isNegative: true },
-          { label: 'Store Profit Result', value: formatMoney(sum(orders, 'total') - sum(expenses, 'amount')), isPositive: (sum(orders, 'total') - sum(expenses, 'amount')) >= 0 },
+          { label: 'Store Profit Result', value: formatMoney(sum(orders, 'total') - totalRefunds - sum(expenses, 'amount')), isPositive: (sum(orders, 'total') - totalRefunds - sum(expenses, 'amount')) >= 0 },
         ]
       },
       'product-stock': {
@@ -711,12 +802,25 @@ export const ReportsSubFeatures = () => {
         title: 'Exchange Refund Report',
         description: 'Customer return registry, exchange credits, and cash refunds ledger.',
         hasChart: 'none',
-        headers: ['Return Date', 'Original Receipt', 'Items Returned', 'Refund Amount', 'Exchange Taken', 'Reason'],
-        mockData: [],
+        headers: ['Return Date', 'Original Receipt', 'Items Returned', 'Refund Amount', 'Refunded As', 'Reason'],
+        mockData: returns.map((ret: any) => ({
+          date: ret.createdAt ? new Date(ret.createdAt).toLocaleString() : 'N/A',
+          receipt: ret.invoiceId ? `${ret.invoiceId} (${ret.returnNo})` : `${ret.returnNo} (open return)`,
+          items: (ret.items || []).map((i: any) => `${i.quantity} × ${i.name}`).join(', '),
+          refund: formatMoney(Number(ret.total) || 0),
+          refundedAs: [
+            Number(ret.refundToAccount) > 0 && `${formatMoney(Number(ret.refundToAccount))} off account`,
+            Number(ret.refundCash) > 0 && `${formatMoney(Number(ret.refundCash))} cash`,
+            Number(ret.refundCard) > 0 && `${formatMoney(Number(ret.refundCard))} card`,
+          ].filter(Boolean).join(' + ') || '—',
+          reason: ret.reason || '—',
+          rowKey: ret._id || ret.returnNo,
+        })),
         summaryCards: [
-          { label: 'Cash Refunds Paid', value: formatMoney(0) },
-          { label: 'Exchanged Items Value', value: formatMoney(0) },
-          { label: 'Total Claims Received', value: '0 Claims' },
+          { label: 'Cash Refunds Paid', value: formatMoney(refundsCash) },
+          { label: 'Card Refunds', value: formatMoney(refundsCard) },
+          { label: 'Refunded to Customer Accounts', value: formatMoney(sum(returns, 'refundToAccount')) },
+          { label: 'Total Returns', value: `${returns.length} Return${returns.length !== 1 ? 's' : ''} · ${formatMoney(totalRefunds)}` },
         ]
       },
       'expenses': {
@@ -776,7 +880,7 @@ export const ReportsSubFeatures = () => {
         ]
       },
     };
-  }, [orders, expenses, products, customers]);
+  }, [orders, expenses, products, customers, returns]);
 
   // Fetch matched configuration
   const reportInfo = useMemo(() => {
@@ -1159,18 +1263,19 @@ export const ReportsSubFeatures = () => {
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'center' }}>
                         <Badge
-                          color={row.method === 'CASH' ? 'green' : row.method === 'CARD' ? 'blue' : 'grape'}
+                          color={row.method === 'CASH' ? 'green' : row.method === 'CARD' ? 'blue' : row.method === 'REFUND' ? 'red' : 'grape'}
                           variant="filled"
                           size="sm"
                         >
                           {row.method}
                         </Badge>
                       </Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }} c={row.cashAmt > 0 ? 'green.7' : 'dimmed'}>
-                        {row.cashAmt > 0 ? Number(row.cashAmt).toFixed(2) : '-'}
+                      {/* Refund rows carry negative amounts, shown in red. */}
+                      <Table.Td style={{ textAlign: 'right' }} c={row.cashAmt > 0 ? 'green.7' : row.cashAmt < 0 ? 'red.7' : 'dimmed'}>
+                        {row.cashAmt !== 0 ? Number(row.cashAmt).toFixed(2) : '-'}
                       </Table.Td>
-                      <Table.Td style={{ textAlign: 'right' }} c={row.cardAmt > 0 ? 'blue.7' : 'dimmed'}>
-                        {row.cardAmt > 0 ? Number(row.cardAmt).toFixed(2) : '-'}
+                      <Table.Td style={{ textAlign: 'right' }} c={row.cardAmt > 0 ? 'blue.7' : row.cardAmt < 0 ? 'red.7' : 'dimmed'}>
+                        {row.cardAmt !== 0 ? Number(row.cardAmt).toFixed(2) : '-'}
                       </Table.Td>
                     </Table.Tr>
                   ))

@@ -75,6 +75,7 @@ function workspaceItems(base: string): NavItem[] {
         { label: 'Manage General Products', path: `${base}/products/general` },
         { label: 'Edit Price', path: `${base}/products/edit-price` },
         { label: 'Wastage Management', path: `${base}/products/wastage` },
+        { label: 'Product Return', path: `${base}/products/returns` },
         { label: 'Excel Sheet Load', path: `${base}/products/excel-load` },
         { label: 'Stock Reconciliation', path: `${base}/products/reconciliation` },
       ],

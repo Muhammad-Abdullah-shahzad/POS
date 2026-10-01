@@ -1,5 +1,5 @@
 import { handleLicensed } from '../license/licenseGuard';
-import { dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
+import { assertNameFree, dbAll, dbGet, dbRun, generateLocalId, now, v } from '../db/database';
 
 export function registerSupplierHandlers(): void {
 
@@ -8,6 +8,7 @@ export function registerSupplierHandlers(): void {
   });
 
   handleLicensed('suppliers:create', (_e, data: Record<string, unknown>) => {
+    assertNameFree('suppliers', 'supplier', data.name);
     const _id = generateLocalId();
     const ts = now();
     dbRun(

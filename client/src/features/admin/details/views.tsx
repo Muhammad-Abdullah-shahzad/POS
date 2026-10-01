@@ -5,7 +5,7 @@
  * card. To add a view, write a component here and register it in registry.ts
  * under the card's key.
  */
-import { currentPeriodLabel, percentChange } from '../../../services/dashboardService';
+import { currentPeriodLabel, percentChange, periodWords } from '../../../services/dashboardService';
 import type { DashboardKpis, KpiTotals } from '../../../services/dashboardService';
 import { formatMoney } from '../../../utils/money';
 import { formatMoneyAxis as moneyAxis } from '../chartFormat';
@@ -106,8 +106,8 @@ const stockKey = (item: StockItem, index: number) => `${item.name}-${index}`;
 
 // ── Shared sections ─────────────────────────────────────────────────────────
 
-function PaymentMix({ current }: { current: KpiTotals }) {
-  if (current.cash + current.card <= 0) return <Empty>No sales yet this month.</Empty>;
+function PaymentMix({ current, when }: { current: KpiTotals; when: string }) {
+  if (current.cash + current.card <= 0) return <Empty>No sales yet {when}.</Empty>;
   return (
     <ShareBar
       segments={[
@@ -127,12 +127,12 @@ export function RevenueView({ kpis, orders }: DetailContext) {
   return (
     <>
       <StatGrid>
-        <StatTile label="Revenue" value={formatMoney(current.sales)} trend={{ percent: change('sales', kpis) }} />
-        <StatTile label="Orders" value={count(current.orders)} trend={{ percent: change('orders', kpis) }} />
+        <StatTile label="Revenue" value={formatMoney(current.sales)} trend={{ since: periodWords(kpis.periods).previous, percent: change('sales', kpis) }} hint="After refunds paid out" />
+        <StatTile label="Orders" value={count(current.orders)} trend={{ since: periodWords(kpis.periods).previous, percent: change('orders', kpis) }} />
         <StatTile
           label="Average order"
           value={formatMoney(average(current))}
-          trend={{ percent: percentChange(average(current), average(previous)) }}
+          trend={{ since: periodWords(kpis.periods).previous, percent: percentChange(average(current), average(previous)) }}
         />
       </StatGrid>
       <Section title="Daily revenue" aside="Last 30 days">
@@ -157,13 +157,13 @@ export function ProfitView({ kpis }: DetailContext) {
   return (
     <>
       <StatGrid>
-        <StatTile label="Revenue" value={formatMoney(current.sales)} trend={{ percent: change('sales', kpis) }} />
-        <StatTile label="Expenses" value={formatMoney(current.expenses)} trend={{ percent: change('expenses', kpis), goodWhenUp: false }} />
+        <StatTile label="Revenue" value={formatMoney(current.sales)} trend={{ since: periodWords(kpis.periods).previous, percent: change('sales', kpis) }} />
+        <StatTile label="Expenses" value={formatMoney(current.expenses)} trend={{ since: periodWords(kpis.periods).previous, percent: change('expenses', kpis), goodWhenUp: false }} />
         <StatTile
           label="Net profit"
           value={formatMoney(current.profit)}
           tone={current.profit < 0 ? 'bad' : undefined}
-          trend={{ percent: change('profit', kpis) }}
+          trend={{ since: periodWords(kpis.periods).previous, percent: change('profit', kpis) }}
         />
       </StatGrid>
       <Section title="Where revenue went" aside={`${margin.toFixed(1)}% profit margin`}>
@@ -176,7 +176,7 @@ export function ProfitView({ kpis }: DetailContext) {
             ]}
           />
         ) : (
-          <Empty>No revenue yet this month.</Empty>
+          <Empty>No revenue yet {periodWords(kpis.periods).current}.</Empty>
         )}
       </Section>
       <Section title="Daily profit" aside="Revenue minus expenses, last 30 days">
@@ -193,7 +193,7 @@ export function ExpensesView({ kpis, expenses }: DetailContext) {
   return (
     <>
       <StatGrid>
-        <StatTile label="Expenses" value={formatMoney(current.expenses)} trend={{ percent: change('expenses', kpis), goodWhenUp: false }} />
+        <StatTile label="Expenses" value={formatMoney(current.expenses)} trend={{ since: periodWords(kpis.periods).previous, percent: change('expenses', kpis), goodWhenUp: false }} />
         <StatTile
           label="Share of revenue"
           value={`${percentOf(current.expenses, current.sales).toFixed(1)}%`}
@@ -201,7 +201,7 @@ export function ExpensesView({ kpis, expenses }: DetailContext) {
         />
         <StatTile label="Payments" value={count(breakdown.expenseCount)} hint={plural(categories.length, 'category', 'categories')} />
       </StatGrid>
-      <Section title="By category" aside="Share of this month's expenses">
+      <Section title="By category" aside={`Share of ${periodWords(kpis.periods).possessive} expenses`}>
         {categories.length > 0 ? (
           <RankedList
             color={PALETTE.warn}
@@ -215,7 +215,7 @@ export function ExpensesView({ kpis, expenses }: DetailContext) {
             }))}
           />
         ) : (
-          <Empty>No expenses this month.</Empty>
+          <Empty>No expenses {periodWords(kpis.periods).current}.</Empty>
         )}
       </Section>
       <Section title="Daily expenses" aside="Last 30 days">
@@ -243,10 +243,13 @@ export function CashView({ kpis }: DetailContext) {
         {payments.duesCash !== undefined && payments.duesCash > 0 && (
           <StatTile label="Customer dues (cash)" value={formatMoney(payments.duesCash)} hint="Debt repayments" />
         )}
-        <StatTile label="Total cash in drawer" value={formatMoney(current.cash)} trend={{ percent: change('cash', kpis) }} />
+        {(breakdown.returns?.cash ?? 0) > 0 && (
+          <StatTile label="Cash refunded" value={`−${formatMoney(breakdown.returns!.cash)}`} hint="Paid out on returns" />
+        )}
+        <StatTile label="Total cash in drawer" value={formatMoney(current.cash)} trend={{ since: periodWords(kpis.periods).previous, percent: change('cash', kpis) }} />
       </StatGrid>
-      <Section title="Cash and card" aside="Share of this month's takings">
-        <PaymentMix current={current} />
+      <Section title="Cash and card" aside={`Share of ${periodWords(kpis.periods).possessive} takings`}>
+        <PaymentMix current={current} when={periodWords(kpis.periods).current} />
       </Section>
       <Section title="Daily cash" aside="Last 30 days">
         <DailyChart series={dailySeries(kpis, 'cash')} color={PALETTE.good} format={formatMoney} formatAxis={moneyAxis} />
@@ -270,10 +273,13 @@ export function CardView({ kpis, orders }: DetailContext) {
         {payments.duesCard !== undefined && payments.duesCard > 0 && (
           <StatTile label="Customer dues (card)" value={formatMoney(payments.duesCard)} hint="Debt repayments" />
         )}
-        <StatTile label="Total card taken" value={formatMoney(current.card)} trend={{ percent: change('card', kpis) }} />
+        {(breakdown.returns?.card ?? 0) > 0 && (
+          <StatTile label="Card refunded" value={`−${formatMoney(breakdown.returns!.card)}`} hint="Refunded on returns" />
+        )}
+        <StatTile label="Total card taken" value={formatMoney(current.card)} trend={{ since: periodWords(kpis.periods).previous, percent: change('card', kpis) }} />
       </StatGrid>
-      <Section title="Cash and card" aside="Share of this month's takings">
-        <PaymentMix current={current} />
+      <Section title="Cash and card" aside={`Share of ${periodWords(kpis.periods).possessive} takings`}>
+        <PaymentMix current={current} when={periodWords(kpis.periods).current} />
       </Section>
       <Section title="Daily card" aside="Last 30 days">
         <DailyChart series={dailySeries(kpis, 'card')} color={PALETTE.brand} format={formatMoney} formatAxis={moneyAxis} />
@@ -290,6 +296,24 @@ export function CardView({ kpis, orders }: DetailContext) {
   );
 }
 
+export function RefundsView({ kpis }: DetailContext) {
+  const returns = kpis.breakdown.returns ?? { count: 0, total: 0, cash: 0, card: 0, toAccount: 0 };
+
+  return (
+    <>
+      <StatGrid>
+        <StatTile label="Refunded" value={formatMoney(returns.total)} hint={plural(returns.count, 'return', 'returns')} trend={{ since: periodWords(kpis.periods).previous, percent: change('refunds', kpis), goodWhenUp: false }} />
+        <StatTile label="Paid in cash" value={formatMoney(returns.cash)} hint="Taken off cash in drawer" />
+        <StatTile label="Refunded by card" value={formatMoney(returns.card)} hint="Taken off card takings" />
+        <StatTile label="Off customer accounts" value={formatMoney(returns.toAccount)} hint="Lowered what customers owe; no money left the till" />
+      </StatGrid>
+      <Section title="Daily refunds" aside="Last 30 days">
+        <DailyChart series={dailySeries(kpis, 'refunds')} color={PALETTE.bad} format={formatMoney} formatAxis={moneyAxis} />
+      </Section>
+    </>
+  );
+}
+
 export function CustomersView({ kpis, customers }: DetailContext) {
   const { current, catalogue } = kpis;
   const buyers = customers.filter((customer) => (customer.timesVisited ?? 0) > 0).length;
@@ -299,7 +323,7 @@ export function CustomersView({ kpis, customers }: DetailContext) {
     <>
       <StatGrid>
         <StatTile label="Registered" value={count(catalogue.customers)} hint="All time" />
-        <StatTile label="New this month" value={count(current.newCustomers)} trend={{ percent: change('newCustomers', kpis) }} />
+        <StatTile label={`New ${periodWords(kpis.periods).current}`} value={count(current.newCustomers)} trend={{ since: periodWords(kpis.periods).previous, percent: change('newCustomers', kpis) }} />
         <StatTile label="Have bought" value={count(buyers)} hint={`${percentOf(buyers, catalogue.customers).toFixed(0)}% of customers`} />
       </StatGrid>
       <Section title="New customers" aside="Last 30 days">
@@ -353,7 +377,7 @@ export function ProductsView({ kpis }: DetailContext) {
             }))}
           />
         ) : (
-          <Empty>No sales yet this month.</Empty>
+          <Empty>No sales yet {periodWords(kpis.periods).current}.</Empty>
         )}
       </Section>
       <Section title="Low stock">

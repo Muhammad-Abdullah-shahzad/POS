@@ -46,6 +46,17 @@ export function registerCategoryHandlers(): void {
   });
 
   handleLicensed('categories:delete', (_e, _id: string) => {
+    // Same rule as the server: a category still holding products stays.
+    const category = dbGet('SELECT name FROM categories WHERE _id = $id', { $id: _id }) as any;
+    if (category) {
+      const inUse = dbGet(
+        'SELECT COUNT(*) AS cnt FROM products WHERE category = $name AND deletedAt IS NULL',
+        { $name: category.name }
+      ) as any;
+      if (inUse?.cnt > 0) {
+        throw new Error(`Move the ${inUse.cnt} product(s) in "${category.name}" to another category first`);
+      }
+    }
     softDelete('categories', _id);
     return { success: true };
   });

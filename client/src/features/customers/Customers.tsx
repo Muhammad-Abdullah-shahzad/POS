@@ -6,13 +6,14 @@ import {
 import { DateInput } from '@mantine/dates';
 import {
   IconUserPlus, IconSearch, IconEdit, IconTrash,
-  IconUser, IconPhone, IconMail, IconAddressBook, IconCheck, IconStar, IconSettings
+  IconUser, IconPhone, IconMail, IconAddressBook, IconCheck, IconStar, IconSettings, IconCash
 } from '@tabler/icons-react';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { currencySymbol, formatMoney } from '../../utils/money';
 import { CustomerProfile } from './CustomerProfile';
+import { errorMessage } from '../../utils/errorMessage';
 
 interface Customer {
   _id?: string;
@@ -48,6 +49,8 @@ const Customers = () => {
   const [modalOpened, setModalOpened]       = useState(false);
   const [profileOpened, setProfileOpened]   = useState(false);
   const [profileCustomer, setProfileCustomer] = useState<Customer | null>(null);
+  /** Opens the profile straight on the payment form, from a row's Pay button. */
+  const [profilePaying, setProfilePaying]   = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm]                     = useState(emptyForm());
   const [loading, setLoading]               = useState(false);
@@ -121,13 +124,22 @@ const Customers = () => {
     setModalOpened(true);
   };
 
-  const openProfile = (c: Customer) => {
+  const openProfile = (c: Customer, paying = false) => {
     setProfileCustomer(c);
+    setProfilePaying(paying);
     setProfileOpened(true);
   };
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.contactNum1.trim()) return;
+    // Customer names are unique, so a name always points to one account.
+    const taken = customers.find(
+      (c) => c._id !== editingCustomer?._id && c.name.trim().toLowerCase() === form.name.trim().toLowerCase()
+    );
+    if (taken) {
+      notifications.show({ title: 'Name already used', message: `A customer named "${taken.name}" already exists`, color: 'red' });
+      return;
+    }
     try {
       setLoading(true);
       if (editingCustomer?._id) {
@@ -138,7 +150,7 @@ const Customers = () => {
       setModalOpened(false);
       fetchCustomers();
     } catch (e: any) {
-      notifications.show({ title: 'Error', message: e.message, color: 'red' });
+      notifications.show({ title: 'Error', message: errorMessage(e, 'The customer could not be saved'), color: 'red' });
     } finally { setLoading(false); }
   };
 
@@ -246,9 +258,9 @@ const Customers = () => {
             </Table.Thead>
             <Table.Tbody>
               {loading && customers.length === 0 ? (
-                <Table.Tr><Table.Td colSpan={8}><Text ta="center" c="dimmed" py="xl">Loading…</Text></Table.Td></Table.Tr>
+                <Table.Tr><Table.Td colSpan={9}><Text ta="center" c="dimmed" py="xl">Loading…</Text></Table.Td></Table.Tr>
               ) : filtered.length === 0 ? (
-                <Table.Tr><Table.Td colSpan={8}><Text ta="center" c="dimmed" py="xl">No customers found</Text></Table.Td></Table.Tr>
+                <Table.Tr><Table.Td colSpan={9}><Text ta="center" c="dimmed" py="xl">No customers found</Text></Table.Td></Table.Tr>
               ) : filtered.map(c => (
                 <Table.Tr key={c._id}>
                   <Table.Td>
@@ -278,8 +290,13 @@ const Customers = () => {
                   </Table.Td>
                   <Table.Td><Text c="dimmed">{c.lastVisit || '—'}</Text></Table.Td>
                   <Table.Td>
-                    <Group gap={4} justify="flex-end">
-                      <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => openProfile(c)}>
+                    <Group gap={4} justify="flex-end" wrap="nowrap">
+                      {(c.outstandingBalance || 0) > 0 && (
+                        <Button size="compact-xs" color="dark" leftSection={<IconCash size={12} />} onClick={() => openProfile(c, true)}>
+                          Pay
+                        </Button>
+                      )}
+                      <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => openProfile(c)} aria-label={`Profile of ${c.name}`}>
                         <IconUser size={14} />
                       </ActionIcon>
                       <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => openEdit(c)}>
@@ -451,6 +468,7 @@ const Customers = () => {
         opened={profileOpened} 
         onClose={() => setProfileOpened(false)} 
         onUpdate={fetchCustomers} 
+        startWithPayment={profilePaying}
       />
     </Box>
   );

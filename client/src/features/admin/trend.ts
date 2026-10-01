@@ -10,6 +10,8 @@ export interface KpiTrend {
   percent: number | null;
   /** False for costs, where a rise is bad news. */
   goodWhenUp?: boolean;
+  /** What the change is measured from: "yesterday" or "last month" (the default). */
+  since?: string;
 }
 
 /** Changes smaller than this read as "no change". */

@@ -26,6 +26,7 @@ import Supplier from '../models/Supplier';
 import SupplierInvoice from '../models/SupplierInvoice';
 import WastageEntry from '../models/WastageEntry';
 import Settings from '../models/Settings';
+import ProductReturn from '../models/ProductReturn';
 import { BankAccount, BankCard, BankName } from '../models/Bank';
 
 type SyncRecord = Record<string, unknown>;
@@ -71,6 +72,7 @@ export const SYNC_COLLECTIONS = {
   'banks/names': { model: BankName as Model<any>, label: 'bank names' },
   'banks/accounts': { model: BankAccount as Model<any>, label: 'bank accounts' },
   'banks/cards': { model: BankCard as Model<any>, label: 'bank cards' },
+  'product-returns': { model: ProductReturn as Model<any>, label: 'product returns' },
   settings: { model: Settings as Model<any>, label: 'settings' },
 } satisfies Record<string, SyncCollectionConfig>;
 
@@ -117,6 +119,16 @@ async function inBatches<T>(items: T[], size: number, work: (item: T) => Promise
   for (let index = 0; index < items.length; index += size) {
     await Promise.all(items.slice(index, index + size).map(work));
   }
+}
+
+/**
+ * Every record of a collection for the company, uncapped. A till's pull
+ * compares against this list to find records deleted on the web, so it must
+ * be complete: a capped list would make the till delete records it still needs.
+ */
+export async function listAllRecords(collection: SyncCollection): Promise<Record<string, unknown>[]> {
+  const { model } = SYNC_COLLECTIONS[collection];
+  return model.find().lean();
 }
 
 /** Upsert a batch of records pushed by a till. */

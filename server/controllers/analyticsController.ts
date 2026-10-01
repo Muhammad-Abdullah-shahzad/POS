@@ -12,6 +12,7 @@ import CustomerPayment from '../models/CustomerPayment';
 import Expense from '../models/Expense';
 import Order from '../models/Order';
 import Product from '../models/Product';
+import ProductReturn from '../models/ProductReturn';
 import { computeKpis } from '../services/kpiService';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -102,12 +103,34 @@ export const getTopProducts = asyncHandler(async (req: Request, res: Response) =
         totalRevenue: { $sum: '$items.totalPrice' },
       },
     },
-    { $sort: { totalRevenue: -1 } },
-    { $limit: limit },
-    { $project: { _id: 0, productId: '$_id', name: 1, totalQty: 1, totalRevenue: 1 } },
+    {
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'productInfo',
+      }
+    },
+    { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+    { $project: { _id: 0, productId: '$_id', name: 1, totalQty: 1, totalRevenue: 1, product: '$productInfo' } },
   ]);
 
-  res.json(successResponse(result));
+  // Best sellers net of what came back.
+  const returned = await ProductReturn.aggregate<{ _id: string; quantity: number; refunded: number }>([
+    { $unwind: '$items' },
+    { $group: { _id: { $toString: '$items.product' }, quantity: { $sum: '$items.quantity' }, refunded: { $sum: '$items.total' } } },
+  ]);
+  const back = new Map(returned.map((row) => [row._id, row]));
+  const net = result
+    .map((row) => {
+      const came = back.get(String(row.productId));
+      return { ...row, totalQty: row.totalQty - (came?.quantity ?? 0), totalRevenue: Math.round((row.totalRevenue - (came?.refunded ?? 0)) * 100) / 100 };
+    })
+    .filter((row) => row.totalQty > 0 || row.totalRevenue > 0)
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+    .slice(0, limit);
+
+  res.json(successResponse(net));
 });
 
 // GET /api/analytics/payment-methods
@@ -144,7 +167,7 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
 
   const monthBucket = (field: string) => ({ year: { $year: field }, month: { $month: field } });
 
-  const [orderRows, paymentRows, expenseRows, lowStock] = await Promise.all([
+  const [orderRows, paymentRows, expenseRows, lowStock, returnRows] = await Promise.all([
     Order.aggregate([
       { $match: { ...completedOrders, paymentMethod: { $ne: 'credit' }, createdAt: { $gte: startDate } } },
       {
@@ -165,12 +188,26 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
       { $group: { _id: monthBucket('$date'), expenses: { $sum: '$amount' } } },
     ]),
     Product.find({ stock: { $lte: 10 } }).select('name sku stock category').sort({ stock: 1 }).limit(10),
+    // Refunds paid out in cash or by card are money leaving the business that month.
+    ProductReturn.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: monthBucket('$createdAt'),
+          refunds: { $sum: { $add: [{ $ifNull: ['$refundCash', 0] }, { $ifNull: ['$refundCard', 0] }] } },
+          returns: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
   const bucketKey = (row: { _id: { year: number; month: number } }) =>
     `${row._id.year}-${String(row._id.month).padStart(2, '0')}`;
 
-  const summary = new Map<string, { month: string; revenue: number; vat: number; orders: number; expenses: number; profit: number }>();
+  const summary = new Map<
+    string,
+    { month: string; revenue: number; vat: number; orders: number; expenses: number; profit: number; refunds: number; returns: number }
+  >();
 
   for (const row of orderRows) {
     summary.set(bucketKey(row), {
@@ -180,6 +217,8 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
       orders: row.orders,
       expenses: 0,
       profit: row.revenue,
+      refunds: 0,
+      returns: 0,
     });
   }
 
@@ -197,6 +236,8 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
         orders: 0,
         expenses: 0,
         profit: row.revenue,
+        refunds: 0,
+        returns: 0,
       });
     }
   }
@@ -216,8 +257,22 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
         orders: 0,
         expenses: row.expenses,
         profit: -row.expenses,
+        refunds: 0,
+        returns: 0,
       });
     }
+  }
+
+  for (const row of returnRows) {
+    const key = bucketKey(row);
+    const month =
+      summary.get(key) ??
+      { month: `${MONTH_NAMES[row._id.month - 1]} ${row._id.year}`, revenue: 0, vat: 0, orders: 0, expenses: 0, profit: 0, refunds: 0, returns: 0 };
+    month.revenue -= row.refunds;
+    month.profit -= row.refunds;
+    month.refunds = row.refunds;
+    month.returns = row.returns;
+    summary.set(key, month);
   }
 
   const monthly = [...summary.keys()].sort().map((key) => summary.get(key)!);
@@ -226,6 +281,7 @@ export const getMonthlySummary = asyncHandler(async (req: Request, res: Response
 });
 
 // GET /api/analytics/kpis
-export const getKpis = asyncHandler(async (_req: Request, res: Response) => {
-  res.json(successResponse(await computeKpis()));
+export const getKpis = asyncHandler(async (req: Request, res: Response) => {
+  const period = req.validatedQuery?.period === 'day' ? 'day' : 'month';
+  res.json(successResponse(await computeKpis(new Date(), period)));
 });

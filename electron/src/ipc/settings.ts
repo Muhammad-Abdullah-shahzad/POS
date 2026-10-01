@@ -36,7 +36,7 @@ export function registerSettingsHandlers(): void {
       `UPDATE settings SET
          shopName=$shopName, shopAddress=$shopAddress, shopPhone=$shopPhone,
          shopEmail=$shopEmail, shopWebsite=$shopWebsite, receiptFooter=$receiptFooter,
-         showRemarksPrompt=$showRemarksPrompt,
+         receiptSize=$receiptSize, showRemarksPrompt=$showRemarksPrompt,
          loyaltyPointsPerEuro=$loyaltyPPE, loyaltyRewardThreshold=$loyaltyRT,
          loyaltyRewardValue=$loyaltyRV, quickProducts=$quickProducts,
          updatedAt=$ts, isSync=0`,
@@ -47,6 +47,7 @@ export function registerSettingsHandlers(): void {
         $shopEmail: v(data.shopEmail, ''),
         $shopWebsite: v(data.shopWebsite, ''),
         $receiptFooter: v(data.receiptFooter, ''),
+        $receiptSize: data.receiptSize === 'A4' ? 'A4' : 'Thermal',
         $showRemarksPrompt: data.showRemarksPrompt === false ? 0 : 1,
         $loyaltyPPE: v(data.loyaltyPointsPerEuro, 1),
         $loyaltyRT: v(data.loyaltyRewardThreshold, 100),

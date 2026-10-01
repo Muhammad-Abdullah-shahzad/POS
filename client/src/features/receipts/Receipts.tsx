@@ -1,14 +1,10 @@
-import { Paper, Title, Text, Table, Button, Modal, Badge, Stack, Group, Select } from '@mantine/core';
-import { useEffect, useState, useRef } from 'react';
+import { Paper, Title, Text, Table, Button, Badge, Stack, Group, Select, TextInput, CloseButton } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
+import { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { IconEye, IconPrinter } from '@tabler/icons-react';
-import { useReactToPrint } from 'react-to-print';
+import { IconEye, IconSearch } from '@tabler/icons-react';
 import { formatMoney } from '../../utils/money';
-import { useSettingsStore } from '../../store/settingsStore';
-import PrintableSaleDocument from '../printing/PrintableSaleDocument';
-import { printPageStyle } from '../printing/printPageStyle';
-import { printableSaleFromOrder } from '../printing/printableSaleFromOrder';
-import { useShopDetails } from '../printing/useShopDetails';
+import ReceiptViewer from '../printing/ReceiptViewer';
 
 const Receipts = () => {
   const currentDate = new Date();
@@ -17,33 +13,23 @@ const Receipts = () => {
   const [modalOpened, setModalOpened] = useState(false);
   const [month, setMonth] = useState<string>((currentDate.getMonth() + 1).toString());
   const [year, setYear] = useState<string>(currentDate.getFullYear().toString());
-  const printRef = useRef<HTMLDivElement>(null);
-  // Reprints follow the paper size set in Settings, like the till does.
-  const settings = useSettingsStore((state) => state.settings);
-  const receiptSize: 'Thermal' | 'A4' = settings?.receiptSize === 'A4' ? 'A4' : 'Thermal';
-  const shop = useShopDetails();
-
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    pageStyle: printPageStyle(receiptSize),
-    // Receipts carry inline styles only; skipping the app's stylesheets opens the print window faster.
-    ignoreGlobalStyles: true,
-  });
-
-  const fetchReceipts = async () => {
-    try {
-      const { data } = await api.get('/orders', {
-        params: { month, year }
-      });
-      setReceipts(data.data);
-    } catch (error) {
-      console.error('Error fetching receipts:', error);
-    }
-  };
-
+  const [search, setSearch] = useState('');
+  // Waits for a pause in typing, so each keystroke does not query every receipt.
+  const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
+  const searching = debouncedSearch.length > 0;
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
-    fetchReceipts();
-  }, [month, year]);
+    // Ignores a reply that arrives after the search or month has changed again.
+    let current = true;
+    setLoading(true);
+    // A receipt ID search covers every receipt, so the month and year are left out.
+    const params = searching ? { search: debouncedSearch } : { month, year };
+    api.get('/orders', { params })
+      .then(({ data }) => { if (current) setReceipts(data.data); })
+      .catch((error) => console.error('Error fetching receipts:', error))
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [month, year, debouncedSearch, searching]);
 
   const months = [
     { value: '1', label: 'January' },
@@ -69,13 +55,23 @@ const Receipts = () => {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Receipt Management</Title>
-        <Group>
+        <Group align="flex-end">
+          <TextInput
+            label="Search Receipt ID"
+            placeholder="e.g. INV-1024"
+            leftSection={<IconSearch size={16} />}
+            rightSection={search ? <CloseButton size="sm" aria-label="Clear search" onClick={() => setSearch('')} /> : null}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+            w={240}
+          />
           <Select
             label="Month"
             data={months}
             value={month}
             onChange={(val) => setMonth(val as string)}
             w={150}
+            disabled={searching}
           />
           <Select
             label="Year"
@@ -83,9 +79,18 @@ const Receipts = () => {
             value={year}
             onChange={(val) => setYear(val as string)}
             w={100}
+            disabled={searching}
           />
         </Group>
       </Group>
+
+      {searching && (
+        <Text size="sm" c="dimmed">
+          {loading
+            ? 'Searching all receipts…'
+            : `${receipts.length} receipt${receipts.length !== 1 ? 's' : ''} matching "${debouncedSearch}" across all months`}
+        </Text>
+      )}
 
       <Paper withBorder radius="md">
         <Table striped highlightOnHover>
@@ -123,7 +128,9 @@ const Receipts = () => {
             {receipts.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={5} ta="center" py="xl">
-                  <Text c="dimmed">No receipts found for this period.</Text>
+                  <Text c="dimmed">
+                    {searching ? `No receipt ID matches "${debouncedSearch}".` : 'No receipts found for this period.'}
+                  </Text>
                 </Table.Td>
               </Table.Tr>
             )}
@@ -131,31 +138,8 @@ const Receipts = () => {
         </Table>
       </Paper>
 
-      {/* Receipt Detail Modal */}
-      <Modal 
-        opened={modalOpened} 
-        onClose={() => setModalOpened(false)} 
-        title="Receipt Details" 
-        size="lg"
-      >
-        {selectedReceipt && (
-          <Stack gap="md">
-            <div style={{ overflowX: 'auto' }}>
-              <div ref={printRef}>
-                <PrintableSaleDocument
-                  sale={printableSaleFromOrder(selectedReceipt)}
-                  shop={shop}
-                  size={receiptSize}
-                />
-              </div>
-            </div>
-
-            <Button fullWidth leftSection={<IconPrinter size={16} />} onClick={() => handlePrint()}>
-              Print {receiptSize === 'A4' ? 'Invoice (A4)' : 'Receipt'}
-            </Button>
-          </Stack>
-        )}
-      </Modal>
+      {/* Receipt Detail: fills the screen so the whole receipt is readable. */}
+      <ReceiptViewer order={selectedReceipt} opened={modalOpened} onClose={() => setModalOpened(false)} />
     </Stack>
   );
 };

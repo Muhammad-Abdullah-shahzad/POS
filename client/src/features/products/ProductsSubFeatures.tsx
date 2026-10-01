@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom';
 import { 
   Paper, Text, Title, Table, Badge, Button, Group, Stack, 
   TextInput, Select, NumberInput, SimpleGrid, Box, FileButton,
-  Checkbox, Tabs, Modal, ActionIcon, Divider, Grid
+  Checkbox, Tabs, Modal, ActionIcon, Divider, Grid, Tooltip
 } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { 
   IconTags, IconTrash, IconFileSpreadsheet, IconCheck, IconX,
   IconScale, IconSearch, IconWorld, IconGift, IconPercentage, 
@@ -391,6 +392,7 @@ export const ProductsSubFeatures = () => {
       const totalValue = catProducts.reduce((sum, p) => sum + (p.price * p.stock), 0);
       const catEntry = customCategories.find(c => c.name === catName);
       return {
+        _id: catEntry?._id,
         name: catName,
         count: catProducts.length,
         stock: totalStock,
@@ -440,6 +442,29 @@ export const ProductsSubFeatures = () => {
     } catch (err: any) {
       notifications.show({ title: 'Error', message: err?.message || 'Failed to save category', color: 'red', icon: <IconX size={16} /> });
     }
+  };
+
+  const handleDeleteCategory = (cat: { _id?: string; name: string }) => {
+    if (!cat._id) return;
+    modals.openConfirmModal({
+      title: 'Delete category',
+      centered: true,
+      children: <Text size="sm">Delete the category <strong>{cat.name}</strong>? This cannot be undone.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await api.delete(`/categories/${cat._id}`);
+          await fetchCategories();
+          notifications.show({ title: 'Deleted', message: `Category "${cat.name}" deleted`, color: 'green', icon: <IconCheck size={16} /> });
+        } catch (err: any) {
+          // The desktop bridge prefixes its errors with the IPC channel; show only the reason.
+          const message = err?.response?.data?.message
+            || String(err?.message || 'Failed to delete category').replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+          notifications.show({ title: 'Cannot delete', message, color: 'red', icon: <IconX size={16} /> });
+        }
+      },
+    });
   };
 
   // ----------------------------------------------------
@@ -759,6 +784,7 @@ export const ProductsSubFeatures = () => {
                             <Table.Th style={{ textAlign: 'center' }}>Points/item</Table.Th>
                             <Table.Th style={{ textAlign: 'right' }}>SKUs</Table.Th>
                             <Table.Th style={{ textAlign: 'right' }}>Assets</Table.Th>
+                            <Table.Th />
                           </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
@@ -777,6 +803,25 @@ export const ProductsSubFeatures = () => {
                               </Table.Td>
                               <Table.Td style={{ textAlign: 'right' }}>{cat.count} SKUs</Table.Td>
                               <Table.Td style={{ textAlign: 'right' }} c="teal" fw={600}>{formatMoney(cat.value)}</Table.Td>
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                <Tooltip
+                                  label={cat.count > 0 ? `Move its ${cat.count} product(s) to another category first` : 'Delete category'}
+                                  withArrow
+                                >
+                                  {/* Wrapped so the tooltip still shows while the button is disabled. */}
+                                  <span>
+                                    <ActionIcon
+                                      color="red"
+                                      variant="subtle"
+                                      aria-label={`Delete ${cat.name}`}
+                                      disabled={!cat._id || cat.count > 0}
+                                      onClick={() => handleDeleteCategory(cat)}
+                                    >
+                                      <IconTrash size={16} />
+                                    </ActionIcon>
+                                  </span>
+                                </Tooltip>
+                              </Table.Td>
                             </Table.Tr>
                           ))}
                         </Table.Tbody>

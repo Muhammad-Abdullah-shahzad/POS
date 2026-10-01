@@ -31,6 +31,15 @@ const amountInput = (next: string, previous: string): string => (/^\d*\.?\d*$/.t
 /** Row height in the CASH PAY totals box, so its rows always line up cleanly. */
 const PAYMENT_ROW_HEIGHT = 21;
 
+/**
+ * Height of the counter: the window less the app header (60), the page padding
+ * (2 × 16) and the footer (37). Sizing it to 100vh instead pushed the bottom
+ * buttons off screen, and out of reach entirely on short laptop screens.
+ */
+const COUNTER_HEIGHT = 'calc(100dvh - 129px)';
+/** The counter's columns: its height less its own padding and border (2 × 14). */
+const COUNTER_COLUMN_HEIGHT = 'calc(100dvh - 157px)';
+
 
 interface CartItem {
   id: string;
@@ -270,18 +279,21 @@ const Dashboard = () => {
   // Employee state
   const [employees, setEmployees] = useState<{ value: string; label: string }[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
 
   const fetchDbData = async () => {
     try {
-      const [custRes, orderRes, empRes, catRes] = await Promise.all([
+      const [custRes, orderRes, empRes, catRes, topProductsRes] = await Promise.all([
         api.get('/customers'),
         api.get('/orders'),
         api.get('/employees'),
         api.get('/categories'),
+        api.get('/analytics/top-products?limit=9').catch(() => ({ data: { data: [] } }))
       ]);
       await fetchSettings(); // Fetch system settings into global store
       setDbCustomers(custRes.data.data || []);
       setOrders(orderRes.data.data || []);
+      setTopProducts(topProductsRes.data?.data || []);
       setApiCategories((catRes.data.data || []).map((c: any) => ({
         name: c.name, vatRate: c.vatRate ?? 0, vatType: c.vatType ?? 'exclusive', loyaltyPoints: c.loyaltyPoints ?? 0,
       })));
@@ -465,6 +477,33 @@ const Dashboard = () => {
 
   // Shared helper: add a product object (from API) to the active cart
   const addProductToCart = (product: any) => {
+    // Check if this product is already in the cart
+    const existingIndex = cartItems.findIndex(item => item.product === product._id);
+    if (existingIndex !== -1) {
+      // Increment quantity of the existing entry
+      const updatedItems = [...cartItems];
+      updatedItems[existingIndex] = {
+        ...updatedItems[existingIndex],
+        qty: updatedItems[existingIndex].qty + 1,
+      };
+      updateCartItems(updatedItems);
+      updateSelectedItemId(updatedItems[existingIndex].id);
+      setStagingItem({
+        id: updatedItems[existingIndex].id,
+        product: updatedItems[existingIndex].product,
+        name: updatedItems[existingIndex].name,
+        barcode: updatedItems[existingIndex].barcode,
+        qty: updatedItems[existingIndex].qty,
+        price: updatedItems[existingIndex].price,
+        stock: updatedItems[existingIndex].stock,
+        originalPrice: updatedItems[existingIndex].originalPrice,
+        discountPct: updatedItems[existingIndex].discountPct,
+        discountAmt: updatedItems[existingIndex].discountAmt,
+        drs: updatedItems[existingIndex].drs,
+      });
+      return;
+    }
+
     const savedDiscounts = localStorage.getItem('productDiscounts');
     const productDiscounts = savedDiscounts ? JSON.parse(savedDiscounts) : {};
     const catalogDiscountPct = productDiscounts[product._id] || 0;
@@ -732,13 +771,29 @@ const Dashboard = () => {
     }
   };
 
+  /**
+   * A unit price typed at the till is the rate for this sale only: it becomes
+   * the line's price on the invoice (replacing any automatic discount, since
+   * the cashier has set the price outright). The product's own price in the
+   * catalogue is not touched. Like the quantity buttons, it applies to the
+   * selected cart line straight away.
+   */
   const handlePriceChange = (val: string) => {
     if (val === '') {
       setStagingItem(prev => ({ ...prev, price: '' }));
       return;
     }
     const parsedPrice = parseFloat(val);
-    setStagingItem(prev => ({ ...prev, price: isNaN(parsedPrice) ? '' : parsedPrice }));
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setStagingItem(prev => ({ ...prev, price: '' }));
+      return;
+    }
+    const asTyped = { price: parsedPrice, originalPrice: parsedPrice, discountPct: 0, discountAmt: 0 };
+    // The box keeps what was typed (so "12" can become "1200"); the cart line gets the number.
+    setStagingItem(prev => ({ ...prev, ...asTyped, price: val }));
+    if (selectedItemId) {
+      updateCartItems(prev => prev.map(item => item.id === selectedItemId ? { ...item, ...asTyped } : item));
+    }
   };
 
   // Open the Edit Detail modal pre-filled with the currently selected cart line item
@@ -1566,11 +1621,11 @@ const Dashboard = () => {
 
   return (
     <>
-      <Box p="sm" bg={customColors.bg} h="100vh" style={{ border: `2px solid ${customColors.border}`, overflow: 'hidden' }}>
+      <Box p="sm" bg={customColors.bg} h={COUNTER_HEIGHT} style={{ border: `2px solid ${customColors.border}`, overflow: 'hidden' }}>
         <Grid>
           {/* LEFT COLUMN */}
           <Grid.Col span={3.5}>
-            <Flex direction="column" h="calc(100vh - 104px)">
+            <Flex direction="column" h={COUNTER_COLUMN_HEIGHT}>
               <Tabs value={activeCartId} onChange={(val) => {
                 if (val) {
                   setActiveCartId(val);
@@ -1645,8 +1700,10 @@ const Dashboard = () => {
 
           {/* RIGHT PANEL (Middle + Right Columns combined) */}
           <Grid.Col span={8.5}>
-            <Flex direction="column" h="calc(100vh - 104px)">
-              <Grid style={{ flexGrow: 1, alignContent: 'flex-start' }}>
+            <Flex direction="column" h={COUNTER_COLUMN_HEIGHT}>
+              {/* Scrolls on short screens, so the payment buttons below stay in view. */}
+              <Box style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+              <Grid style={{ alignContent: 'flex-start' }}>
                 {/* MIDDLE COLUMN CONTENT */}
                 <Grid.Col span={5.5}>
                   <Flex align="center" gap="xs" mb="xs">
@@ -1965,6 +2022,30 @@ const Dashboard = () => {
                     ))}
                   </Grid>
 
+                  {/* TOP DEMANDED PRODUCTS */}
+                  <Box mt="xs" p={6} style={{ border: `1px solid ${customColors.border}`, borderRadius: 4, backgroundColor: '#e9ecef' }}>
+                    <Text size="11px" fw="bold" mb={4} ta="center" c="dimmed">TOP DEMANDED</Text>
+                    {topProducts.length > 0 ? (
+                      <Grid>
+                        {topProducts.map(p => (
+                          <Grid.Col span={4} key={p.productId}>
+                            <Button 
+                              onClick={() => {
+                                if (p.product) addProductToCart(p.product);
+                              }} 
+                              fullWidth 
+                              style={{ backgroundColor: '#17a2b8', border: '2px solid white', borderRadius: '2px', padding: '0 4px', height: '32px' }}
+                            >
+                              <Text size="10px" fw="bold" ta="center" style={{ whiteSpace: 'normal', lineHeight: 1.1, color: 'white' }}>{p.name}</Text>
+                            </Button>
+                          </Grid.Col>
+                        ))}
+                      </Grid>
+                    ) : (
+                      <Text size="10px" c="dimmed" ta="center" py={4}>No trending products yet.</Text>
+                    )}
+                  </Box>
+
                   {/* Inline Calculator */}
                   <Box mt="xs" p={6} style={{ border: `1px solid ${customColors.border}`, borderRadius: 4, backgroundColor: '#f0f0f0' }}>
                     <Box mb={4} p="4px 8px" style={{ background: '#222', borderRadius: 3, textAlign: 'right' }}>
@@ -1991,9 +2072,10 @@ const Dashboard = () => {
 
                 </Grid.Col>
               </Grid>
+              </Box>
 
               {/* BOTTOM PAYMENT SECTION */}
-              <Flex gap={8} mt="xs">
+              <Flex gap={8} mt="xs" style={{ flexShrink: 0 }}>
                 <Box flex={1}>
                   <Box style={{ border: `1px solid ${customColors.border}` }} bg="#dde3e5">
                     <Flex h={PAYMENT_ROW_HEIGHT * paymentRowCount}>

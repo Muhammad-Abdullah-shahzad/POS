@@ -90,7 +90,7 @@ interface ElectronAPI {
     delete: (_id: string) => Promise<{ success: boolean }>;
   };
   orders: {
-    getAll: (month?: number, year?: number) => Promise<any[]>;
+    getAll: (month?: number, year?: number, search?: string) => Promise<any[]>;
     getVoided: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;
     void: (_id: string, reason: string, employeeId?: string, employeeName?: string) => Promise<any>;
@@ -102,8 +102,12 @@ interface ElectronAPI {
     delete: (_id: string) => Promise<{ success: boolean }>;
     updateStats: (_id: string, amount: number) => Promise<any>;
     resetPoints: (_id: string) => Promise<any>;
-    getLedger: (_id: string) => Promise<{ orders: any[], payments: any[] }>;
+    getLedger: (_id: string) => Promise<{ orders: any[]; payments: any[]; returns?: any[]; customer?: any }>;
     addPayment: (data: Record<string, unknown>) => Promise<any>;
+    updatePayment: (customerId: string, paymentId: string, changes: Record<string, unknown>) => Promise<any>;
+    updateSale: (customerId: string, orderId: string, changes: Record<string, unknown>) => Promise<any>;
+    setOpeningBalance: (customerId: string, changes: Record<string, unknown>) => Promise<any>;
+    deletePayment: (customerId: string, paymentId: string) => Promise<any>;
   };
   employees: {
     getAll: () => Promise<any[]>;
@@ -143,7 +147,17 @@ interface ElectronAPI {
     getAll: () => Promise<any[]>;
     create: (data: Record<string, unknown>) => Promise<any>;
     update: (_id: string, data: Record<string, unknown>) => Promise<any>;
+    pay: (_id: string, data: Record<string, unknown>) => Promise<any>;
+    paySupplier: (data: Record<string, unknown>) => Promise<any>;
+    updateInvoice: (_id: string, changes: Record<string, unknown>) => Promise<any>;
+    updatePayment: (paymentId: string, changes: Record<string, unknown>) => Promise<any>;
+    updateLegacyPayment: (_id: string, index: number, changes: Record<string, unknown>) => Promise<any>;
     delete: (_id: string) => Promise<{ success: boolean }>;
+  };
+  returns: {
+    getAll: (filter?: Record<string, unknown>) => Promise<any[]>;
+    getSale: (orderId: string) => Promise<{ order: any; lines: any[] }>;
+    create: (data: Record<string, unknown>) => Promise<any>;
   };
   banks: {
     getNames: () => Promise<any[]>;
@@ -164,7 +178,7 @@ interface ElectronAPI {
     topProducts:       (limit?: number)  => Promise<any[]>;
     paymentMethods:    ()                => Promise<any[]>;
     expenseCategories: ()                => Promise<any[]>;
-    kpis:              ()                => Promise<unknown>;
+    kpis:              (period?: string) => Promise<unknown>;
   };
   license: {
     status:   () => Promise<DesktopLicenseStatus>;

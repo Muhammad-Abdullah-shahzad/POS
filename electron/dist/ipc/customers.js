@@ -3,11 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerCustomerHandlers = registerCustomerHandlers;
 const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
+const customerLedger_1 = require("./customerLedger");
 function registerCustomerHandlers() {
     (0, licenseGuard_1.handleLicensed)('customers:getAll', () => {
         return (0, database_1.dbAll)('SELECT * FROM customers WHERE deletedAt IS NULL ORDER BY name ASC');
     });
     (0, licenseGuard_1.handleLicensed)('customers:create', (_e, data) => {
+        (0, database_1.assertNameFree)('customers', 'customer', data.name);
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO customers
@@ -35,6 +37,10 @@ function registerCustomerHandlers() {
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
     });
     (0, licenseGuard_1.handleLicensed)('customers:update', (_e, _id, data) => {
+        (0, database_1.assertNameFree)('customers', 'customer', data.name, _id);
+        // A new opening balance moves what the customer owes by the same amount.
+        if (data.openingBalance !== undefined && data.openingBalance !== null)
+            (0, customerLedger_1.setOpeningBalance)(_id, data.openingBalance);
         (0, database_1.dbRun)(`UPDATE customers SET
          name=$name, contactNum1=$c1, contactNum2=$c2, email=$email,
          address=$address, eircode=$eircode, qrCode=$qrCode, barcode=$barcode,
@@ -70,16 +76,29 @@ function registerCustomerHandlers() {
         return (0, database_1.dbGet)('SELECT * FROM customers WHERE _id = $id', { $id: _id });
     });
     (0, licenseGuard_1.handleLicensed)('customers:getLedger', (_e, _id) => {
-        const orders = (0, database_1.dbAll)(`SELECT * FROM orders WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
-        const payments = (0, database_1.dbAll)(`SELECT * FROM customer_payments WHERE customerId = $id ORDER BY createdAt DESC`, { $id: _id });
+        // Same as the server: voided sales and deleted payments are not part of the account.
+        const orders = (0, database_1.dbAll)(`SELECT * FROM orders WHERE customerId = $id AND status != 'voided' ORDER BY createdAt DESC`, { $id: _id });
+        const payments = (0, database_1.dbAll)(`SELECT * FROM customer_payments WHERE customerId = $id AND (deletedAt IS NULL OR deletedAt = '') ORDER BY createdAt DESC`, { $id: _id });
+        const returns = (0, database_1.dbAll)(`SELECT * FROM product_returns WHERE customerId = $id AND (deletedAt IS NULL OR deletedAt = '') ORDER BY createdAt DESC`, { $id: _id });
         const customer = (0, database_1.dbGet)(`SELECT * FROM customers WHERE _id = $id`, { $id: _id });
         return {
             orders: orders.map((r) => ({ ...r, items: JSON.parse(r.items || '[]') })),
             payments,
+            returns: returns.map((r) => ({ ...r, items: JSON.parse(r.items || '[]') })),
             customer
         };
     });
     (0, licenseGuard_1.handleLicensed)('customers:addPayment', (_e, data) => {
+        const amount = Number(data.amountPaid ?? 0);
+        if (!(amount > 0))
+            throw new Error('Amount must be more than zero');
+        const owing = (0, database_1.dbGet)('SELECT name, outstandingBalance FROM customers WHERE _id = $id', { $id: (0, database_1.v)(data.customerId) });
+        if (!owing)
+            throw new Error('Customer not found');
+        const owed = Number(owing.outstandingBalance) || 0;
+        if (amount > owed + 0.005) {
+            throw new Error(`${owing.name} owes ${owed.toFixed(2)}; a payment cannot be more than that`);
+        }
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         // Add payment

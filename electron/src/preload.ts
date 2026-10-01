@@ -46,7 +46,7 @@ const api = {
 
   // ── ORDERS ────────────────────────────────────────────────────────────────
   orders: {
-    getAll:   (month?: number, year?: number)                 => ipcRenderer.invoke('orders:getAll', month, year),
+    getAll:   (month?: number, year?: number, search?: string) => ipcRenderer.invoke('orders:getAll', month, year, search),
     getVoided:()                                              => ipcRenderer.invoke('orders:getVoided'),
     create:   (data: Record<string, unknown>)                 => ipcRenderer.invoke('orders:create', data),
     void:     (_id: string, reason: string, employeeId?: string, employeeName?: string) =>
@@ -63,6 +63,10 @@ const api = {
     resetPoints:  (_id: string)                               => ipcRenderer.invoke('customers:resetPoints', _id),
     getLedger:    (_id: string)                               => ipcRenderer.invoke('customers:getLedger', _id),
     addPayment:   (data: Record<string, unknown>)             => ipcRenderer.invoke('customers:addPayment', data),
+    updatePayment:      (customerId: string, paymentId: string, changes: Record<string, unknown>) => ipcRenderer.invoke('customers:updatePayment', customerId, paymentId, changes),
+    updateSale:         (customerId: string, orderId: string, changes: Record<string, unknown>)   => ipcRenderer.invoke('customers:updateSale', customerId, orderId, changes),
+    setOpeningBalance:  (customerId: string, changes: Record<string, unknown>)                    => ipcRenderer.invoke('customers:setOpeningBalance', customerId, changes),
+    deletePayment:      (customerId: string, paymentId: string)                                   => ipcRenderer.invoke('customers:deletePayment', customerId, paymentId),
   },
 
   // ── EMPLOYEES ─────────────────────────────────────────────────────────────
@@ -118,7 +122,19 @@ const api = {
     getAll:  ()                                               => ipcRenderer.invoke('supplierInvoices:getAll'),
     create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('supplierInvoices:create', data),
     update:  (_id: string, data: Record<string, unknown>)     => ipcRenderer.invoke('supplierInvoices:update', _id, data),
+    pay:     (_id: string, data: Record<string, unknown>)     => ipcRenderer.invoke('supplierInvoices:pay', _id, data),
+    paySupplier: (data: Record<string, unknown>)              => ipcRenderer.invoke('supplierInvoices:paySupplier', data),
+    updateInvoice:       (_id: string, changes: Record<string, unknown>)                => ipcRenderer.invoke('supplierInvoices:updateInvoice', _id, changes),
+    updatePayment:       (paymentId: string, changes: Record<string, unknown>)          => ipcRenderer.invoke('supplierInvoices:updatePayment', paymentId, changes),
+    updateLegacyPayment: (_id: string, index: number, changes: Record<string, unknown>) => ipcRenderer.invoke('supplierInvoices:updateLegacyPayment', _id, index, changes),
     delete:  (_id: string)                                    => ipcRenderer.invoke('supplierInvoices:delete', _id),
+  },
+
+  // ── PRODUCT RETURNS ───────────────────────────────────────────────────────
+  returns: {
+    getAll:  (filter?: Record<string, unknown>)               => ipcRenderer.invoke('returns:getAll', filter),
+    getSale: (orderId: string)                                => ipcRenderer.invoke('returns:getSale', orderId),
+    create:  (data: Record<string, unknown>)                  => ipcRenderer.invoke('returns:create', data),
   },
 
   // ── BANKS ─────────────────────────────────────────────────────────────────
@@ -146,7 +162,7 @@ const api = {
     paymentMethods:    ()                 => ipcRenderer.invoke('analytics:paymentMethods'),
     expenseCategories: ()                 => ipcRenderer.invoke('analytics:expenseCategories'),
     /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
-    kpis:              ()                 => ipcRenderer.invoke('analytics:kpis'),
+    kpis:              (period?: string)  => ipcRenderer.invoke('analytics:kpis', period),
   },
 
   // ── LICENCE ───────────────────────────────────────────────────────────────

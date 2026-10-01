@@ -327,13 +327,13 @@ export default function Analysis() {
       backdropHeight="35vh"
     >
       <div className={classes.grid}>
-        <ChartCard title="Revenue and profit" aside="Last 6 months, excluding VAT">
+        <ChartCard title="Revenue and profit" aside="Last 6 months, excluding VAT, after refunds">
           {body((ready) => <RevenueTrend monthly={ready.monthly} />)}
         </ChartCard>
-        <ChartCard title="Best sellers" aside="By revenue, all time">
+        <ChartCard title="Best sellers" aside="By revenue, all time, net of returns">
           {body((ready) => <TopSellers products={ready.topProducts} />)}
         </ChartCard>
-        <ChartCard title="Payment methods" aside="All time">
+        <ChartCard title="Payment methods" aside="All time, how sales were paid">
           {body((ready) => <PaymentDonut payments={ready.payments} />)}
         </ChartCard>
         <ChartCard title="Expenses by category" aside="All time">

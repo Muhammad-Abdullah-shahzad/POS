@@ -9,6 +9,14 @@ export const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()
  * Returns an empty filter when there is no search term, so it can be dropped
  * straight into `Model.find(...)`.
  */
+/**
+ * Match a field against a whole value, ignoring case and surrounding spaces,
+ * e.g. to find a name that is already taken.
+ */
+export function sameValueFilter(field: string, value: string): Record<string, unknown> {
+  return { [field]: { $regex: `^\\s*${escapeRegex(value.trim())}\\s*$`, $options: 'i' } };
+}
+
 export function searchFilter<T>(term: string | undefined, fields: string[]): QueryFilter<T> {
   const trimmed = term?.trim();
   if (!trimmed) return {};

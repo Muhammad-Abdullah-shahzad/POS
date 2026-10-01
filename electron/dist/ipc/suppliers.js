@@ -8,6 +8,7 @@ function registerSupplierHandlers() {
         return (0, database_1.dbAll)('SELECT * FROM suppliers WHERE deletedAt IS NULL ORDER BY name ASC');
     });
     (0, licenseGuard_1.handleLicensed)('suppliers:create', (_e, data) => {
+        (0, database_1.assertNameFree)('suppliers', 'supplier', data.name);
         const _id = (0, database_1.generateLocalId)();
         const ts = (0, database_1.now)();
         (0, database_1.dbRun)(`INSERT INTO suppliers (_id, name, contact, emailId, address, createdAt, updatedAt, isSync)

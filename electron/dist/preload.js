@@ -42,7 +42,7 @@ const api = {
     },
     // ── ORDERS ────────────────────────────────────────────────────────────────
     orders: {
-        getAll: (month, year) => electron_1.ipcRenderer.invoke('orders:getAll', month, year),
+        getAll: (month, year, search) => electron_1.ipcRenderer.invoke('orders:getAll', month, year, search),
         getVoided: () => electron_1.ipcRenderer.invoke('orders:getVoided'),
         create: (data) => electron_1.ipcRenderer.invoke('orders:create', data),
         void: (_id, reason, employeeId, employeeName) => electron_1.ipcRenderer.invoke('orders:void', _id, reason, employeeId, employeeName),
@@ -57,6 +57,10 @@ const api = {
         resetPoints: (_id) => electron_1.ipcRenderer.invoke('customers:resetPoints', _id),
         getLedger: (_id) => electron_1.ipcRenderer.invoke('customers:getLedger', _id),
         addPayment: (data) => electron_1.ipcRenderer.invoke('customers:addPayment', data),
+        updatePayment: (customerId, paymentId, changes) => electron_1.ipcRenderer.invoke('customers:updatePayment', customerId, paymentId, changes),
+        updateSale: (customerId, orderId, changes) => electron_1.ipcRenderer.invoke('customers:updateSale', customerId, orderId, changes),
+        setOpeningBalance: (customerId, changes) => electron_1.ipcRenderer.invoke('customers:setOpeningBalance', customerId, changes),
+        deletePayment: (customerId, paymentId) => electron_1.ipcRenderer.invoke('customers:deletePayment', customerId, paymentId),
     },
     // ── EMPLOYEES ─────────────────────────────────────────────────────────────
     employees: {
@@ -104,7 +108,18 @@ const api = {
         getAll: () => electron_1.ipcRenderer.invoke('supplierInvoices:getAll'),
         create: (data) => electron_1.ipcRenderer.invoke('supplierInvoices:create', data),
         update: (_id, data) => electron_1.ipcRenderer.invoke('supplierInvoices:update', _id, data),
+        pay: (_id, data) => electron_1.ipcRenderer.invoke('supplierInvoices:pay', _id, data),
+        paySupplier: (data) => electron_1.ipcRenderer.invoke('supplierInvoices:paySupplier', data),
+        updateInvoice: (_id, changes) => electron_1.ipcRenderer.invoke('supplierInvoices:updateInvoice', _id, changes),
+        updatePayment: (paymentId, changes) => electron_1.ipcRenderer.invoke('supplierInvoices:updatePayment', paymentId, changes),
+        updateLegacyPayment: (_id, index, changes) => electron_1.ipcRenderer.invoke('supplierInvoices:updateLegacyPayment', _id, index, changes),
         delete: (_id) => electron_1.ipcRenderer.invoke('supplierInvoices:delete', _id),
+    },
+    // ── PRODUCT RETURNS ───────────────────────────────────────────────────────
+    returns: {
+        getAll: (filter) => electron_1.ipcRenderer.invoke('returns:getAll', filter),
+        getSale: (orderId) => electron_1.ipcRenderer.invoke('returns:getSale', orderId),
+        create: (data) => electron_1.ipcRenderer.invoke('returns:create', data),
     },
     // ── BANKS ─────────────────────────────────────────────────────────────────
     banks: {
@@ -129,7 +144,7 @@ const api = {
         paymentMethods: () => electron_1.ipcRenderer.invoke('analytics:paymentMethods'),
         expenseCategories: () => electron_1.ipcRenderer.invoke('analytics:expenseCategories'),
         /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
-        kpis: () => electron_1.ipcRenderer.invoke('analytics:kpis'),
+        kpis: (period) => electron_1.ipcRenderer.invoke('analytics:kpis', period),
     },
     // ── LICENCE ───────────────────────────────────────────────────────────────
     // The key is verified in the main process against the public key baked into

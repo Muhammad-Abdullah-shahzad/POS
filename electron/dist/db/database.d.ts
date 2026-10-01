@@ -41,4 +41,9 @@ export declare function now(): string;
  *  1. Sets deletedAt on the row (keeps it in the table, hidden from normal queries)
  *  2. Inserts into pending_deletes so the sync manager can push the delete to MongoDB
  */
+/**
+ * Throw when another live row of the table already has this name (ignoring
+ * case and surrounding spaces). Supplier and customer names are unique.
+ */
+export declare function assertNameFree(table: 'suppliers' | 'customers', label: string, name: unknown, exceptId?: string): void;
 export declare function softDelete(table: string, _id: string): void;

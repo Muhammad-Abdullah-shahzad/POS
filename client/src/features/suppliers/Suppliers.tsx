@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Group, Title, Modal, TextInput, Paper } from '@mantine/core';
+import { Table, Button, Group, Title, Modal, TextInput, Paper, ActionIcon } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconX, IconPlus } from '@tabler/icons-react';
+import { IconCheck, IconX, IconPlus, IconTrash } from '@tabler/icons-react';
+import { errorMessage } from '../../utils/errorMessage';
 
 interface Supplier {
   _id: string;
@@ -39,6 +40,12 @@ const Suppliers = () => {
       emailId: '',
       address: '',
     },
+    validate: {
+      name: (value) => {
+        const taken = suppliers.find((s) => s.name.trim().toLowerCase() === value.trim().toLowerCase());
+        return taken ? `A supplier named "${taken.name}" already exists` : null;
+      },
+    },
   });
 
   const handleSubmit = async (values: typeof form.values) => {
@@ -46,26 +53,25 @@ const Suppliers = () => {
     try {
       setLoading(true);
       await api.post('/suppliers', values);
-      notifications.show({
-        title: 'Success',
-        message: 'Supplier saved successfully',
-        color: 'green',
-        icon: <IconCheck size={16} />,
-      });
+      notifications.show({ title: 'Success', message: 'Supplier saved successfully', color: 'green', icon: <IconCheck size={16} /> });
       close();
       form.reset();
       fetchSuppliers();
     } catch (error: any) {
-      console.error('Submit Error:', error);
-      const message = error.response?.data?.message || error.message;
-      notifications.show({
-        title: 'Error Saving Supplier',
-        message: message,
-        color: 'red',
-        icon: <IconX size={16} />,
-      });
+      notifications.show({ title: 'Error Saving Supplier', message: errorMessage(error, 'The supplier could not be saved'), color: 'red', icon: <IconX size={16} /> });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (supplier: Supplier) => {
+    if (!window.confirm(`Delete "${supplier.name}"? This removes the supplier record but does NOT delete their invoices.`)) return;
+    try {
+      await api.delete(`/suppliers/${supplier._id}`);
+      notifications.show({ title: 'Deleted', message: `${supplier.name} has been removed.`, color: 'teal', icon: <IconCheck size={16} /> });
+      fetchSuppliers();
+    } catch (error) {
+      notifications.show({ title: 'Error', message: errorMessage(error, 'Could not delete supplier.'), color: 'red', icon: <IconX size={16} /> });
     }
   };
 
@@ -73,9 +79,7 @@ const Suppliers = () => {
     <Paper withBorder p="md" radius="md">
       <Group justify="space-between" mb="md">
         <Title order={3}>Suppliers</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={open}>
-          Add New Supplier
-        </Button>
+        <Button leftSection={<IconPlus size={16} />} onClick={open}>Add New Supplier</Button>
       </Group>
 
       <Table.ScrollContainer minWidth={800}>
@@ -86,6 +90,7 @@ const Suppliers = () => {
               <Table.Th>Contact</Table.Th>
               <Table.Th>Email</Table.Th>
               <Table.Th>Address</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -95,6 +100,11 @@ const Suppliers = () => {
                 <Table.Td>{s.contact}</Table.Td>
                 <Table.Td>{s.emailId}</Table.Td>
                 <Table.Td>{s.address}</Table.Td>
+                <Table.Td style={{ textAlign: 'right' }}>
+                  <ActionIcon color="red" variant="light" title="Delete supplier" onClick={() => handleDelete(s)}>
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

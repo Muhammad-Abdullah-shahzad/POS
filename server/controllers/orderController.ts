@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
 import Order from '../models/Order';
+import { searchFilter } from '../utils/query';
 import * as orderService from '../services/orderService';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
@@ -10,18 +11,21 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getOrders = asyncHandler(async (req: Request, res: Response) => {
-  const { month, year, limit } = (req.validatedQuery ?? {}) as {
+  const { month, year, limit, search } = (req.validatedQuery ?? {}) as {
     month?: number;
     year?: number;
     limit?: number;
+    search?: string;
   };
 
-  const period =
-    month && year
+  // A receipt ID search looks through every receipt, not just the chosen month.
+  const filter = search
+    ? searchFilter(search, ['invoiceId'])
+    : month && year
       ? { createdAt: { $gte: new Date(year, month - 1, 1), $lt: new Date(year, month, 1) } }
       : {};
 
-  const orders = await Order.find({ status: { $ne: 'voided' }, ...period })
+  const orders = await Order.find({ status: { $ne: 'voided' }, ...filter })
     .sort({ createdAt: -1 })
     .limit(limit ?? 200);
 

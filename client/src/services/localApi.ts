@@ -85,8 +85,8 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().orders.getVoided());
 
     if (method === 'get' && !id) {
-      const { month, year } = mergedBody || {};
-      return ok(await eAPI().orders.getAll(month, year));
+      const { month, year, search } = mergedBody || {};
+      return ok(await eAPI().orders.getAll(month, year, search));
     }
 
     if (method === 'post' && !id)
@@ -110,7 +110,10 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().customers.create(mergedBody));
     if ((method === 'put' || method === 'patch') && id && !sub)
       return ok(await eAPI().customers.update(id, mergedBody));
-    if (method === 'delete' && id)
+    // A payment's own path first: the customer route below must never catch it.
+    if (method === 'delete' && id && sub === 'payments' && parts[3])
+      return ok(await eAPI().customers.deletePayment(id, parts[3]));
+    if (method === 'delete' && id && !sub)
       return ok(await eAPI().customers.delete(id));
     if (method === 'post' && id && sub === 'transaction')
       return ok(await eAPI().customers.updateStats(id, mergedBody.amount));
@@ -118,8 +121,15 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().customers.resetPoints(id));
     if (method === 'get' && id && sub === 'ledger')
       return ok(await eAPI().customers.getLedger(id));
-    if (method === 'post' && id && sub === 'payments')
+    if (method === 'post' && id && sub === 'payments' && !parts[3])
       return ok(await eAPI().customers.addPayment({ ...mergedBody, customerId: id }));
+    // Corrections from the account statement, as the server's PATCH routes.
+    if (method === 'patch' && id && sub === 'payments' && parts[3])
+      return ok(await eAPI().customers.updatePayment(id, parts[3], mergedBody));
+    if (method === 'patch' && id && sub === 'sales' && parts[3])
+      return ok(await eAPI().customers.updateSale(id, parts[3], mergedBody));
+    if (method === 'patch' && id && sub === 'opening-balance')
+      return ok(await eAPI().customers.setOpeningBalance(id, mergedBody));
   }
 
   // ── EMPLOYEES ─────────────────────────────────────────────────────────────
@@ -179,21 +189,24 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
   if (resource === 'supplier-invoices') {
     if (method === 'get' && !id)                return ok(await eAPI().supplierInvoices.getAll());
     if (method === 'post' && !id)               return ok(await eAPI().supplierInvoices.create(mergedBody));
-    // The server handles payments via POST /:id/payments
-    if (method === 'post' && id && sub === 'payments') {
-      // Local app just updates the paid amount in SQLite directly.
-      // We must fetch the current invoice to add to the paid amount.
-      const invoices = await eAPI().supplierInvoices.getAll();
-      const invoice = invoices.find((inv: any) => inv._id === id);
-      if (!invoice) throw new Error('Invoice not found');
-      
-      const newPaid = Number(invoice.paid) + Number(mergedBody.amount);
-      if (newPaid > Number(invoice.amount)) throw new Error('Paid cannot be more than the invoice amount');
-      
-      return ok(await eAPI().supplierInvoices.update(id, { paid: newPaid, lastPaymentAt: new Date().toISOString() }));
-    }
-    if ((method === 'put' || method === 'patch') && id) return ok(await eAPI().supplierInvoices.update(id, mergedBody));
+    // Mirrors the server's POST /pay-supplier: clears the supplier's oldest invoices first.
+    if (method === 'post' && id === 'pay-supplier') return ok(await eAPI().supplierInvoices.paySupplier(mergedBody));
+    // Mirrors the server's POST /:id/payments: adds to paid and to the payment history.
+    if (method === 'post' && id && sub === 'payments') return ok(await eAPI().supplierInvoices.pay(id, mergedBody));
+    // Corrections from the ledger statement, as the server's PATCH routes.
+    if (method === 'patch' && id === 'payments' && sub) return ok(await eAPI().supplierInvoices.updatePayment(sub, mergedBody));
+    if (method === 'patch' && id && sub === 'payments' && parts[3] !== undefined)
+      return ok(await eAPI().supplierInvoices.updateLegacyPayment(id, Number(parts[3]), mergedBody));
+    if (method === 'patch' && id && !sub) return ok(await eAPI().supplierInvoices.updateInvoice(id, mergedBody));
+    if (method === 'put' && id) return ok(await eAPI().supplierInvoices.update(id, mergedBody));
     if (method === 'delete' && id)              return ok(await eAPI().supplierInvoices.delete(id));
+  }
+
+  // ── PRODUCT RETURNS ───────────────────────────────────────────────────────
+  if (resource === 'returns') {
+    if (method === 'get' && !id)                 return ok(await eAPI().returns.getAll(mergedBody));
+    if (method === 'get' && id === 'sale' && sub) return ok(await eAPI().returns.getSale(sub));
+    if (method === 'post' && !id)                return ok(await eAPI().returns.create(mergedBody));
   }
 
   // ── BANKS ─────────────────────────────────────────────────────────────────
@@ -229,7 +242,7 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
     if (id === 'expense-categories')
       return ok(await eAPI().analytics.expenseCategories());
     if (id === 'kpis')
-      return ok(await eAPI().analytics.kpis());
+      return ok(await eAPI().analytics.kpis(mergedBody?.period));
   }
 
   // ── DASHBOARD ─────────────────────────────────────────────────────────────

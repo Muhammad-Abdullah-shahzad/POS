@@ -10,6 +10,7 @@ const products_1 = require("./ipc/products");
 const categories_1 = require("./ipc/categories");
 const orders_1 = require("./ipc/orders");
 const customers_1 = require("./ipc/customers");
+const customerLedger_1 = require("./ipc/customerLedger");
 const employees_1 = require("./ipc/employees");
 const expenses_1 = require("./ipc/expenses");
 const employeeDamages_1 = require("./ipc/employeeDamages");
@@ -17,6 +18,8 @@ const suppliers_1 = require("./ipc/suppliers");
 const wastage_1 = require("./ipc/wastage");
 const companyLogo_1 = require("./ipc/companyLogo");
 const supplierInvoices_1 = require("./ipc/supplierInvoices");
+const supplierLedger_1 = require("./ipc/supplierLedger");
+const returns_1 = require("./ipc/returns");
 const banks_1 = require("./ipc/banks");
 const settings_1 = require("./ipc/settings");
 const syncManager_1 = require("./sync/syncManager");
@@ -24,12 +27,29 @@ const auth_1 = require("./ipc/auth");
 const analytics_1 = require("./ipc/analytics");
 const license_1 = require("./ipc/license");
 let mainWindow = null;
+/** Window height at which the counter fits at full size. */
+const FULL_SIZE_HEIGHT = 800;
+/** Zooming out further than this leaves text too small to read at the till. */
+const MIN_ZOOM = 0.8;
+/**
+ * Zoom out on short screens (a 1366×768 laptop, or 125% Windows scaling) so
+ * more of the counter fits. Steps of 0.05 keep the text crisp.
+ */
+function fitZoomToWindow(win) {
+    const [, height] = win.getContentSize();
+    const fit = Math.floor((height / FULL_SIZE_HEIGHT) * 20) / 20;
+    win.webContents.setZoomFactor(Math.min(1, Math.max(MIN_ZOOM, fit)));
+}
 function createWindow() {
     mainWindow = new electron_1.BrowserWindow({
         width: 1400,
         height: 900,
-        minWidth: 1024,
-        minHeight: 700,
+        // Small enough for a laptop screen: a minimum taller than the screen
+        // pushes the bottom of the window behind the taskbar.
+        minWidth: 800,
+        minHeight: 500,
+        // The File/Edit menu costs a row of the counter; Alt still shows it.
+        autoHideMenuBar: true,
         webPreferences: {
             preload: path_1.default.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -37,6 +57,10 @@ function createWindow() {
         },
         title: 'POS Desktop',
     });
+    mainWindow.maximize();
+    const win = mainWindow;
+    win.webContents.on('did-finish-load', () => fitZoomToWindow(win));
+    win.on('resize', () => fitZoomToWindow(win));
     const isDev = !electron_1.app.isPackaged;
     if (isDev) {
         mainWindow.loadURL('http://localhost:5173');
@@ -58,6 +82,7 @@ electron_1.app.whenReady().then(async () => {
     (0, categories_1.registerCategoryHandlers)();
     (0, orders_1.registerOrderHandlers)();
     (0, customers_1.registerCustomerHandlers)();
+    (0, customerLedger_1.registerCustomerLedgerHandlers)();
     (0, employees_1.registerEmployeeHandlers)();
     (0, expenses_1.registerExpenseHandlers)();
     (0, employeeDamages_1.registerEmployeeDamageHandlers)();
@@ -65,6 +90,8 @@ electron_1.app.whenReady().then(async () => {
     (0, wastage_1.registerWastageHandlers)();
     (0, companyLogo_1.registerCompanyLogoHandlers)();
     (0, supplierInvoices_1.registerSupplierInvoiceHandlers)();
+    (0, supplierLedger_1.registerSupplierLedgerHandlers)();
+    (0, returns_1.registerReturnHandlers)();
     (0, banks_1.registerBankHandlers)();
     (0, settings_1.registerSettingsHandlers)();
     (0, syncManager_1.registerSyncHandlers)();

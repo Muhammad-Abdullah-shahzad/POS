@@ -1,4 +1,4 @@
-/** "▲ 12.5% from last month", on KPI cards and in their detail views. */
+/** "▲ 12.5% from last month" (or "from yesterday"), on KPI cards and in their detail views. */
 import { IconTriangleFilled, IconTriangleInvertedFilled } from '@tabler/icons-react';
 import { isFlat, toneOf } from './trend';
 import type { KpiTrend } from './trend';
@@ -11,11 +11,12 @@ interface TrendLineProps {
 
 export function TrendLine({ trend, size = 'md' }: TrendLineProps) {
   const { percent } = trend;
+  const since = trend.since ?? 'last month';
 
   if (percent === null) {
     return (
       <p className={classes.change} data-size={size}>
-        Nothing to compare with last month
+        Nothing to compare with {since}
       </p>
     );
   }
@@ -28,7 +29,7 @@ export function TrendLine({ trend, size = 'md' }: TrendLineProps) {
         {!flat && <Arrow size={size === 'sm' ? 10 : 11} aria-label={percent > 0 ? 'Up' : 'Down'} />}
         {flat ? '0%' : `${Math.abs(percent).toFixed(1)}%`}
       </span>
-      <span className={classes.since}>from last month</span>
+      <span className={classes.since}>from {since}</span>
     </p>
   );
 }

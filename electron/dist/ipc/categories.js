@@ -38,6 +38,14 @@ function registerCategoryHandlers() {
         return { ...row, items: JSON.parse(row?.items || '[]') };
     });
     (0, licenseGuard_1.handleLicensed)('categories:delete', (_e, _id) => {
+        // Same rule as the server: a category still holding products stays.
+        const category = (0, database_1.dbGet)('SELECT name FROM categories WHERE _id = $id', { $id: _id });
+        if (category) {
+            const inUse = (0, database_1.dbGet)('SELECT COUNT(*) AS cnt FROM products WHERE category = $name AND deletedAt IS NULL', { $name: category.name });
+            if (inUse?.cnt > 0) {
+                throw new Error(`Move the ${inUse.cnt} product(s) in "${category.name}" to another category first`);
+            }
+        }
         (0, database_1.softDelete)('categories', _id);
         return { success: true };
     });

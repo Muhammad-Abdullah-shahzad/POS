@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerOrderHandlers = registerOrderHandlers;
 const licenseGuard_1 = require("../license/licenseGuard");
 const database_1 = require("../db/database");
+const customerLedger_1 = require("./customerLedger");
 const round2 = (value) => Math.round(value * 100) / 100;
 /**
  * How a sale was settled, worked out here rather than taken from the screen,
@@ -36,9 +37,16 @@ function settlement(data) {
     return { paidCash, paidCard, creditAmount: round2(total - paidCash - paidCard) };
 }
 function registerOrderHandlers() {
-    (0, licenseGuard_1.handleLicensed)('orders:getAll', (_e, month, year) => {
+    (0, licenseGuard_1.handleLicensed)('orders:getAll', (_e, month, year, search) => {
         let rows;
-        if (month && year) {
+        const term = search?.trim();
+        if (term) {
+            // A receipt ID search looks through every receipt, not just the chosen month.
+            rows = (0, database_1.dbAll)(`SELECT * FROM orders WHERE status != 'voided'
+         AND invoiceId LIKE $pattern ESCAPE '\\'
+         ORDER BY createdAt DESC LIMIT 200`, { $pattern: `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%` });
+        }
+        else if (month && year) {
             const start = new Date(year, month - 1, 1).toISOString();
             const end = new Date(year, month, 1).toISOString();
             rows = (0, database_1.dbAll)(`SELECT * FROM orders WHERE status != 'voided'
@@ -136,7 +144,16 @@ function registerOrderHandlers() {
         const order = (0, database_1.dbGet)('SELECT * FROM orders WHERE _id = $id', { $id: _id });
         if (!order)
             return null;
+        // As on the server: a second void must not return the stock again.
+        if (order.status === 'voided')
+            throw new Error('This order is already voided');
+        // What the sale put on the customer's account comes off again. The balance
+        // may go below zero: the customer had already paid for a sale that is gone.
+        const credit = order.customerId ? (0, customerLedger_1.currentSettlement)(order).creditAmount : 0;
         (0, database_1.dbTransaction)((d) => {
+            if (credit > 0) {
+                d.run(`UPDATE customers SET outstandingBalance = outstandingBalance - $credit, updatedAt=$ts, isSync=0 WHERE _id=$cid`, { $credit: credit, $ts: ts, $cid: String(order.customerId) });
+            }
             d.run(`UPDATE orders SET
            status='voided', voidReason=$reason, voidedAt=$ts,
            voidedByEmployee=$empId, voidedByEmployeeName=$empName,

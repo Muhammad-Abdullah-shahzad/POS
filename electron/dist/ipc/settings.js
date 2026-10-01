@@ -31,7 +31,7 @@ function registerSettingsHandlers() {
         (0, database_1.dbRun)(`UPDATE settings SET
          shopName=$shopName, shopAddress=$shopAddress, shopPhone=$shopPhone,
          shopEmail=$shopEmail, shopWebsite=$shopWebsite, receiptFooter=$receiptFooter,
-         showRemarksPrompt=$showRemarksPrompt,
+         receiptSize=$receiptSize, showRemarksPrompt=$showRemarksPrompt,
          loyaltyPointsPerEuro=$loyaltyPPE, loyaltyRewardThreshold=$loyaltyRT,
          loyaltyRewardValue=$loyaltyRV, quickProducts=$quickProducts,
          updatedAt=$ts, isSync=0`, {
@@ -41,6 +41,7 @@ function registerSettingsHandlers() {
             $shopEmail: (0, database_1.v)(data.shopEmail, ''),
             $shopWebsite: (0, database_1.v)(data.shopWebsite, ''),
             $receiptFooter: (0, database_1.v)(data.receiptFooter, ''),
+            $receiptSize: data.receiptSize === 'A4' ? 'A4' : 'Thermal',
             $showRemarksPrompt: data.showRemarksPrompt === false ? 0 : 1,
             $loyaltyPPE: (0, database_1.v)(data.loyaltyPointsPerEuro, 1),
             $loyaltyRT: (0, database_1.v)(data.loyaltyRewardThreshold, 100),

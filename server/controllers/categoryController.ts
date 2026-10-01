@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
-import { NotFoundError } from '../core/errors';
+import { ConflictError, NotFoundError } from '../core/errors';
 import Category from '../models/Category';
+import Product from '../models/Product';
 
 export const getCategories = asyncHandler(async (_req: Request, res: Response) => {
   const categories = await Category.find().sort({ name: 1 });
@@ -25,8 +26,17 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
-  const category = await Category.findByIdAndDelete(req.params.id);
+  const category = await Category.findById(req.params.id);
   if (!category) throw new NotFoundError('Category');
+
+  // Products name their category, so deleting one still in use would leave
+  // them pointing at nothing.
+  const inUse = await Product.countDocuments({ category: category.name });
+  if (inUse > 0) {
+    throw new ConflictError(`Move the ${inUse} product(s) in "${category.name}" to another category first`);
+  }
+
+  await category.deleteOne();
 
   res.json(successResponse(null, 'Category deleted'));
 });

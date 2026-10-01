@@ -45,7 +45,47 @@ export const orderListQuery = z.object({
   month: z.coerce.number().int().min(1).max(12).optional(),
   year: z.coerce.number().int().min(2000).max(2999).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(200),
+  /** Part of a receipt ID. Searches every receipt, whatever month is picked. */
+  search: z.string().trim().max(80).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
+
+// ── Product returns ─────────────────────────────────────────────────────────
+const quantity = z.coerce.number({ message: 'Quantity must be a number' }).positive('Quantity must be more than zero');
+
+/** A return against a recorded sale: which lines come back, and how many of each. */
+const invoiceReturnSchema = z.object({
+  type: z.literal('invoice'),
+  orderId: objectId,
+  items: z.array(z.object({ orderLine: z.coerce.number().int().min(0), quantity })).min(1, 'Choose at least one item to return'),
+  refundMethod: z.enum(['cash', 'card', 'account']),
+  reason: z.string().trim().max(500).optional(),
+});
+
+/** A return without a sale: the products, quantities and the price refunded for each. */
+const openReturnSchema = z.object({
+  type: z.literal('open'),
+  items: z
+    .array(
+      z.object({
+        product: objectId,
+        quantity,
+        unitPrice: z.coerce.number({ message: 'Price must be a number' }).min(0, 'Price cannot be negative'),
+        discountPct: z.coerce.number().min(0).max(100).default(0),
+      })
+    )
+    .min(1, 'Add at least one product to return'),
+  refundMethod: z.enum(['cash', 'card']),
+  reason: z.string().trim().max(500).optional(),
+});
+
+export const createReturnSchema = z.discriminatedUnion('type', [invoiceReturnSchema, openReturnSchema]);
+
+export const returnListQuery = z.object({
+  orderId: objectId.optional(),
+  customerId: objectId.optional(),
+  /** Part of a return or receipt number. */
+  search: z.string().trim().max(80).optional(),
+});

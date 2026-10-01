@@ -13,6 +13,7 @@ import Order, { IOrder, IOrderItem } from '../models/Order';
 import Product from '../models/Product';
 import Customer from '../models/Customer';
 import { nextSequence } from '../models/Counter';
+import { currentSettlement } from './customerLedgerService';
 import type { CreateOrderInput, OrderItemInput } from '../validators/orderValidators';
 
 const RECEIPT_SEQUENCE = 'receipt';
@@ -233,6 +234,15 @@ export async function voidOrder(orderId: string, input: VoidOrderInput): Promise
 
   const movements = new Map([...stockMovements(order.items)].map(([id, m]) => [id, m.quantity]));
   await releaseStock(movements);
+
+  // What the sale put on the customer's account comes off again. The balance
+  // may go below zero: the customer had already paid for a sale that is gone.
+  const credit = currentSettlement(order).creditAmount;
+  if (order.customerId && credit > 0) {
+    await Customer.updateOne({ _id: order.customerId }, { $inc: { outstandingBalance: -credit } }).catch((error) =>
+      logger.error({ err: error, orderId }, 'Failed to take a voided sale off the customer account')
+    );
+  }
 
   return order;
 }

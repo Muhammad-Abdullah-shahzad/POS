@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { Badge, Button, Group, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconCheck, IconCloudDownload, IconCloudUpload } from '@tabler/icons-react';
+import { useSettingsStore } from '../../store/settingsStore';
 
 type SyncMode = 'all' | 'pull';
 
@@ -24,6 +25,7 @@ const firstError = (summary: SyncSummary): string | undefined =>
 export default function SyncButton() {
   const [running, setRunning] = useState<SyncMode | null>(null);
   const [summary, setSummary] = useState<SyncSummary | null>(null);
+  const fetchSettings = useSettingsStore((state) => state.fetchSettings);
 
   // The web build talks to the API directly and has nothing to sync.
   if (!window.electronAPI) return null;
@@ -38,6 +40,9 @@ export default function SyncButton() {
         : await window.electronAPI!.sync.all();
 
       setSummary(result);
+      // The POS prints from the settings store, so reload it to pick up
+      // anything pulled from the server, such as the receipt size.
+      await fetchSettings();
     } catch {
       setSummary({
         success: false,

@@ -43,7 +43,7 @@ declare const api: {
         delete: (_id: string) => Promise<any>;
     };
     orders: {
-        getAll: (month?: number, year?: number) => Promise<any>;
+        getAll: (month?: number, year?: number, search?: string) => Promise<any>;
         getVoided: () => Promise<any>;
         create: (data: Record<string, unknown>) => Promise<any>;
         void: (_id: string, reason: string, employeeId?: string, employeeName?: string) => Promise<any>;
@@ -57,6 +57,10 @@ declare const api: {
         resetPoints: (_id: string) => Promise<any>;
         getLedger: (_id: string) => Promise<any>;
         addPayment: (data: Record<string, unknown>) => Promise<any>;
+        updatePayment: (customerId: string, paymentId: string, changes: Record<string, unknown>) => Promise<any>;
+        updateSale: (customerId: string, orderId: string, changes: Record<string, unknown>) => Promise<any>;
+        setOpeningBalance: (customerId: string, changes: Record<string, unknown>) => Promise<any>;
+        deletePayment: (customerId: string, paymentId: string) => Promise<any>;
     };
     employees: {
         getAll: () => Promise<any>;
@@ -96,7 +100,17 @@ declare const api: {
         getAll: () => Promise<any>;
         create: (data: Record<string, unknown>) => Promise<any>;
         update: (_id: string, data: Record<string, unknown>) => Promise<any>;
+        pay: (_id: string, data: Record<string, unknown>) => Promise<any>;
+        paySupplier: (data: Record<string, unknown>) => Promise<any>;
+        updateInvoice: (_id: string, changes: Record<string, unknown>) => Promise<any>;
+        updatePayment: (paymentId: string, changes: Record<string, unknown>) => Promise<any>;
+        updateLegacyPayment: (_id: string, index: number, changes: Record<string, unknown>) => Promise<any>;
         delete: (_id: string) => Promise<any>;
+    };
+    returns: {
+        getAll: (filter?: Record<string, unknown>) => Promise<any>;
+        getSale: (orderId: string) => Promise<any>;
+        create: (data: Record<string, unknown>) => Promise<any>;
     };
     banks: {
         getNames: () => Promise<any>;
@@ -118,7 +132,7 @@ declare const api: {
         paymentMethods: () => Promise<any>;
         expenseCategories: () => Promise<any>;
         /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
-        kpis: () => Promise<any>;
+        kpis: (period?: string) => Promise<any>;
     };
     license: {
         /** Current state from the cached key and the clock. */

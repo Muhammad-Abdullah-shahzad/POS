@@ -9,6 +9,7 @@ import Dashboard from './features/dashboard/Dashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import Products from './features/products/Products';
 import Expenses from './features/expenses/Expenses';
+import ProductReturns from './features/returns/ProductReturns';
 import Receipts from './features/receipts/Receipts';
 import Analysis from './features/analytics/Analysis';
 import Suppliers from './features/suppliers/Suppliers';
@@ -76,6 +77,7 @@ const sharedRoutes = () => (
     <Route path="products/codes" element={<ManageProductCodes />} />
     <Route path="products/general" element={<GeneralProducts />} />
     <Route path="products/general/:category" element={<GeneralProducts />} />
+    <Route path="products/returns" element={<ProductReturns />} />
     <Route path="products/:subPath" element={<ProductsSubFeatures />} />
     <Route path="expenses" element={<Expenses />} />
     <Route path="analysis" element={<Analysis />} />

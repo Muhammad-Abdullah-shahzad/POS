@@ -93,6 +93,7 @@ const TABLE_TO_ENDPOINT = {
     suppliers: 'suppliers',
     wastage: 'wastage',
     supplier_invoices: 'supplier-invoices',
+    product_returns: 'product-returns',
     bank_names: 'banks/names',
     bank_accounts: 'banks/accounts',
     bank_cards: 'banks/cards',
@@ -141,16 +142,35 @@ const stringifyField = (field) => (row) => ({
             ? JSON.stringify(row[field])
             : (row[field] ?? '[]'),
 });
-async function pullTable(table, fetchEndpoint, client, serialize) {
+async function pullTable(definition, client) {
+    const { table, collection, fetchEndpoint, serialize, keepMissing } = definition;
     const result = { collection: `pull:${table}`, synced: 0, errors: [] };
     try {
-        const res = await client.get(fetchEndpoint);
+        // Whether the server's list is complete. Only then can a missing row mean
+        // "deleted on the web": the ordinary list endpoints are capped (e.g. 200
+        // products), and deleting from a capped list would wipe real local data.
+        let complete = true;
+        let res;
+        if (collection) {
+            try {
+                res = await client.get(`/sync/pull/${collection}`);
+            }
+            catch (err) {
+                if (err?.response?.status !== 404)
+                    throw err;
+                // An older server without the pull endpoint: update, but delete nothing.
+                res = await client.get(fetchEndpoint);
+                complete = false;
+            }
+        }
+        else {
+            res = await client.get(fetchEndpoint);
+        }
         let serverRows = res.data?.data ?? [];
-        // Settings endpoint returns a single object, not an array
+        // Settings and the company logo return a single object, not an array
         if (!Array.isArray(serverRows))
             serverRows = serverRows ? [serverRows] : [];
-        if (serverRows.length === 0)
-            return result;
+        // An empty list is still a real answer: everything was deleted on the web.
         // Column list for this table (from SQLite schema)
         const columns = getColumns(table);
         // Build a map: _id → isSync for every local row
@@ -180,7 +200,7 @@ async function pullTable(table, fetchEndpoint, client, serialize) {
         }
         // Delete local rows (isSync=1) that the server no longer has → deleted on web
         for (const [_id, isSync] of localSyncMap) {
-            if (isSync === 1 && !serverIdSet.has(_id)) {
+            if (complete && !keepMissing && isSync === 1 && !serverIdSet.has(_id)) {
                 (0, database_1.dbRun)(`DELETE FROM ${table} WHERE _id = $id`, { $id: _id });
             }
         }
@@ -211,7 +231,8 @@ const syncFunctions = [
     { table: 'employee_damages', endpoint: '/employee-damages/sync' },
     { table: 'suppliers', endpoint: '/suppliers/sync' },
     { table: 'wastage', endpoint: '/wastage/sync' },
-    { table: 'supplier_invoices', endpoint: '/supplier-invoices/sync' },
+    { table: 'supplier_invoices', endpoint: '/supplier-invoices/sync', transform: parseJson('payments') },
+    { table: 'product_returns', endpoint: '/product-returns/sync', transform: parseJson('items') },
     { table: 'bank_names', endpoint: '/banks/names/sync' },
     { table: 'bank_accounts', endpoint: '/banks/accounts/sync' },
     { table: 'bank_cards', endpoint: '/banks/cards/sync' },
@@ -219,23 +240,24 @@ const syncFunctions = [
 ];
 // ── PULL collection definitions ───────────────────────────────────────────────
 const pullFunctions = [
-    { table: 'products', fetchEndpoint: '/products' },
-    { table: 'categories', fetchEndpoint: '/categories', serialize: stringifyField('items') },
-    { table: 'orders', fetchEndpoint: '/orders', serialize: stringifyField('items') },
-    { table: 'customers', fetchEndpoint: '/customers' },
-    { table: 'customer_payments', fetchEndpoint: '/customer-payments' },
-    { table: 'employees', fetchEndpoint: '/employees' },
-    { table: 'expenses', fetchEndpoint: '/expenses' },
-    { table: 'expense_categories', fetchEndpoint: '/expense-categories' },
-    { table: 'employee_damages', fetchEndpoint: '/employee-damages' },
-    { table: 'suppliers', fetchEndpoint: '/suppliers' },
+    { table: 'products', collection: 'products', fetchEndpoint: '/products' },
+    { table: 'categories', collection: 'categories', fetchEndpoint: '/categories', serialize: stringifyField('items') },
+    { table: 'orders', collection: 'orders', fetchEndpoint: '/orders', serialize: stringifyField('items') },
+    { table: 'customers', collection: 'customers', fetchEndpoint: '/customers' },
+    { table: 'customer_payments', collection: 'customer-payments', fetchEndpoint: '/customer-payments' },
+    { table: 'employees', collection: 'employees', fetchEndpoint: '/employees' },
+    { table: 'expenses', collection: 'expenses', fetchEndpoint: '/expenses' },
+    { table: 'expense_categories', collection: 'expense-categories', fetchEndpoint: '/expense-categories' },
+    { table: 'employee_damages', collection: 'employee-damages', fetchEndpoint: '/employee-damages' },
+    { table: 'suppliers', collection: 'suppliers', fetchEndpoint: '/suppliers' },
     { table: 'company_logos', fetchEndpoint: '/company-logo' },
-    { table: 'wastage', fetchEndpoint: '/wastage' },
-    { table: 'supplier_invoices', fetchEndpoint: '/supplier-invoices' },
-    { table: 'bank_names', fetchEndpoint: '/banks/names' },
-    { table: 'bank_accounts', fetchEndpoint: '/banks/accounts' },
-    { table: 'bank_cards', fetchEndpoint: '/banks/cards' },
-    { table: 'settings', fetchEndpoint: '/settings', serialize: stringifyField('quickProducts') },
+    { table: 'wastage', collection: 'wastage', fetchEndpoint: '/wastage' },
+    { table: 'supplier_invoices', collection: 'supplier-invoices', fetchEndpoint: '/supplier-invoices', serialize: stringifyField('payments') },
+    { table: 'product_returns', collection: 'product-returns', fetchEndpoint: '/returns', serialize: stringifyField('items') },
+    { table: 'bank_names', collection: 'banks/names', fetchEndpoint: '/banks/names' },
+    { table: 'bank_accounts', collection: 'banks/accounts', fetchEndpoint: '/banks/accounts' },
+    { table: 'bank_cards', collection: 'banks/cards', fetchEndpoint: '/banks/cards' },
+    { table: 'settings', fetchEndpoint: '/settings', serialize: stringifyField('quickProducts'), keepMissing: true },
 ];
 // ── Master sync (push → pull) ─────────────────────────────────────────────────
 async function syncAll(client) {
@@ -251,7 +273,7 @@ async function syncAll(client) {
         return { collection: name, synced: 0, errors: [r.reason?.message || 'Push failed'] };
     });
     // ② Pull: fetch all server data and upsert locally
-    const pullSettled = await Promise.allSettled(pullFunctions.map(({ table, fetchEndpoint, serialize }) => pullTable(table, fetchEndpoint, client, serialize)));
+    const pullSettled = await Promise.allSettled(pullFunctions.map((definition) => pullTable(definition, client)));
     const pullResults = pullSettled.map((r, i) => {
         const name = `pull:${pullFunctions[i].table}`;
         if (r.status === 'fulfilled')
@@ -264,7 +286,7 @@ async function syncAll(client) {
     return { success: totalErrors === 0, results, totalSynced, totalErrors };
 }
 async function pullAll(client) {
-    const settled = await Promise.allSettled(pullFunctions.map(({ table, fetchEndpoint, serialize }) => pullTable(table, fetchEndpoint, client, serialize)));
+    const settled = await Promise.allSettled(pullFunctions.map((definition) => pullTable(definition, client)));
     const results = settled.map((r, i) => {
         const name = `pull:${pullFunctions[i].table}`;
         if (r.status === 'fulfilled')

@@ -1,6 +1,20 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 import { tenantScopePlugin } from './plugins/tenantScope';
 
+/** How a supplier was paid. */
+export const SUPPLIER_PAYMENT_METHODS = ['cash', 'card', 'bank', 'cheque'] as const;
+
+/** One payment made against an invoice, kept so the supplier ledger can list it. */
+export interface ISupplierPayment {
+  amount: number;
+  remarks?: string;
+  paidAt: Date;
+  /** Shared by the parts of one payment to a supplier that was spread over several invoices. */
+  paymentId?: string;
+  /** Cash, card, bank transfer or cheque; older payments did not record it. */
+  method?: (typeof SUPPLIER_PAYMENT_METHODS)[number];
+}
+
 /**
  * A bill from a supplier and how much of it has been paid. The balance and
  * status (paid, partial, unpaid) follow from amount and paid, so they are
@@ -15,10 +29,25 @@ export interface ISupplierInvoice extends Document<Types.ObjectId> {
   amount: number;
   paid: number;
   date: Date;
+  /** Note entered with the invoice. */
+  remarks?: string;
+  /** Every payment, oldest first. Invoices from before this list existed may have none. */
+  payments: ISupplierPayment[];
   lastPaymentAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const SupplierPaymentSchema = new Schema<ISupplierPayment>(
+  {
+    amount: { type: Number, required: true, min: 0 },
+    remarks: { type: String, trim: true, default: '' },
+    paidAt: { type: Date, required: true, default: Date.now },
+    paymentId: { type: String },
+    method: { type: String, enum: SUPPLIER_PAYMENT_METHODS },
+  },
+  { _id: false }
+);
 
 const SupplierInvoiceSchema = new Schema<ISupplierInvoice>(
   {
@@ -28,6 +57,8 @@ const SupplierInvoiceSchema = new Schema<ISupplierInvoice>(
     amount: { type: Number, required: true, min: 0 },
     paid: { type: Number, required: true, default: 0, min: 0 },
     date: { type: Date, required: true, default: Date.now },
+    remarks: { type: String, trim: true, default: '' },
+    payments: { type: [SupplierPaymentSchema], default: [] },
     lastPaymentAt: { type: Date, default: null },
   },
   { timestamps: true }

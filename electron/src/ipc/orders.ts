@@ -1,6 +1,7 @@
 import { IpcMainInvokeEvent } from 'electron';
 import { handleLicensed } from '../license/licenseGuard';
 import { dbAll, dbGet, dbRun, dbTransaction, generateLocalId, now, v, BindMap } from '../db/database';
+import { currentSettlement } from './customerLedger';
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
@@ -42,9 +43,18 @@ function settlement(data: Record<string, unknown>): { paidCash: number; paidCard
 
 export function registerOrderHandlers(): void {
 
-  handleLicensed('orders:getAll', (_e: IpcMainInvokeEvent, month?: number, year?: number) => {
+  handleLicensed('orders:getAll', (_e: IpcMainInvokeEvent, month?: number, year?: number, search?: string) => {
     let rows: Record<string, unknown>[];
-    if (month && year) {
+    const term = search?.trim();
+    if (term) {
+      // A receipt ID search looks through every receipt, not just the chosen month.
+      rows = dbAll(
+        `SELECT * FROM orders WHERE status != 'voided'
+         AND invoiceId LIKE $pattern ESCAPE '\\'
+         ORDER BY createdAt DESC LIMIT 200`,
+        { $pattern: `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%` }
+      );
+    } else if (month && year) {
       const start = new Date(year, month - 1, 1).toISOString();
       const end   = new Date(year, month, 1).toISOString();
       rows = dbAll(
@@ -163,8 +173,21 @@ export function registerOrderHandlers(): void {
 
     const order = dbGet('SELECT * FROM orders WHERE _id = $id', { $id: _id }) as any;
     if (!order) return null;
+    // As on the server: a second void must not return the stock again.
+    if (order.status === 'voided') throw new Error('This order is already voided');
+
+    // What the sale put on the customer's account comes off again. The balance
+    // may go below zero: the customer had already paid for a sale that is gone.
+    const credit = order.customerId ? currentSettlement(order).creditAmount : 0;
 
     dbTransaction((d) => {
+      if (credit > 0) {
+        d.run(
+          `UPDATE customers SET outstandingBalance = outstandingBalance - $credit, updatedAt=$ts, isSync=0 WHERE _id=$cid`,
+          { $credit: credit, $ts: ts, $cid: String(order.customerId) } as BindMap
+        );
+      }
+
       d.run(
         `UPDATE orders SET
            status='voided', voidReason=$reason, voidedAt=$ts,
