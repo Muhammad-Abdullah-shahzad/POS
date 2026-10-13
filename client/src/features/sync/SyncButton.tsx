@@ -4,11 +4,16 @@
  * Credentials live in the Electron main process, not in this page, so these
  * buttons carry no token. The till signs in to the server once and the main
  * process keeps that session alive from then on.
+ *
+ * Each button can be hidden for the company by the operator (desktopBtnSettings,
+ * server: npm run desktop:buttons). The till learns the setting on Pull, Sync and start-up, keeps it in
+ * localStorage, and renders from that copy.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge, Button, Group, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconCheck, IconCloudDownload, IconCloudUpload } from '@tabler/icons-react';
 import { useSettingsStore } from '../../store/settingsStore';
+import { isButtonShown, readDesktopBtnSettings, saveDesktopBtnSettings, type DesktopBtnSettings } from './desktopBtnSettings';
 
 type SyncMode = 'all' | 'pull';
 
@@ -17,6 +22,8 @@ interface SyncSummary {
   results: Array<{ collection: string; synced: number; errors: string[] }>;
   totalSynced: number;
   totalErrors: number;
+  /** The company's latest button settings; absent or null when they could not be read. */
+  desktopBtnSettings?: DesktopBtnSettings | null;
 }
 
 const firstError = (summary: SyncSummary): string | undefined =>
@@ -26,9 +33,26 @@ export default function SyncButton() {
   const [running, setRunning] = useState<SyncMode | null>(null);
   const [summary, setSummary] = useState<SyncSummary | null>(null);
   const fetchSettings = useSettingsStore((state) => state.fetchSettings);
+  const [btnSettings, setBtnSettings] = useState<DesktopBtnSettings | null>(readDesktopBtnSettings);
+
+  /** Keep the newest settings from the server; null (offline, older server) keeps what the till has. */
+  const applyBtnSettings = (settings: DesktopBtnSettings | null | undefined) => {
+    if (!settings) return;
+    saveDesktopBtnSettings(settings);
+    setBtnSettings(settings);
+  };
+
+  // Refresh once at start-up as well, so a till whose Pull button is hidden
+  // still learns when the company shows it again.
+  useEffect(() => {
+    window.electronAPI?.sync.desktopBtnSettings().then(applyBtnSettings).catch(() => undefined);
+  }, []);
 
   // The web build talks to the API directly and has nothing to sync.
   if (!window.electronAPI) return null;
+
+  const showSync = isButtonShown(btnSettings?.showSyncBtn);
+  const showPull = isButtonShown(btnSettings?.showPullBtn);
 
   const run = async (mode: SyncMode) => {
     setRunning(mode);
@@ -40,6 +64,7 @@ export default function SyncButton() {
         : await window.electronAPI!.sync.all();
 
       setSummary(result);
+      applyBtnSettings(result.desktopBtnSettings);
       // The POS prints from the settings store, so reload it to pick up
       // anything pulled from the server, such as the receipt size.
       await fetchSettings();
@@ -79,35 +104,41 @@ export default function SyncButton() {
     </Tooltip>
   );
 
+  if (!showSync && !showPull && !statusBadge) return null;
+
   return (
     <Group gap={6} align="center" wrap="nowrap">
       {statusBadge}
 
-      <Tooltip label="Download the latest data from the server" withArrow>
-        <Button
-          size="xs"
-          variant="default"
-          loading={running === 'pull'}
-          disabled={running !== null}
-          leftSection={running !== 'pull' ? <IconCloudDownload size={14} /> : undefined}
-          onClick={() => run('pull')}
-        >
-          {running === 'pull' ? 'Pulling…' : 'Pull'}
-        </Button>
-      </Tooltip>
+      {showPull && (
+        <Tooltip label="Download the latest data from the server" withArrow>
+          <Button
+            size="xs"
+            variant="default"
+            loading={running === 'pull'}
+            disabled={running !== null}
+            leftSection={running !== 'pull' ? <IconCloudDownload size={14} /> : undefined}
+            onClick={() => run('pull')}
+          >
+            {running === 'pull' ? 'Pulling…' : 'Pull'}
+          </Button>
+        </Tooltip>
+      )}
 
-      <Tooltip label="Send this till's changes, then download the server's" withArrow>
-        <Button
-          size="xs"
-          variant="default"
-          loading={running === 'all'}
-          disabled={running !== null}
-          leftSection={running !== 'all' ? <IconCloudUpload size={14} /> : undefined}
-          onClick={() => run('all')}
-        >
-          {running === 'all' ? 'Syncing…' : 'Sync'}
-        </Button>
-      </Tooltip>
+      {showSync && (
+        <Tooltip label="Send this till's changes, then download the server's" withArrow>
+          <Button
+            size="xs"
+            variant="default"
+            loading={running === 'all'}
+            disabled={running !== null}
+            leftSection={running !== 'all' ? <IconCloudUpload size={14} /> : undefined}
+            onClick={() => run('all')}
+          >
+            {running === 'all' ? 'Syncing…' : 'Sync'}
+          </Button>
+        </Tooltip>
+      )}
     </Group>
   );
 }

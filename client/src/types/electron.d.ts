@@ -11,11 +11,18 @@ interface SyncResult {
   errors: string[];
 }
 
+interface DesktopBtnSettings {
+  showSyncBtn: string;
+  showPullBtn: string;
+}
+
 interface SyncSummary {
   success: boolean;
   results: SyncResult[];
   totalSynced: number;
   totalErrors: number;
+  /** The company's sync-button settings; null when they could not be read. */
+  desktopBtnSettings?: DesktopBtnSettings | null;
 }
 
 interface DesktopUser {
@@ -76,7 +83,7 @@ interface ElectronAPI {
   };
   products: {
     getAll: (search?: string) => Promise<any[]>;
-    getPage: (query: { page?: number; pageSize?: number; search?: string }) => Promise<Page<any>>;
+    getPage: (query: { page?: number; pageSize?: number; search?: string; lowStock?: boolean }) => Promise<Page<any>>;
     getByBarcode: (barcode: string) => Promise<any | null>;
     create: (data: Record<string, unknown>) => Promise<any>;
     update: (_id: string, data: Record<string, unknown>) => Promise<any>;
@@ -185,9 +192,24 @@ interface ElectronAPI {
     activate: (key: string) => Promise<{ success: boolean; message: string; data: DesktopLicenseStatus }>;
     refresh:  () => Promise<DesktopLicenseStatus & { offline: boolean }>;
   };
+  /** Staff logins, on the server (relayed by the main process). Each returns the server's reply. */
+  users: {
+    list: () => Promise<any>;
+    create: (data: Record<string, unknown>) => Promise<any>;
+    update: (id: string, data: Record<string, unknown>) => Promise<any>;
+    remove: (id: string) => Promise<any>;
+  };
+  /** This till's receipt printer (see features/printing/tillPrinter.ts). */
+  printer: {
+    list: () => Promise<{ name: string; displayName: string; isDefault: boolean }[]>;
+    /** Resolves with the PDF's path when saved as PDF (none if cancelled or printed). */
+    printReceipt: (job: { html: string; deviceName: string; widthMm: number; heightMm?: number | null }) => Promise<{ filePath?: string }>;
+  };
   sync: {
     all:          () => Promise<SyncSummary>;
     pull:         () => Promise<SyncSummary>;
+    /** The company's sync-button settings from the server, or null when unavailable. */
+    desktopBtnSettings: () => Promise<DesktopBtnSettings | null>;
     collection:   (collection: string) => Promise<SyncResult>;
     pendingCounts:() => Promise<Record<string, number>>;
   };

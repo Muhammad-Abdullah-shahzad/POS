@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Title, Paper, TextInput, NumberInput, Button, Stack, Group, Grid, Tabs, Text, Select, Switch } from '@mantine/core';
+import { Title, Paper, TextInput, NumberInput, Button, Stack, Group, Grid, Tabs, Text, Select, Switch, Box } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import api from '../../services/api';
 import { CURRENCIES, useCurrencyStore } from '../../store/currencyStore';
@@ -9,11 +9,13 @@ import { IconCheck, IconX, IconBuildingStore, IconReceipt, IconStar, IconUsersGr
 import { currencySymbol, formatMoney, formatMoneyAs } from '../../utils/money';
 import StaffLogins from './StaffLogins';
 import CompanyLogoSetting from './CompanyLogoSetting';
+import TillPrinterSettings from './TillPrinterSettings';
 import { useSettingsStore } from '../../store/settingsStore';
 
 const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [activeTab, setActiveTab] = useState<string | null>('shop');
   const savedCurrency = useCurrencyStore((state) => state.code);
   const setCurrency = useCurrencyStore((state) => state.setCurrency);
   const { setSettings, fetchSettings } = useSettingsStore();
@@ -122,7 +124,7 @@ const SettingsPage = () => {
       <Title order={2}>System Settings</Title>
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Tabs defaultValue="shop" variant="outline">
+        <Tabs value={activeTab} onChange={setActiveTab} variant="outline">
           <Tabs.List>
             <Tabs.Tab value="shop" leftSection={<IconBuildingStore size={16} />}>Shop Details</Tabs.Tab>
             <Tabs.Tab value="receipt" leftSection={<IconReceipt size={16} />}>Receipt Options</Tabs.Tab>
@@ -210,6 +212,9 @@ const SettingsPage = () => {
                   description="When on, the till asks for optional remarks before completing each sale and prints them on the invoice. When off, sales complete straight away."
                   {...form.getInputProps('showRemarksPrompt', { type: 'checkbox' })}
                 />
+                {window.electronAPI && (
+                  <TillPrinterSettings receiptSize={form.values.receiptSize === 'A4' ? 'A4' : 'Thermal'} />
+                )}
               </Stack>
             </Paper>
           </Tabs.Panel>
@@ -260,17 +265,24 @@ const SettingsPage = () => {
             </Paper>
           </Tabs.Panel>
 
-          <Tabs.Panel value="staff" pt="md">
-            <StaffLogins />
-          </Tabs.Panel>
         </Tabs>
 
-        <Group justify="flex-end" mt="xl">
-          <Button type="submit" loading={loading} size="md" color="blue">
-            Save Settings
-          </Button>
-        </Group>
+        {/* Staff logins save themselves; this button only saves the settings tabs. */}
+        {activeTab !== 'staff' && (
+          <Group justify="flex-end" mt="xl">
+            <Button type="submit" loading={loading} size="md" color="blue">
+              Save Settings
+            </Button>
+          </Group>
+        )}
       </form>
+
+      {/* Outside the settings form: a form in its pop-up would otherwise also submit the settings. */}
+      {activeTab === 'staff' && (
+        <Box pt="md">
+          <StaffLogins />
+        </Box>
+      )}
     </Stack>
   );
 };

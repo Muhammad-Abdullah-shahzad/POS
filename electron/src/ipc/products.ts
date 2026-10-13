@@ -1,5 +1,7 @@
 import { handleLicensed } from '../license/licenseGuard';
 import { BindMap, dbAll, dbGet, dbRun, generateLocalId, now, v, softDelete } from '../db/database';
+import { LOW_STOCK_THRESHOLD } from './analytics';
+import { rankProducts } from '../search/smartSearch';
 
 /** Largest page the products screen may ask for, matching the server. */
 const MAX_PAGE_SIZE = 100;
@@ -8,20 +10,41 @@ export interface ProductPageQuery {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** Only products running low, emptiest first (the dashboard's restock list). */
+  lowStock?: boolean;
 }
 
-/** Escape LIKE wildcards so a search for "50%" matches that text literally. */
-const likeContains = (term: string) => `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+const LIVE = "(deletedAt IS NULL OR deletedAt = '')";
+/** Rows bound per IN (...) query; SQLite allows 999 parameters. */
+const ID_CHUNK = 500;
+
+/**
+ * Product search for the till and the products screen: the smart search in
+ * ../search/smartSearch.ts (words in any order, small typos forgiven, sizes
+ * exact), best matches first. Ranks the catalogue's names, then loads just
+ * the rows to show. Mirrors server/services/productSearchService.ts.
+ */
+function rankedIds(search: string, where: string): string[] {
+  const candidates = dbAll(`SELECT _id, name, barcode, sku FROM products WHERE ${where}`);
+  return rankProducts(candidates, search).map((row) => String(row._id));
+}
+
+/** The products with these ids, in the same order. */
+function loadInOrder(ids: string[]): Record<string, unknown>[] {
+  const byId = new Map<string, Record<string, unknown>>();
+  for (let start = 0; start < ids.length; start += ID_CHUNK) {
+    const chunk = ids.slice(start, start + ID_CHUNK);
+    const params: BindMap = Object.fromEntries(chunk.map((id, i) => [`$id${i}`, id]));
+    const rows = dbAll(`SELECT * FROM products WHERE _id IN (${chunk.map((_, i) => `$id${i}`).join(', ')})`, params);
+    for (const row of rows) byId.set(String(row._id), row);
+  }
+  return ids.map((id) => byId.get(id)).filter((row): row is Record<string, unknown> => Boolean(row));
+}
 
 export function registerProductHandlers(): void {
 
   handleLicensed('products:getAll', (_e, search?: string) => {
-    if (search) {
-      return dbAll(
-        `SELECT * FROM products WHERE (name LIKE $s OR barcode LIKE $s) AND (deletedAt IS NULL) ORDER BY name ASC LIMIT 200`,
-        { $s: `%${search}%` }
-      );
-    }
+    if (search?.trim()) return loadInOrder(rankedIds(search.trim(), LIVE));
     return dbAll('SELECT * FROM products WHERE deletedAt IS NULL ORDER BY name ASC');
   });
 
@@ -31,19 +54,23 @@ export function registerProductHandlers(): void {
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(query.pageSize) || 25)));
     const search = query.search?.trim();
 
-    const where = search
-      ? `deletedAt IS NULL AND (name LIKE $s ESCAPE '\\' OR barcode LIKE $s ESCAPE '\\' OR sku LIKE $s ESCAPE '\\')`
-      : 'deletedAt IS NULL';
-    const params: BindMap = search ? { $s: likeContains(search) } : {};
+    const where = query.lowStock ? `${LIVE} AND stock <= ${LOW_STOCK_THRESHOLD}` : LIVE;
+    const pageOf = (items: Record<string, unknown>[], total: number) =>
+      ({ items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) });
 
-    const { total } = dbGet(`SELECT COUNT(*) AS total FROM products WHERE ${where}`, params) as { total: number };
-    const items = dbAll(`SELECT * FROM products WHERE ${where} ORDER BY name ASC, _id ASC LIMIT $limit OFFSET $offset`, {
-      ...params,
+    // A search lists the smart search's matches, best first.
+    if (search) {
+      const ids = rankedIds(search, where);
+      return pageOf(loadInOrder(ids.slice((page - 1) * pageSize, page * pageSize)), ids.length);
+    }
+
+    const order = query.lowStock ? 'stock ASC, name ASC, _id ASC' : 'name ASC, _id ASC';
+    const { total } = dbGet(`SELECT COUNT(*) AS total FROM products WHERE ${where}`) as { total: number };
+    const items = dbAll(`SELECT * FROM products WHERE ${where} ORDER BY ${order} LIMIT $limit OFFSET $offset`, {
       $limit: pageSize,
       $offset: (page - 1) * pageSize,
     });
-
-    return { items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
+    return pageOf(items, total);
   });
 
   handleLicensed('products:getByBarcode', (_e, barcode: string) => {

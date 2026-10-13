@@ -5,6 +5,12 @@
  * card. To add a view, write a component here and register it in registry.ts
  * under the card's key.
  */
+import { useState } from 'react';
+import { TextInput } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
+import { IconSearch } from '@tabler/icons-react';
+import Pager from '../../../components/Pager';
+import { usePagedList } from '../../../hooks/usePagedList';
 import { currentPeriodLabel, percentChange, periodWords } from '../../../services/dashboardService';
 import type { DashboardKpis, KpiTotals } from '../../../services/dashboardService';
 import { formatMoney } from '../../../utils/money';
@@ -91,8 +97,8 @@ const EXPENSE_COLUMNS: Column<DashboardExpense>[] = [
 type StockItem = DashboardKpis['breakdown']['lowStockItems'][number];
 
 const STOCK_COLUMNS: Column<StockItem>[] = [
-  { key: 'name', header: 'Product', render: (item) => <span className={classes.strong}>{item.name}</span> },
-  { key: 'category', header: 'Category', render: (item) => <span className={classes.muted}>{item.category || '—'}</span> },
+  { key: 'name', header: 'Product', wrap: true, render: (item) => <span className={classes.strong}>{item.name}</span> },
+  { key: 'category', header: 'Category', wrap: true, render: (item) => <span className={classes.muted}>{item.category || '—'}</span> },
   { key: 'price', header: 'Price', align: 'end', render: (item) => formatMoney(item.price) },
   {
     key: 'stock',
@@ -103,6 +109,58 @@ const STOCK_COLUMNS: Column<StockItem>[] = [
 ];
 
 const stockKey = (item: StockItem, index: number) => `${item.name}-${index}`;
+
+/** Rows per page of the restock list: short enough to scroll smoothly in the modal. */
+const RESTOCK_PAGE_SIZE = 25;
+const LOW_STOCK_FILTER = { lowStock: 'true' };
+
+/**
+ * Every product running low, a page at a time from the server (emptiest
+ * first), with a search. A shop can have thousands, far too many for one table.
+ */
+function RestockList() {
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
+  const list = usePagedList<StockItem & { _id?: string }>('/products', {
+    search: debouncedSearch,
+    pageSize: RESTOCK_PAGE_SIZE,
+    filters: LOW_STOCK_FILTER,
+  });
+
+  return (
+    <>
+      <TextInput
+        mb="sm"
+        placeholder="Search by name, barcode or SKU"
+        leftSection={<IconSearch size={16} />}
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+        aria-label="Search products to restock"
+      />
+      {list.error ? (
+        <Empty>Could not load the list. Close and open it again.</Empty>
+      ) : (
+        <div className={classes.pagedTable}>
+          <DataTable
+            columns={STOCK_COLUMNS}
+            rows={list.items}
+            rowKey={(item, index) => item._id ?? stockKey(item, index)}
+            empty={list.loading ? 'Loading…' : debouncedSearch ? 'No products to restock match your search.' : 'All products are well stocked.'}
+            maxHeight={380}
+          />
+        </div>
+      )}
+      <Pager
+        page={list.page}
+        pageCount={list.pageCount}
+        pageSize={list.pageSize}
+        total={list.total}
+        onChange={list.setPage}
+        noun="products"
+      />
+    </>
+  );
+}
 
 // ── Shared sections ─────────────────────────────────────────────────────────
 
@@ -388,7 +446,7 @@ export function ProductsView({ kpis }: DetailContext) {
 }
 
 export function LowStockView({ kpis }: DetailContext) {
-  const { catalogue, breakdown } = kpis;
+  const { catalogue } = kpis;
 
   return (
     <>
@@ -398,7 +456,7 @@ export function LowStockView({ kpis }: DetailContext) {
         <StatTile label="To restock" value={count(catalogue.lowStock)} hint={`Of ${plural(catalogue.products, 'product', 'products')}`} />
       </StatGrid>
       <Section title="Products to restock" aside="Emptiest first">
-        <DataTable columns={STOCK_COLUMNS} rows={breakdown.lowStockItems} rowKey={stockKey} empty="All products are well stocked." maxHeight={380} />
+        <RestockList />
       </Section>
     </>
   );

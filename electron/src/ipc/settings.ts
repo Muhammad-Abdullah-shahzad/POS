@@ -11,35 +11,46 @@ function toSettings(row: any) {
   };
 }
 
-export function registerSettingsHandlers(): void {
+/**
+ * The till's one settings record: the one with unsent edits if any, else the
+ * newest. (A pull leaves exactly one; this also copes with older tills that
+ * ended up with two.)
+ */
+const CURRENT_SETTINGS = `SELECT * FROM settings ORDER BY isSync ASC, updatedAt DESC LIMIT 1`;
 
-  const ensureSettings = () => {
-    const existing = dbGet('SELECT _id FROM settings LIMIT 1');
-    if (!existing) {
-      const _id = generateLocalId();
-      const ts = now();
-      dbRun(
-        `INSERT INTO settings (_id, createdAt, updatedAt, isSync) VALUES ($id, $ts, $ts, 0)`,
-        { $id: _id, $ts: ts }
-      );
-    }
-  };
+/** The current record's id, creating a placeholder on first use. */
+function ensureSettings(): string {
+  const existing = dbGet(CURRENT_SETTINGS) as { _id: string } | undefined;
+  if (existing) return existing._id;
+
+  // A placeholder with defaults until the first pull brings the company's
+  // record. It has nothing to send, so it is marked synced and a pull simply
+  // replaces it.
+  const _id = generateLocalId();
+  const ts = now();
+  dbRun(`INSERT INTO settings (_id, createdAt, updatedAt, isSync) VALUES ($id, $ts, $ts, 1)`, { $id: _id, $ts: ts });
+  return _id;
+}
+
+export function registerSettingsHandlers(): void {
 
   handleLicensed('settings:get', () => {
     ensureSettings();
-    return toSettings(dbGet('SELECT * FROM settings LIMIT 1'));
+    return toSettings(dbGet(CURRENT_SETTINGS));
   });
 
   handleLicensed('settings:update', (_e, data: Record<string, unknown>) => {
-    ensureSettings();
+    const id = ensureSettings();
     dbRun(
       `UPDATE settings SET
          shopName=$shopName, shopAddress=$shopAddress, shopPhone=$shopPhone,
          shopEmail=$shopEmail, shopWebsite=$shopWebsite, receiptFooter=$receiptFooter,
          receiptSize=$receiptSize, showRemarksPrompt=$showRemarksPrompt,
          loyaltyPointsPerEuro=$loyaltyPPE, loyaltyRewardThreshold=$loyaltyRT,
-         loyaltyRewardValue=$loyaltyRV, quickProducts=$quickProducts,
-         updatedAt=$ts, isSync=0`,
+         loyaltyRewardValue=$loyaltyRV,
+         quickProducts=COALESCE($quickProducts, quickProducts),
+         updatedAt=$ts, isSync=0
+       WHERE _id=$id`,
       {
         $shopName: v(data.shopName),
         $shopAddress: v(data.shopAddress),
@@ -52,24 +63,26 @@ export function registerSettingsHandlers(): void {
         $loyaltyPPE: v(data.loyaltyPointsPerEuro, 1),
         $loyaltyRT: v(data.loyaltyRewardThreshold, 100),
         $loyaltyRV: v(data.loyaltyRewardValue, 5),
-        $quickProducts: JSON.stringify(data.quickProducts ?? []),
+        // The settings form does not send quick products; keep them unless given.
+        $quickProducts: Array.isArray(data.quickProducts) ? JSON.stringify(data.quickProducts) : null,
         $ts: now(),
+        $id: id,
       }
     );
-    return toSettings(dbGet('SELECT * FROM settings LIMIT 1'));
+    return toSettings(dbGet('SELECT * FROM settings WHERE _id = $id', { $id: id }));
   });
 
   handleLicensed('settings:getQuickProducts', () => {
     ensureSettings();
-    const row = dbGet('SELECT quickProducts FROM settings LIMIT 1') as any;
+    const row = dbGet(CURRENT_SETTINGS) as any;
     return JSON.parse(row?.quickProducts || '[]');
   });
 
   handleLicensed('settings:updateQuickProducts', (_e, quickProducts: unknown[]) => {
-    ensureSettings();
+    const id = ensureSettings();
     dbRun(
-      `UPDATE settings SET quickProducts=$qp, updatedAt=$ts, isSync=0`,
-      { $qp: JSON.stringify(quickProducts), $ts: now() }
+      `UPDATE settings SET quickProducts=$qp, updatedAt=$ts, isSync=0 WHERE _id=$id`,
+      { $qp: JSON.stringify(quickProducts), $ts: now(), $id: id }
     );
     return quickProducts;
   });

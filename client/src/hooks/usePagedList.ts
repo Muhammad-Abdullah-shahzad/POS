@@ -18,6 +18,8 @@ export const DEFAULT_PAGE_SIZE = 25;
 interface Options {
   search?: string;
   pageSize?: number;
+  /** Extra query parameters that narrow the list, e.g. `{ lowStock: 'true' }`. */
+  filters?: Record<string, string>;
 }
 
 interface Loaded<T> {
@@ -27,19 +29,19 @@ interface Loaded<T> {
   error?: unknown;
 }
 
-export function usePagedList<T>(endpoint: string, { search = '', pageSize = DEFAULT_PAGE_SIZE }: Options = {}) {
+export function usePagedList<T>(endpoint: string, { search = '', pageSize = DEFAULT_PAGE_SIZE, filters }: Options = {}) {
   // The page belongs to the search it was chosen for; a different search means page 1.
   const [position, setPosition] = useState({ page: 1, search });
   const page = position.search === search ? position.page : 1;
   const [reloads, setReloads] = useState(0);
   const [loaded, setLoaded] = useState<Loaded<T> | null>(null);
 
-  const requestKey = JSON.stringify([endpoint, page, pageSize, search, reloads]);
+  const requestKey = JSON.stringify([endpoint, page, pageSize, search, filters ?? null, reloads]);
 
   useEffect(() => {
     let current = true;
     api
-      .get(endpoint, { params: { page, pageSize, ...(search && { search }) } })
+      .get(endpoint, { params: { ...filters, page, pageSize, ...(search && { search }) } })
       .then(({ data }) => {
         if (!current) return;
         const result: Page<T> = data.data;

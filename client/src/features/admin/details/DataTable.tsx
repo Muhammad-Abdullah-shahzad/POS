@@ -10,6 +10,8 @@ export interface Column<Row> {
   key: string;
   header: string;
   align?: 'start' | 'end';
+  /** Let long text wrap, so the columns after it stay in view. */
+  wrap?: boolean;
   render: (row: Row) => ReactNode;
 }
 
@@ -41,7 +43,7 @@ export default function DataTable<Row>({ columns, rows, rowKey, empty, maxHeight
           {rows.map((row, index) => (
             <tr key={rowKey(row, index)}>
               {columns.map((column) => (
-                <td key={column.key} data-align={column.align}>
+                <td key={column.key} data-align={column.align} data-wrap={column.wrap || undefined}>
                   {column.render(row)}
                 </td>
               ))}

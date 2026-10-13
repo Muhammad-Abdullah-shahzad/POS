@@ -41,7 +41,11 @@ export const productSearchQuery = z.object({
   search: z.string().trim().max(120).optional(),
   category: z.string().trim().max(80).optional(),
   // Used by the till's search; ignored when a page is asked for.
-  limit: z.coerce.number().int().min(1).max(500).default(200),
+  // Optional: a search with no limit returns every match (the till's search);
+  // a plain list without one returns up to 200.
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  /** Only products running low (the dashboard's restock list), emptiest first. */
+  lowStock: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   ...pageQuery,
 });
 

@@ -28,7 +28,7 @@ const api = {
   // ── PRODUCTS ──────────────────────────────────────────────────────────────
   products: {
     getAll:      (search?: string)                          => ipcRenderer.invoke('products:getAll', search),
-    getPage:     (query: { page?: number; pageSize?: number; search?: string }) => ipcRenderer.invoke('products:getPage', query),
+    getPage:     (query: { page?: number; pageSize?: number; search?: string; lowStock?: boolean }) => ipcRenderer.invoke('products:getPage', query),
     getByBarcode:(barcode: string)                          => ipcRenderer.invoke('products:getByBarcode', barcode),
     create:      (data: Record<string, unknown>)            => ipcRenderer.invoke('products:create', data),
     update:      (_id: string, data: Record<string, unknown>) => ipcRenderer.invoke('products:update', _id, data),
@@ -165,6 +165,14 @@ const api = {
     kpis:              (period?: string)  => ipcRenderer.invoke('analytics:kpis', period),
   },
 
+  // ── PRINTING ──────────────────────────────────────────────────────────────
+  // Receipts straight to this till's printer at its paper size, or saved as a PDF at that size.
+  printer: {
+    list:         () => ipcRenderer.invoke('printer:list'),
+    printReceipt: (job: { html: string; deviceName: string; widthMm: number; heightMm?: number | null }) =>
+                    ipcRenderer.invoke('printer:printReceipt', job),
+  },
+
   // ── LICENCE ───────────────────────────────────────────────────────────────
   // The key is verified in the main process against the public key baked into
   // this build, so the till can lock or unlock with no connection at all.
@@ -179,12 +187,23 @@ const api = {
 
   // ── SYNC ──────────────────────────────────────────────────────────────────
   // Server credentials stay in the main process, so none of these take a token.
+  // ── STAFF LOGINS (on the server, through the till's connection) ───────────
+  users: {
+    list:   ()                                                => ipcRenderer.invoke('users:list'),
+    create: (data: Record<string, unknown>)                   => ipcRenderer.invoke('users:create', data),
+    update: (id: string, data: Record<string, unknown>)       => ipcRenderer.invoke('users:update', id, data),
+    remove: (id: string)                                      => ipcRenderer.invoke('users:remove', id),
+  },
+
   sync: {
     /** Push local changes, then pull the server's. */
     all: () => ipcRenderer.invoke('sync:all'),
 
     /** Pull only: fetch server data into local SQLite. */
     pull: () => ipcRenderer.invoke('sync:pull'),
+
+    /** The company's sync-button settings from the server, or null when unavailable. */
+    desktopBtnSettings: () => ipcRenderer.invoke('sync:desktopBtnSettings'),
 
     /** Push a single collection. */
     collection: (collection: string) => ipcRenderer.invoke('sync:collection', collection),

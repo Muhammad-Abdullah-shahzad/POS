@@ -101,3 +101,56 @@ describe('products, a page at a time', () => {
     expect(response.body.data).toHaveLength(5);
   });
 });
+
+describe('the restock list (lowStock=true), a page at a time', () => {
+  let token = '';
+
+  const list = (query: Record<string, string | number>) =>
+    request(app).get('/api/products').query(query).set('Authorization', `Bearer ${token}`);
+
+  beforeAll(async () => {
+    const shop = await createCompany('Gamma Fittings');
+    // Elbows with 0 to 11 left, one product sold out and one well stocked.
+    const stocked = (name: string, stock: number) => ({ ...product(name, `G-${name}`), stock });
+    await runAsTenant(shop.tenant._id.toString(), () =>
+      Product.insertMany([
+        ...Array.from({ length: 12 }, (_, i) => stocked(`Elbow ${String(i).padStart(2, '0')}`, i)),
+        stocked('Bend Out', 0),
+        stocked('Tee Plenty', 500),
+      ])
+    );
+    token = await signIn(shop.admin.email);
+  });
+
+  it('lists only products with 10 or fewer left, emptiest first, with totals for the page controls', async () => {
+    const first = await list({ page: 1, pageSize: 5, lowStock: 'true' });
+
+    expect(first.status).toBe(200);
+    // Elbow 00–10 (stock 0–10) and Bend Out (0): 12. Elbow 11 and Tee Plenty are well stocked.
+    expect(first.body.data).toMatchObject({ total: 12, pageCount: 3 });
+    expect(first.body.data.items.map((p: { name: string; stock: number }) => [p.name, p.stock])).toEqual([
+      ['Bend Out', 0],
+      ['Elbow 00', 0],
+      ['Elbow 01', 1],
+      ['Elbow 02', 2],
+      ['Elbow 03', 3],
+    ]);
+
+    const last = await list({ page: 3, pageSize: 5, lowStock: 'true' });
+    expect(last.body.data.items.map((p: { name: string }) => p.name)).toEqual(['Elbow 09', 'Elbow 10']);
+  });
+
+  it('searches within the restock list', async () => {
+    const response = await list({ page: 1, pageSize: 25, lowStock: 'true', search: 'bend' });
+
+    expect(response.body.data.total).toBe(1);
+    expect(response.body.data.items[0].name).toBe('Bend Out');
+  });
+
+  it('leaves the ordinary products list unchanged', async () => {
+    const response = await list({ page: 1, pageSize: 25, lowStock: 'false' });
+
+    expect(response.body.data.total).toBe(14);
+    expect(response.body.data.items[0].name).toBe('Bend Out');
+  });
+});

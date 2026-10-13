@@ -5,12 +5,14 @@
  * shops can stock the same barcode without ever seeing each other's stock.
  */
 import { Request, Response } from 'express';
+import type { SortOrder } from 'mongoose';
 import { z } from 'zod';
 import { successResponse } from '../core/apiResponse';
 import { asyncHandler } from '../core/asyncHandler';
 import { BadRequestError, NotFoundError } from '../core/errors';
 import Product from '../models/Product';
-import { searchFilter } from '../utils/query';
+import { quickSearchProducts, searchProductPage } from '../services/productSearchService';
+import { LOW_STOCK_THRESHOLD } from '../services/kpiService';
 import { pageOf, pageWindow } from '../utils/pagination';
 import { productSearchQuery } from '../validators/productValidators';
 import { isDataUrlImage, removeStoredImage, storeDataUrlImage, storeUploadedImage } from '../services/imageStorageService';
@@ -28,29 +30,51 @@ async function storeIncomingImage(req: Request): Promise<string | null> {
 
 const generateSku = (): string => `SKU-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
+/** Products a plain list returns when the caller names no limit. */
+const DEFAULT_LIST_LIMIT = 200;
+
 /**
  * GET /products
  *
  * With `page`, one page of the catalogue plus the total, for the products
- * screen: `?page=2&pageSize=25&search=pipe`. Without it, a plain list capped
- * at `limit`, as the till's product search uses.
+ * screen: `?page=2&pageSize=25&search=pipe`. Without it, a plain list: with a
+ * `search`, every match best first (the till's search) unless `limit` caps it;
+ * without one, up to `limit` (200 by default).
+ *
+ * `lowStock=true` (with `page`) lists only products running low, emptiest
+ * first: the dashboard's restock list, which can run to thousands.
+ *
+ * Every search is the smart search (productSearchService): words in any
+ * order, small typos forgiven, best matches first.
  */
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
-  const { search, category, limit, page, pageSize } = req.validatedQuery as z.infer<typeof productSearchQuery>;
+  const { search, category, limit, page, pageSize, lowStock } = req.validatedQuery as z.infer<typeof productSearchQuery>;
   const filter = {
-    ...searchFilter(search, ['name', 'barcode', 'sku']),
     ...(category && { category }),
+    ...(lowStock && { stock: { $lte: LOW_STOCK_THRESHOLD } }),
   };
+  const query = search?.trim();
 
   if (page === undefined) {
-    res.json(successResponse(await Product.find(filter).sort({ name: 1 }).limit(limit)));
+    // The till's search: every match, best first, unless the caller asks for a limit.
+    const products = query
+      ? await quickSearchProducts(query, { category, limit })
+      : await Product.find(filter).sort({ name: 1 }).limit(limit ?? DEFAULT_LIST_LIMIT);
+    res.json(successResponse(products));
+    return;
+  }
+
+  const { skip, limit: take } = pageWindow(page, pageSize);
+  if (query) {
+    const { items, total } = await searchProductPage(query, filter, { skip, limit: take });
+    res.json(successResponse(pageOf(items, total, page, pageSize)));
     return;
   }
 
   // _id breaks ties between equal names, so no product repeats or goes missing between pages.
-  const { skip, limit: take } = pageWindow(page, pageSize);
+  const order: Record<string, SortOrder> = lowStock ? { stock: 1, name: 1, _id: 1 } : { name: 1, _id: 1 };
   const [items, total] = await Promise.all([
-    Product.find(filter).sort({ name: 1, _id: 1 }).skip(skip).limit(take),
+    Product.find(filter).sort(order).skip(skip).limit(take),
     Product.countDocuments(filter),
   ]);
   res.json(successResponse(pageOf(items, total, page, pageSize)));

@@ -16,8 +16,9 @@ import { ipcMain } from 'electron';
 import type { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { createServerClient } from '../api/serverClient';
-import { dbAll, dbRun } from '../db/database';
+import { dbAll, dbRun, dbTransaction } from '../db/database';
 import { refreshLicenseFromServer } from '../ipc/license';
+import { fetchDesktopBtnSettings, type DesktopBtnSettings } from './desktopBtnSettings';
 import type { SqlValue } from 'sql.js';
 
 interface SyncResult { collection: string; synced: number; errors: string[]; }
@@ -27,6 +28,8 @@ interface SyncSummary {
   results: SyncResult[];
   totalSynced: number;
   totalErrors: number;
+  /** The company's sync-button settings, when they could be read. */
+  desktopBtnSettings?: DesktopBtnSettings | null;
 }
 
 /** Returned when the till has never signed in against the server. */
@@ -184,9 +187,51 @@ interface PullDefinition {
   serialize?: RowSerializer;
   /** Never remove local rows missing from the server (the settings row). */
   keepMissing?: boolean;
+  /** One record per company (settings): the till keeps exactly one, under the server's id. */
+  singleton?: boolean;
+}
+
+/**
+ * The company's settings: one record on the server, so exactly one on the till.
+ *
+ * Without unsent edits on the till, the server's record replaces whatever the
+ * till has (including a placeholder it made before its first pull). With
+ * unsent edits, those are kept, but under the server's id, so the next Sync
+ * updates the company's record; any other copies are removed.
+ */
+async function pullSettings(definition: PullDefinition, client: AxiosInstance): Promise<SyncResult> {
+  const result: SyncResult = { collection: `pull:${definition.table}`, synced: 0, errors: [] };
+  try {
+    const res = await client.get(definition.fetchEndpoint);
+    const server = res.data?.data as Record<string, unknown> | undefined;
+    if (!server?._id) return result;
+    const serverId = String(server._id);
+
+    const locals = dbAll(`SELECT _id, isSync FROM settings ORDER BY updatedAt DESC`);
+    const pending = locals.find((row) => row._id === serverId && row.isSync === 0) ?? locals.find((row) => row.isSync === 0);
+    const row = definition.serialize ? definition.serialize(server) : server;
+    const cols = getColumns('settings').filter((c) => c === 'isSync' || c in row);
+
+    dbTransaction((d) => {
+      if (pending) {
+        d.run(`DELETE FROM settings WHERE _id != $keep`, { $keep: String(pending._id) });
+        d.run(`UPDATE settings SET _id = $serverId WHERE _id = $keep`, { $serverId: serverId, $keep: String(pending._id) });
+        return;
+      }
+      d.run(`DELETE FROM settings`);
+      const params: Record<string, SqlValue> = {};
+      for (const col of cols) params[`$${col}`] = col === 'isSync' ? 1 : toSqlValue(row[col]);
+      d.run(`INSERT INTO settings (${cols.join(', ')}) VALUES (${cols.map((c) => `$${c}`).join(', ')})`, params);
+      result.synced = 1;
+    });
+  } catch (err: any) {
+    result.errors.push(err?.response?.data?.message || err.message || 'Unknown error');
+  }
+  return result;
 }
 
 async function pullTable(definition: PullDefinition, client: AxiosInstance): Promise<SyncResult> {
+  if (definition.singleton) return pullSettings(definition, client);
   const { table, collection, fetchEndpoint, serialize, keepMissing } = definition;
   const result: SyncResult = { collection: `pull:${table}`, synced: 0, errors: [] };
   try {
@@ -318,7 +363,7 @@ const pullFunctions: PullDefinition[] = [
   { table: 'bank_names',          collection: 'banks/names',        fetchEndpoint: '/banks/names' },
   { table: 'bank_accounts',       collection: 'banks/accounts',     fetchEndpoint: '/banks/accounts' },
   { table: 'bank_cards',          collection: 'banks/cards',        fetchEndpoint: '/banks/cards' },
-  { table: 'settings',                                              fetchEndpoint: '/settings',           serialize: stringifyField('quickProducts'), keepMissing: true },
+  { table: 'settings',                                              fetchEndpoint: '/settings',           serialize: stringifyField('quickProducts'), keepMissing: true, singleton: true },
 ];
 
 // ── Master sync (push → pull) ─────────────────────────────────────────────────
@@ -380,12 +425,12 @@ export function registerSyncHandlers(): void {
     if (!client) return NOT_AUTHENTICATED;
 
     console.log('[Sync] Starting full sync to', config.apiBaseUrl);
-    const result = await syncAll(client);
+    const [result, desktopBtnSettings] = await Promise.all([syncAll(client), fetchDesktopBtnSettings(client)]);
     console.log('[Sync] Done:', result.totalSynced, 'synced,', result.totalErrors, 'errors');
 
     // The till is online, so this is the cheapest moment to pick up a renewal.
     await refreshLicenseFromServer().catch(() => undefined);
-    return result;
+    return { ...result, desktopBtnSettings };
   });
 
   ipcMain.handle('sync:pull', async (): Promise<SyncSummary> => {
@@ -393,12 +438,16 @@ export function registerSyncHandlers(): void {
     if (!client) return NOT_AUTHENTICATED;
 
     console.log('[Sync] Starting pull from', config.apiBaseUrl);
-    const result = await pullAll(client);
+    const [result, desktopBtnSettings] = await Promise.all([pullAll(client), fetchDesktopBtnSettings(client)]);
     console.log('[Sync] Pull done:', result.totalSynced, 'pulled,', result.totalErrors, 'errors');
 
     await refreshLicenseFromServer().catch(() => undefined);
-    return result;
+    return { ...result, desktopBtnSettings };
   });
+
+  // At start-up the screen asks for the settings on their own, so a till whose
+  // Pull button is hidden still learns when it is shown again.
+  ipcMain.handle('sync:desktopBtnSettings', () => fetchDesktopBtnSettings());
 
   ipcMain.handle('sync:collection', async (_event, collection: string) => {
     const client = createServerClient();

@@ -324,6 +324,11 @@
   margin: 0 -20px -18px;
 }
 
+/* A table with page controls under it keeps clear of them. */
+.pagedTable .tableScroll {
+  margin-bottom: 0;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -350,6 +355,11 @@
   color: var(--pos-ink);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.table td[data-wrap] {
+  min-width: 140px;
+  white-space: normal;
 }
 
 .table tbody tr:last-child td {

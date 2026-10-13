@@ -19,6 +19,7 @@ const config_1 = require("../config");
 const serverClient_1 = require("../api/serverClient");
 const database_1 = require("../db/database");
 const license_1 = require("../ipc/license");
+const desktopBtnSettings_1 = require("./desktopBtnSettings");
 /** Returned when the till has never signed in against the server. */
 const NOT_AUTHENTICATED = {
     success: false,
@@ -142,7 +143,48 @@ const stringifyField = (field) => (row) => ({
             ? JSON.stringify(row[field])
             : (row[field] ?? '[]'),
 });
+/**
+ * The company's settings: one record on the server, so exactly one on the till.
+ *
+ * Without unsent edits on the till, the server's record replaces whatever the
+ * till has (including a placeholder it made before its first pull). With
+ * unsent edits, those are kept, but under the server's id, so the next Sync
+ * updates the company's record; any other copies are removed.
+ */
+async function pullSettings(definition, client) {
+    const result = { collection: `pull:${definition.table}`, synced: 0, errors: [] };
+    try {
+        const res = await client.get(definition.fetchEndpoint);
+        const server = res.data?.data;
+        if (!server?._id)
+            return result;
+        const serverId = String(server._id);
+        const locals = (0, database_1.dbAll)(`SELECT _id, isSync FROM settings ORDER BY updatedAt DESC`);
+        const pending = locals.find((row) => row._id === serverId && row.isSync === 0) ?? locals.find((row) => row.isSync === 0);
+        const row = definition.serialize ? definition.serialize(server) : server;
+        const cols = getColumns('settings').filter((c) => c === 'isSync' || c in row);
+        (0, database_1.dbTransaction)((d) => {
+            if (pending) {
+                d.run(`DELETE FROM settings WHERE _id != $keep`, { $keep: String(pending._id) });
+                d.run(`UPDATE settings SET _id = $serverId WHERE _id = $keep`, { $serverId: serverId, $keep: String(pending._id) });
+                return;
+            }
+            d.run(`DELETE FROM settings`);
+            const params = {};
+            for (const col of cols)
+                params[`$${col}`] = col === 'isSync' ? 1 : toSqlValue(row[col]);
+            d.run(`INSERT INTO settings (${cols.join(', ')}) VALUES (${cols.map((c) => `$${c}`).join(', ')})`, params);
+            result.synced = 1;
+        });
+    }
+    catch (err) {
+        result.errors.push(err?.response?.data?.message || err.message || 'Unknown error');
+    }
+    return result;
+}
 async function pullTable(definition, client) {
+    if (definition.singleton)
+        return pullSettings(definition, client);
     const { table, collection, fetchEndpoint, serialize, keepMissing } = definition;
     const result = { collection: `pull:${table}`, synced: 0, errors: [] };
     try {
@@ -257,7 +299,7 @@ const pullFunctions = [
     { table: 'bank_names', collection: 'banks/names', fetchEndpoint: '/banks/names' },
     { table: 'bank_accounts', collection: 'banks/accounts', fetchEndpoint: '/banks/accounts' },
     { table: 'bank_cards', collection: 'banks/cards', fetchEndpoint: '/banks/cards' },
-    { table: 'settings', fetchEndpoint: '/settings', serialize: stringifyField('quickProducts'), keepMissing: true },
+    { table: 'settings', fetchEndpoint: '/settings', serialize: stringifyField('quickProducts'), keepMissing: true, singleton: true },
 ];
 // ── Master sync (push → pull) ─────────────────────────────────────────────────
 async function syncAll(client) {
@@ -306,22 +348,25 @@ function registerSyncHandlers() {
         if (!client)
             return NOT_AUTHENTICATED;
         console.log('[Sync] Starting full sync to', config_1.config.apiBaseUrl);
-        const result = await syncAll(client);
+        const [result, desktopBtnSettings] = await Promise.all([syncAll(client), (0, desktopBtnSettings_1.fetchDesktopBtnSettings)(client)]);
         console.log('[Sync] Done:', result.totalSynced, 'synced,', result.totalErrors, 'errors');
         // The till is online, so this is the cheapest moment to pick up a renewal.
         await (0, license_1.refreshLicenseFromServer)().catch(() => undefined);
-        return result;
+        return { ...result, desktopBtnSettings };
     });
     electron_1.ipcMain.handle('sync:pull', async () => {
         const client = (0, serverClient_1.createServerClient)();
         if (!client)
             return NOT_AUTHENTICATED;
         console.log('[Sync] Starting pull from', config_1.config.apiBaseUrl);
-        const result = await pullAll(client);
+        const [result, desktopBtnSettings] = await Promise.all([pullAll(client), (0, desktopBtnSettings_1.fetchDesktopBtnSettings)(client)]);
         console.log('[Sync] Pull done:', result.totalSynced, 'pulled,', result.totalErrors, 'errors');
         await (0, license_1.refreshLicenseFromServer)().catch(() => undefined);
-        return result;
+        return { ...result, desktopBtnSettings };
     });
+    // At start-up the screen asks for the settings on their own, so a till whose
+    // Pull button is hidden still learns when it is shown again.
+    electron_1.ipcMain.handle('sync:desktopBtnSettings', () => (0, desktopBtnSettings_1.fetchDesktopBtnSettings)());
     electron_1.ipcMain.handle('sync:collection', async (_event, collection) => {
         const client = (0, serverClient_1.createServerClient)();
         if (!client)

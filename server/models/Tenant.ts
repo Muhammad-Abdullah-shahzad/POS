@@ -32,6 +32,22 @@ export interface ITenantLicense {
 /** How many past licences are kept on the document. */
 export const LICENSE_HISTORY_LIMIT = 24;
 
+/** Whether a desktop sync button is shown. Strings, so more states can be added later. */
+export const SHOW_SYNC_BTNS = 'SHOW_SYNC_BTNS';
+export const HIDE_SYNC_BTNS = 'HIDE_SYNC_BTNS';
+export const SYNC_BUTTON_VISIBILITY = [SHOW_SYNC_BTNS, HIDE_SYNC_BTNS] as const;
+export type SyncButtonVisibility = (typeof SYNC_BUTTON_VISIBILITY)[number];
+
+/**
+ * Which sync buttons the company's desktop tills show. Part of what the
+ * company pays for, so only the operator sets it (scripts/setDesktopButtons);
+ * the company sees it read-only, and tills read it on Pull, Sync and start-up.
+ */
+export interface IDesktopBtnSettings {
+  showSyncBtn: SyncButtonVisibility;
+  showPullBtn: SyncButtonVisibility;
+}
+
 export interface ITenant extends Document<Types.ObjectId> {
   name: string;
   /** URL and support friendly identifier, e.g. "corner-shop". Unique platform wide. */
@@ -46,6 +62,7 @@ export interface ITenant extends Document<Types.ObjectId> {
   /** The licence currently in force. Absent until one is issued. */
   license?: ITenantLicense;
   licenseHistory: ITenantLicense[];
+  desktopBtnSettings: IDesktopBtnSettings;
   createdAt: Date;
   updatedAt: Date;
   isActive(): boolean;
@@ -84,6 +101,10 @@ const TenantSchema = new Schema<ITenant>(
     // "locked" rather than as a broken document.
     license: { type: LicenseSchema, required: false },
     licenseHistory: { type: [LicenseSchema], default: [] },
+    desktopBtnSettings: {
+      showSyncBtn: { type: String, enum: SYNC_BUTTON_VISIBILITY, default: SHOW_SYNC_BTNS },
+      showPullBtn: { type: String, enum: SYNC_BUTTON_VISIBILITY, default: SHOW_SYNC_BTNS },
+    },
   },
   { timestamps: true }
 );

@@ -5,11 +5,10 @@
 import { useRef } from 'react';
 import { Box, Button, Group, Modal, Paper, Text } from '@mantine/core';
 import { IconPrinter } from '@tabler/icons-react';
-import { useReactToPrint } from 'react-to-print';
 import { formatMoney } from '../../utils/money';
 import { useSettingsStore } from '../../store/settingsStore';
 import PrintableSaleDocument from './PrintableSaleDocument';
-import { printPageStyle } from './printPageStyle';
+import { useReceiptPrint } from './useReceiptPrint';
 import { printableSaleFromOrder } from './printableSaleFromOrder';
 import { useShopDetails } from './useShopDetails';
 
@@ -27,12 +26,7 @@ export default function ReceiptViewer({ order, opened, onClose }: ReceiptViewerP
   const receiptSize: 'Thermal' | 'A4' = settings?.receiptSize === 'A4' ? 'A4' : 'Thermal';
   const shop = useShopDetails();
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    pageStyle: printPageStyle(receiptSize),
-    // Receipts carry inline styles only; skipping the app's stylesheets opens the print window faster.
-    ignoreGlobalStyles: true,
-  });
+  const handlePrint = useReceiptPrint(printRef, receiptSize);
 
   return (
     <Modal.Root opened={opened} onClose={onClose} fullScreen transitionProps={{ transition: 'fade', duration: 150 }}>

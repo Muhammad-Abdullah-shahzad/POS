@@ -7,6 +7,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconEdit, IconTrash, IconUserPlus } from '@tabler/icons-react';
 import api from '../../services/api';
+import { errorMessage } from '../../utils/errorMessage';
 
 interface User {
   _id: string;
@@ -53,7 +54,7 @@ const StaffLogins = () => {
     } catch (error) {
       notifications.show({
         title: 'Error',
-        message: 'Failed to fetch staff logins',
+        message: errorMessage(error, 'Failed to fetch staff logins'),
         color: 'red',
         icon: <IconX size={16} />,
       });
@@ -125,7 +126,7 @@ const StaffLogins = () => {
     } catch (error: any) {
       notifications.show({
         title: 'Error',
-        message: error.response?.data?.message || 'Failed to save user account',
+        message: errorMessage(error, 'Failed to save user account'),
         color: 'red',
         icon: <IconX size={16} />,
       });
@@ -156,7 +157,7 @@ const StaffLogins = () => {
     } catch (error: any) {
       notifications.show({
         title: 'Error',
-        message: error.response?.data?.message || 'Failed to delete user account',
+        message: errorMessage(error, 'Failed to delete user account'),
         color: 'red',
         icon: <IconX size={16} />,
       });

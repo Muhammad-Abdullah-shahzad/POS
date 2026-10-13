@@ -18,7 +18,7 @@ function monthLabel(key: string): string {
 // ── KPIs (mirrors server/services/kpiService.ts) ───────────────────────────────
 
 const SERIES_DAYS = 30;
-const LOW_STOCK_THRESHOLD = 10;
+export const LOW_STOCK_THRESHOLD = 10;
 const TOP_PRODUCTS = 6;
 const LOW_STOCK_LIST = 100;
 

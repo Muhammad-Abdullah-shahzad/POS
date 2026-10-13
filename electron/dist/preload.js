@@ -146,6 +146,12 @@ const api = {
         /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
         kpis: (period) => electron_1.ipcRenderer.invoke('analytics:kpis', period),
     },
+    // ── PRINTING ──────────────────────────────────────────────────────────────
+    // Receipts straight to this till's printer at its paper size, or saved as a PDF at that size.
+    printer: {
+        list: () => electron_1.ipcRenderer.invoke('printer:list'),
+        printReceipt: (job) => electron_1.ipcRenderer.invoke('printer:printReceipt', job),
+    },
     // ── LICENCE ───────────────────────────────────────────────────────────────
     // The key is verified in the main process against the public key baked into
     // this build, so the till can lock or unlock with no connection at all.
@@ -159,11 +165,20 @@ const api = {
     },
     // ── SYNC ──────────────────────────────────────────────────────────────────
     // Server credentials stay in the main process, so none of these take a token.
+    // ── STAFF LOGINS (on the server, through the till's connection) ───────────
+    users: {
+        list: () => electron_1.ipcRenderer.invoke('users:list'),
+        create: (data) => electron_1.ipcRenderer.invoke('users:create', data),
+        update: (id, data) => electron_1.ipcRenderer.invoke('users:update', id, data),
+        remove: (id) => electron_1.ipcRenderer.invoke('users:remove', id),
+    },
     sync: {
         /** Push local changes, then pull the server's. */
         all: () => electron_1.ipcRenderer.invoke('sync:all'),
         /** Pull only: fetch server data into local SQLite. */
         pull: () => electron_1.ipcRenderer.invoke('sync:pull'),
+        /** The company's sync-button settings from the server, or null when unavailable. */
+        desktopBtnSettings: () => electron_1.ipcRenderer.invoke('sync:desktopBtnSettings'),
         /** Push a single collection. */
         collection: (collection) => electron_1.ipcRenderer.invoke('sync:collection', collection),
         /** Count of records waiting to be pushed, per collection. */

@@ -5,21 +5,21 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
-import { IconCheck } from '@tabler/icons-react';
+import { IconCheck, IconPrinter } from '@tabler/icons-react';
 import { useReactToPrint } from 'react-to-print';
 import JsBarcode from 'jsbarcode';
 import api from '../../services/api';
 import { fetchQuickProducts, loadQuickProducts, type QuickProductButton } from '../products/QuickProducts';
-import SyncButton from '../sync/SyncButton';
 import { currencySymbol, formatMoney } from '../../utils/money';
 import { CURRENCIES, useCurrencyStore } from '../../store/currencyStore';
 import type { CurrencyCode } from '../../store/currencyStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import PrintableSaleDocument from '../printing/PrintableSaleDocument';
-import { printPageStyle } from '../printing/printPageStyle';
+import { useReceiptPrint } from '../printing/useReceiptPrint';
 import { printableSaleFromOrder } from '../printing/printableSaleFromOrder';
 import type { StoredOrder } from '../printing/printableSaleFromOrder';
 import { useShopDetails } from '../printing/useShopDetails';
+import TillPrinterSettings from '../settings/TillPrinterSettings';
 import RemarksPrompt from './RemarksPrompt';
 import { productImageUrl } from '../../utils/assetUrl';
 import type { PrintableSale } from '../printing/printableSale';
@@ -212,8 +212,49 @@ const Dashboard = () => {
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productNameSearch, setProductNameSearch] = useState('');
   const [productNameResults, setProductNameResults] = useState<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
+  /** Numbers each product search, so only the latest reply is shown. */
+  const productSearchRequest = useRef(0);
+  /** The search dropdown, scrolled to keep the highlighted product in view. */
+  const productResultsListRef = useRef<HTMLDivElement>(null);
+  /** The product search box the dropdown opens under. */
+  const productSearchBoxRef = useRef<HTMLDivElement>(null);
+  const [productResultsPlacement, setProductResultsPlacement] = useState({ top: 0, left: 0, width: 360, maxHeight: 320 });
   const productNameResultsRef = useRef<{ value: string; _id: string; barcode: string; price: number; category: string; vatRate: number; vatType: string; stock: number }[]>([]);
   const [activeProductIndex, setActiveProductIndex] = useState<number>(-1);
+
+  // Arrow keys move through the whole list, so keep the highlighted product in view.
+  useEffect(() => {
+    if (activeProductIndex < 0) return;
+    productResultsListRef.current
+      ?.querySelector<HTMLElement>(`[data-result-index="${activeProductIndex}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [activeProductIndex]);
+
+  // The dropdown sits under the search box, at least wide enough for a full
+  // product name, and never past the edge or bottom of the window.
+  useEffect(() => {
+    if (productNameResults.length === 0) return;
+    const place = () => {
+      const box = productSearchBoxRef.current?.getBoundingClientRect();
+      if (!box) return;
+      const width = Math.min(Math.max(box.width, 520), window.innerWidth - 16);
+      const left = Math.max(8, Math.min(box.left, window.innerWidth - width - 8));
+      setProductResultsPlacement({ top: box.bottom, left, width, maxHeight: Math.max(160, Math.min(420, window.innerHeight - box.bottom - 12)) });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [productNameResults.length]);
+
+  // Once the search box is cleared (a product picked, or CLEAR), a reply still
+  // on its way must not bring the list back.
+  useEffect(() => {
+    if (!productNameSearch.trim()) productSearchRequest.current += 1;
+  }, [productNameSearch]);
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
   const [quickSaveModalOpened, setQuickSaveModalOpened] = useState(false);
   const [quickSaveName, setQuickSaveName] = useState('');
@@ -254,6 +295,8 @@ const Dashboard = () => {
   }>({ name: '', barcode: '', qty: 1, originalPrice: 0, discountPct: 0, drs: 0 });
   const [editDetailLoading, setEditDetailLoading] = useState(false);
   const [enablePrinting, setEnablePrinting] = useState(true);
+  // The desktop till's printer and paper size, open to cashiers at the counter.
+  const [printerModalOpened, setPrinterModalOpened] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState('0');
   const [quickProducts, setQuickProducts] = useState<QuickProductButton[]>(() => loadQuickProducts());
 
@@ -552,9 +595,14 @@ const Dashboard = () => {
     // the user just picked from the dropdown - don't re-fetch
     const exactMatch = productNameResultsRef.current.find(p => p.value === val);
     if (exactMatch) return;
+    // Only the reply to the latest keystroke may fill the list; an older one
+    // arriving late would otherwise replace newer results.
+    const request = ++productSearchRequest.current;
     try {
       const { data } = await api.get(`/products?search=${encodeURIComponent(val.trim())}`);
-      const results = (data.data || []).slice(0, 10).map((p: any) => ({
+      if (request !== productSearchRequest.current) return;
+      // Every match, best first; the list scrolls.
+      const results = (data.data || []).map((p: any) => ({
         value: p.name,
         name: p.name,
         _id: p._id,
@@ -608,13 +656,7 @@ const Dashboard = () => {
   const askForRemarks = storeSettings?.showRemarksPrompt !== false;
   const shop = useShopDetails();
 
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    pageStyle: printPageStyle(receiptSize),
-    // Receipts carry inline styles only, so skip copying the app's stylesheets
-    // into the print window; it opens noticeably faster without them.
-    ignoreGlobalStyles: true,
-  });
+  const handlePrint = useReceiptPrint(componentRef, receiptSize);
 
   // A print request is answered after React has rendered the receipt it is for.
   // Guessing with a timer could print the previous sale on a slow till.
@@ -1429,6 +1471,9 @@ const Dashboard = () => {
     { label: 'DELI REPORT', action: () => handleOptionAction('DELI REPORT', '/reports/category-sale') },
     { label: 'CASH LIFT', action: () => handleOptionAction('CASH LIFT', '/bank') },
     { label: 'DEVICE SETTINGS', action: () => { setOptionsModalOpened(false); setDeviceSettingsModalOpened(true); }, isSpecial: true },
+    ...(window.electronAPI
+      ? [{ label: 'PRINTER / PAPER SIZE', action: () => { setOptionsModalOpened(false); setPrinterModalOpened(true); }, isSpecial: true }]
+      : []),
     { label: 'SYNC DATA', action: handleSyncSettings, isSpecial: true },
     { label: 'BACK', action: () => setOptionsModalOpened(false) },
   ];
@@ -1718,7 +1763,6 @@ const Dashboard = () => {
                       disabled={employees.length === 0}
                       styles={{ input: { borderRadius: 0 } }}
                     />
-                    <SyncButton />
                     <Button style={btnStyle} size="xs" px="lg">LOCK</Button>
                   </Flex>
 
@@ -1866,7 +1910,7 @@ const Dashboard = () => {
                         </Flex>
                         <Flex gap="xs" align="center">
                           <Text size="11px" w={70}>Product</Text>
-                          <Box flex={1} style={{ position: 'relative' }}>
+                          <Box flex={1} style={{ position: 'relative' }} ref={productSearchBoxRef}>
                             <TextInput
                               size="xs"
                               value={productNameSearch}
@@ -1878,14 +1922,17 @@ const Dashboard = () => {
                             />
                             {productNameResults.length > 0 && (
                               <Paper
+                                ref={productResultsListRef}
                                 shadow="md"
                                 style={{
-                                  position: 'absolute',
-                                  top: '100%',
-                                  left: 0,
-                                  right: 0,
+                                  // Placed against the window, so the list can be wider than the
+                                  // narrow column it opens from (which clips anything wider).
+                                  position: 'fixed',
+                                  top: productResultsPlacement.top,
+                                  left: productResultsPlacement.left,
+                                  width: productResultsPlacement.width,
                                   zIndex: 9999,
-                                  maxHeight: 200,
+                                  maxHeight: productResultsPlacement.maxHeight,
                                   overflowY: 'auto',
                                   border: '1px solid #ccc',
                                 }}
@@ -1893,6 +1940,7 @@ const Dashboard = () => {
                                 {productNameResults.map((p, index) => (
                                   <Box
                                     key={p._id}
+                                    data-result-index={index}
                                     onMouseDown={(e) => {
                                       e.preventDefault();
                                       addProductToCart(p);
@@ -1901,10 +1949,14 @@ const Dashboard = () => {
                                       productNameResultsRef.current = [];
                                       setActiveProductIndex(-1);
                                     }}
+                                    title={p.value}
                                     style={{
                                       padding: '6px 10px',
                                       cursor: 'pointer',
                                       fontSize: '12px',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
                                       borderBottom: '1px solid #eee',
                                       backgroundColor: index === activeProductIndex ? '#e8f4fd' : '',
                                       fontWeight: index === activeProductIndex ? 'bold' : 'normal'
@@ -1999,6 +2051,11 @@ const Dashboard = () => {
                       checked={enablePrinting}
                       onChange={(e) => setEnablePrinting(e.currentTarget.checked)}
                     />
+                    {window.electronAPI && (
+                      <Button size="compact-xs" variant="light" leftSection={<IconPrinter size={14} />} onClick={() => setPrinterModalOpened(true)}>
+                        Printer / Paper
+                      </Button>
+                    )}
                   </Flex>
                   <Grid >
                     {[
@@ -2485,6 +2542,12 @@ const Dashboard = () => {
           allowDeselect={false}
         />
         <Button mt="xl" fullWidth onClick={() => setDeviceSettingsModalOpened(false)}>Close</Button>
+      </Modal>
+
+      {/* PRINTER / PAPER SIZE MODAL (desktop) */}
+      <Modal opened={printerModalOpened} onClose={() => setPrinterModalOpened(false)} title="Printer & Paper Size" size="lg">
+        <TillPrinterSettings receiptSize={receiptSize} />
+        <Button mt="xl" fullWidth onClick={() => setPrinterModalOpened(false)}>Done</Button>
       </Modal>
 
       {/* VOID TRANS MODAL */}

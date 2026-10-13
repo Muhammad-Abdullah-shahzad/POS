@@ -8,6 +8,10 @@
  *
  * Tenant safety comes from the model plugin: the injected `tenantId` is part of
  * every filter, so a till can only ever write into its own company's data.
+ *
+ * Customer balances are the server's to work out (customerBalanceService): a
+ * till's copy of a balance is never written, and each synced sale, payment or
+ * return moves the balance by what it changed, once.
  */
 import { Model, Types } from 'mongoose';
 import { logger } from '../core/logger';
@@ -28,6 +32,8 @@ import WastageEntry from '../models/WastageEntry';
 import Settings from '../models/Settings';
 import ProductReturn from '../models/ProductReturn';
 import { BankAccount, BankCard, BankName } from '../models/Bank';
+import Customer from '../models/Customer';
+import { ACCOUNT_EFFECTS, AccountEffectFn, moveBalancesFor, setBalanceFromAccount } from './customerBalanceService';
 
 type SyncRecord = Record<string, unknown>;
 
@@ -36,6 +42,8 @@ interface SyncCollectionConfig {
   label: string;
   /** Adjusts a record pushed by a till before it is saved. */
   prepare?: (record: SyncRecord) => Promise<SyncRecord>;
+  /** What a record does to a customer's balance, for records that affect one. */
+  accountEffect?: AccountEffectFn;
 }
 
 /**
@@ -59,9 +67,15 @@ async function moveInlineImageToDrive(record: SyncRecord): Promise<SyncRecord> {
 export const SYNC_COLLECTIONS = {
   products: { model: Product as Model<any>, label: 'products', prepare: moveInlineImageToDrive },
   categories: { model: Category as Model<any>, label: 'categories' },
-  orders: { model: Order as Model<any>, label: 'orders' },
-  customers: { model: Customer as Model<any>, label: 'customers' },
-  'customer-payments': { model: CustomerPayment as Model<any>, label: 'customer payments' },
+  orders: { model: Order as Model<any>, label: 'orders', accountEffect: ACCOUNT_EFFECTS.orders },
+  customers: {
+    model: Customer as Model<any>,
+    label: 'customers',
+    // The till's copy of the balance may be stale; the server keeps the real one.
+    prepare: async ({ outstandingBalance: _ignored, ...record }) => record,
+    accountEffect: ACCOUNT_EFFECTS.customers,
+  },
+  'customer-payments': { model: CustomerPayment as Model<any>, label: 'customer payments', accountEffect: ACCOUNT_EFFECTS['customer-payments'] },
   employees: { model: Employee as Model<any>, label: 'employees' },
   expenses: { model: Expense as Model<any>, label: 'expenses' },
   'expense-categories': { model: ExpenseCategory as Model<any>, label: 'expense categories' },
@@ -72,8 +86,9 @@ export const SYNC_COLLECTIONS = {
   'banks/names': { model: BankName as Model<any>, label: 'bank names' },
   'banks/accounts': { model: BankAccount as Model<any>, label: 'bank accounts' },
   'banks/cards': { model: BankCard as Model<any>, label: 'bank cards' },
-  'product-returns': { model: ProductReturn as Model<any>, label: 'product returns' },
-  settings: { model: Settings as Model<any>, label: 'settings' },
+  'product-returns': { model: ProductReturn as Model<any>, label: 'product returns', accountEffect: ACCOUNT_EFFECTS['product-returns'] },
+  // desktopBtnSettings is the operator's (on the company record); a till's copy is never written back.
+  settings: { model: Settings as Model<any>, label: 'settings', prepare: async ({ desktopBtnSettings: _ignored, ...record }) => record },
 } satisfies Record<string, SyncCollectionConfig>;
 
 export type SyncCollection = keyof typeof SYNC_COLLECTIONS;
@@ -136,7 +151,7 @@ export async function upsertRecords(
   collection: SyncCollection,
   records: Record<string, unknown>[]
 ): Promise<SyncOutcome> {
-  const { model, prepare } = SYNC_COLLECTIONS[collection] as SyncCollectionConfig;
+  const { model, prepare, accountEffect } = SYNC_COLLECTIONS[collection] as SyncCollectionConfig;
   const outcome: SyncOutcome = { upserted: 0, skipped: 0, errors: [] };
 
   // Settings is a single document per company; only the first record counts.
@@ -150,11 +165,19 @@ export async function upsertRecords(
 
     try {
       const prepared = prepare ? await prepare(record) : record;
-      await model.updateOne(
-        { _id: asId(record._id) },
-        { $set: toUpdateDocument(prepared) },
-        { upsert: true, runValidators: false }
-      );
+      // Settings is one document per company: a till's copy updates it whatever
+      // id the till gave its own (a till may have created a placeholder offline).
+      const target = collection === 'settings' ? {} : { _id: asId(record._id) };
+      const changes = toUpdateDocument(prepared);
+
+      if (!accountEffect) {
+        await model.updateOne(target, { $set: changes }, { upsert: true, runValidators: false });
+      } else {
+        const before = await model
+          .findOneAndUpdate(target, { $set: changes }, { upsert: true, runValidators: false, returnDocument: 'before' })
+          .lean<Record<string, unknown> | null>();
+        await moveBalancesForSync(collection, accountEffect, before, { ...before, ...changes, _id: record._id });
+      }
       outcome.upserted += 1;
     } catch (error: any) {
       outcome.errors.push(`${String(record._id)}: ${error.message}`);
@@ -168,12 +191,33 @@ export async function upsertRecords(
   return outcome;
 }
 
+/**
+ * Move customer balances by what a synced record changed. A customer new to
+ * the server gets the balance its account adds up to instead: its sales and
+ * payments may have reached the server before it did.
+ */
+async function moveBalancesForSync(
+  collection: SyncCollection,
+  effectOf: AccountEffectFn,
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown>
+): Promise<void> {
+  if (collection === 'customers' && !before) {
+    await setBalanceFromAccount(String(after._id));
+    return;
+  }
+  await moveBalancesFor(effectOf, before, after);
+}
+
 /** Apply deletions the till performed while offline. */
 export async function deleteRecords(collection: SyncCollection, ids: string[]): Promise<DeleteOutcome> {
-  const { model } = SYNC_COLLECTIONS[collection];
+  const { model, accountEffect } = SYNC_COLLECTIONS[collection] as SyncCollectionConfig;
 
   try {
+    // A deleted payment, sale or return no longer counts towards the balance.
+    const removed = accountEffect && collection !== 'customers' ? await model.find({ _id: { $in: ids.map(asId) } }).lean() : [];
     const result = await model.deleteMany({ _id: { $in: ids.map(asId) } });
+    for (const record of removed) await moveBalancesFor(accountEffect!, record as Record<string, unknown>, null);
     return { deleted: result.deletedCount ?? 0, errors: [] };
   } catch (error: any) {
     return { deleted: 0, errors: [error.message] };

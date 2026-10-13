@@ -29,6 +29,7 @@ declare const api: {
             page?: number;
             pageSize?: number;
             search?: string;
+            lowStock?: boolean;
         }) => Promise<any>;
         getByBarcode: (barcode: string) => Promise<any>;
         create: (data: Record<string, unknown>) => Promise<any>;
@@ -134,6 +135,15 @@ declare const api: {
         /** Month-to-date KPIs with a 30 day series, for the admin dashboard. */
         kpis: (period?: string) => Promise<any>;
     };
+    printer: {
+        list: () => Promise<any>;
+        printReceipt: (job: {
+            html: string;
+            deviceName: string;
+            widthMm: number;
+            heightMm?: number | null;
+        }) => Promise<any>;
+    };
     license: {
         /** Current state from the cached key and the clock. */
         status: () => Promise<any>;
@@ -142,11 +152,19 @@ declare const api: {
         /** Ask the server for the latest licence (after a renewal), then re-check. */
         refresh: () => Promise<any>;
     };
+    users: {
+        list: () => Promise<any>;
+        create: (data: Record<string, unknown>) => Promise<any>;
+        update: (id: string, data: Record<string, unknown>) => Promise<any>;
+        remove: (id: string) => Promise<any>;
+    };
     sync: {
         /** Push local changes, then pull the server's. */
         all: () => Promise<any>;
         /** Pull only: fetch server data into local SQLite. */
         pull: () => Promise<any>;
+        /** The company's sync-button settings from the server, or null when unavailable. */
+        desktopBtnSettings: () => Promise<any>;
         /** Push a single collection. */
         collection: (collection: string) => Promise<any>;
         /** Count of records waiting to be pushed, per collection. */

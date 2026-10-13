@@ -3,10 +3,9 @@ import { TextInput, Button, Paper, Title, Grid, Table, Text, Group, Divider, Act
 import { IconTrash, IconBarcode, IconPlus, IconMinus, IconCash, IconGift, IconCashRegister, IconReceipt } from '@tabler/icons-react';
 import { usePosStore } from '../../store/posStore';
 import api from '../../services/api';
-import { useReactToPrint } from 'react-to-print';
 import { useSettingsStore } from '../../store/settingsStore';
 import PrintableSaleDocument from '../printing/PrintableSaleDocument';
-import { printPageStyle } from '../printing/printPageStyle';
+import { useReceiptPrint } from '../printing/useReceiptPrint';
 import { printableSaleFromOrder } from '../printing/printableSaleFromOrder';
 import type { StoredOrder } from '../printing/printableSaleFromOrder';
 import { useShopDetails } from '../printing/useShopDetails';
@@ -97,8 +96,7 @@ const POS = () => {
   const receiptSize: 'Thermal' | 'A4' = settings?.receiptSize === 'A4' ? 'A4' : 'Thermal';
   const shop = useShopDetails();
 
-  // Receipts carry inline styles only; skipping the app's stylesheets opens the print window faster.
-  const handlePrint = useReactToPrint({ contentRef: componentRef, pageStyle: printPageStyle(receiptSize), ignoreGlobalStyles: true });
+  const handlePrint = useReceiptPrint(componentRef, receiptSize);
 
   // Handler for PAY DUES button
   const handlePayDues = () => {

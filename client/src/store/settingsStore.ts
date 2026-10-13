@@ -11,6 +11,8 @@ export interface SystemSettings {
   shopWebsite: string;
   receiptFooter: string;
   receiptSize: 'Thermal' | 'A4';
+  /** Which sync buttons desktop tills show (SHOW_SYNC_BTNS / HIDE_SYNC_BTNS). Read-only: set by the operator. */
+  desktopBtnSettings?: { showSyncBtn: string; showPullBtn: string };
   /** Ask for invoice remarks at checkout. Missing on older data, which means yes. */
   showRemarksPrompt?: boolean;
   currency: string;

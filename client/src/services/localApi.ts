@@ -49,6 +49,7 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
         page: Number(mergedBody.page),
         pageSize: Number(mergedBody.pageSize) || undefined,
         search: mergedBody.search,
+        lowStock: String(mergedBody.lowStock) === 'true',
       }));
     if (method === 'get' && !id)
       return ok(await eAPI().products.getAll(mergedBody?.search));
@@ -130,6 +131,16 @@ async function route(method: Method, url: string, body?: any): Promise<any> {
       return ok(await eAPI().customers.updateSale(id, parts[3], mergedBody));
     if (method === 'patch' && id && sub === 'opening-balance')
       return ok(await eAPI().customers.setOpeningBalance(id, mergedBody));
+  }
+
+  // ── STAFF LOGINS ──────────────────────────────────────────────────────────
+  // Accounts live on the server; the main process relays the request and the
+  // server's reply comes back unchanged.
+  if (resource === 'users') {
+    if (method === 'get' && !id)                      return { data: await eAPI().users.list() };
+    if (method === 'post' && !id)                     return { data: await eAPI().users.create(mergedBody) };
+    if ((method === 'patch' || method === 'put') && id) return { data: await eAPI().users.update(id, mergedBody) };
+    if (method === 'delete' && id)                    return { data: await eAPI().users.remove(id) };
   }
 
   // ── EMPLOYEES ─────────────────────────────────────────────────────────────
